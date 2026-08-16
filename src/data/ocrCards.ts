@@ -1148,6 +1148,7 @@ export const OCR_CARDS: CardDef[] = [
     type: 'Reversal',
     traits: ['Unique', 'Special'],
     superstar: ['mankind'],
+    backlash: 'Mid-match',
 
     fortitude: 0,
     damage: 0,
@@ -1161,6 +1162,7 @@ export const OCR_CARDS: CardDef[] = [
     type: 'Action',
     traits: ['Unique'],
     superstar: ['mankind', 'cactus-jack'],
+    backlash: 'Mid-match',
 
     fortitude: 0,
     damage: 0,
@@ -1280,6 +1282,7 @@ export const OCR_CARDS: CardDef[] = [
     type: 'Reversal',
     traits: ['Unique', 'Special'],
     superstar: ['mankind'],
+    backlash: 'Mid-match',
 
     fortitude: 0,
     damage: 0,
@@ -1355,6 +1358,7 @@ export const OCR_CARDS: CardDef[] = [
     type: 'Action',
     traits: ['Unique'],
     superstar: ['mankind', 'cactus-jack'],
+    backlash: 'Mid-match',
 
     fortitude: 0,
     damage: 0,
@@ -1368,6 +1372,7 @@ export const OCR_CARDS: CardDef[] = [
     type: 'Reversal',
     traits: ['Special', 'Active'],
     superstar: ['mankind'],
+    backlash: 'Mid-match',
 
     fortitude: 0,
     damage: 0,

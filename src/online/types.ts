@@ -38,6 +38,13 @@ export type IntentName =
   | 'resolveReversal'
   | 'flipOverturn'
   | 'stopOverturn'
+  | 'manualMove'
+  | 'manualRingToArsenal'
+  | 'manualZoneToArsenal'
+  | 'manualRemove'
+  | 'manualDrawFromArsenal'
+  | 'manualShuffleArsenal'
+  | 'manualRevealHand'
 
 export type ClientMsg =
   | { type: 'hello'; name: string }

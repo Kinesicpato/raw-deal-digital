@@ -8,6 +8,7 @@ import { CardFace } from '../components/CardView'
 export function LobbyPage() {
   const store = useAppStore.getState()
   const online = useAppStore((s) => s.online)
+  const ownDecks = useAppStore((s) => s.decks)
   const lastError = useAppStore((s) => s.lastError)
   const clearError = useAppStore((s) => s.clearError)
 
@@ -73,6 +74,14 @@ export function LobbyPage() {
 
   const myIdx = online.myIdx
   const deckList = online.sharedDecks ?? []
+  const ownDeckNames = new Set(ownDecks.map((d) => d.name))
+  const hostDecks = deckList.filter((d) => !ownDeckNames.has(d.name))
+  const selectedDeck = myIdx !== null ? online.roster[myIdx]?.deck : undefined
+  const selectedDeckValue = selectedDeck?.name
+    ? ownDeckNames.has(selectedDeck.name)
+      ? `own:${selectedDeck.name}`
+      : `host:${selectedDeck.name}`
+    : 'auto'
   const connectedPlayers = online.roster.filter((r) => r.connected && r.superstarId && r.deck)
   const allReady = online.roster.filter((r) => r.connected).every((r) => r.superstarId && r.deck)
   const canStart =
@@ -149,7 +158,7 @@ export function LobbyPage() {
                 <div className="big-label">Elegí tu mazo</div>
                 <select
                   style={{ width: '100%' }}
-                  value={online.roster[myIdx]?.deck?.name ?? 'auto'}
+                  value={selectedDeckValue}
                   onChange={(e) => {
                     const v = e.target.value
                     const ss = online.roster[myIdx]?.superstarId
@@ -159,7 +168,19 @@ export function LobbyPage() {
                       store.onlinePickSuperstar(ss, { name: null, arsenal: d.arsenal, backlashPre: d.pre, backlashMid: d.mid })
                       return
                     }
-                    const deck = deckList.find((d) => d.name === v)
+                    if (v.startsWith('own:')) {
+                      const deck = ownDecks.find((d) => d.name === v.slice(4))
+                      if (deck) {
+                        store.onlinePickSuperstar(ss, {
+                          name: deck.name,
+                          arsenal: [...deck.arsenal],
+                          backlashPre: [...deck.backlashPre],
+                          backlashMid: [...deck.backlashMid],
+                        })
+                      }
+                      return
+                    }
+                    const deck = deckList.find((d) => d.name === v.replace(/^host:/, ''))
                     if (deck) {
                       store.onlinePickSuperstar(ss, {
                         name: deck.name,
@@ -171,14 +192,55 @@ export function LobbyPage() {
                   }}
                 >
                   <option value="auto">Mazo automático</option>
-                  {deckList.map((d) => (
-                    <option key={d.name} value={d.name}>{d.name}</option>
-                  ))}
+                  {ownDecks.length > 0 && (
+                    <optgroup label={`Tus mazos (${ownDecks.length})`}>
+                      {ownDecks.map((d) => (
+                        <option key={`own:${d.name}`} value={`own:${d.name}`}>{d.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {hostDecks.length > 0 && (
+                    <optgroup label="Mazos del anfitrión">
+                      {hostDecks.map((d) => (
+                        <option key={`host:${d.name}`} value={`host:${d.name}`}>{d.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
                 <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                  {online.roster[myIdx]?.deck?.name
-                    ? `Usarás tu mazo "${online.roster[myIdx]?.deck?.name}".`
+                  {selectedDeck?.name
+                    ? `Usarás tu mazo "${selectedDeck.name}".`
                     : 'Usarás el mazo automático de tu Superestrella.'}
+                </div>
+                <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                  <button
+                    className="ghost"
+                    onClick={() => {
+                      store.setActiveDeck(null)
+                      store.setView('deck')
+                    }}
+                  >
+                    Diseñar mazo…
+                  </button>
+                  <button
+                    className="ghost"
+                    disabled={!selectedDeck?.name || ownDeckNames.has(selectedDeck.name)}
+                    onClick={() => {
+                      const d = online.roster[myIdx]?.deck
+                      const ss = online.roster[myIdx]?.superstarId
+                      if (!d?.name || !ss) return
+                      const err = store.saveDeck({
+                        name: d.name,
+                        superstarId: ss,
+                        arsenal: [...d.arsenal],
+                        backlashPre: [...d.backlashPre],
+                        backlashMid: [...d.backlashMid],
+                      })
+                      if (err) store.setLastError(err)
+                    }}
+                  >
+                    Guardar este mazo
+                  </button>
                 </div>
               </div>
               <div style={{ width: 110 }}>

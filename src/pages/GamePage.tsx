@@ -65,7 +65,7 @@ export function GamePage() {
                 onCardHover={setZoom}
                 onTools={() => setTools(i)}
                 toolsOpen={tools === i}
-                toolsEnabled={!isOnline || online.role === 'host'}
+                toolsEnabled={!isOnline || online.role === 'host' || i === myIdx}
                 canControl={!isOnline || i === myIdx}
               />
             ))}
@@ -231,7 +231,7 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone clickable ${isActive ? 'zone-active' : ''}`} onClick={onTools} title="Clic para ver/mover cartas del Ring Area">
+          <div className={`zone clickable ${isActive ? 'zone-active' : ''}`} onClick={toolsEnabled ? onTools : undefined} title="Clic para ver/mover cartas del Ring Area">
             <div className="zone-title">
               <span>Ring Area</span>
               <span className="mono">{p.ring.length}</span>
@@ -270,7 +270,7 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone clickable ${isTarget ? 'zone-target' : ''}`} onClick={onTools} title="Clic para ver/mover cartas del Ringside">
+          <div className={`zone clickable ${isTarget ? 'zone-target' : ''}`} onClick={toolsEnabled ? onTools : undefined} title="Clic para ver/mover cartas del Ringside">
             <div className="zone-title">
               <span>Ringside · descarte/daño</span>
               <span className="mono">{p.ringside.length}</span>

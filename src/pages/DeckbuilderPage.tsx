@@ -17,6 +17,8 @@ export function DeckbuilderPage() {
   const saveDeck = useAppStore((s) => s.saveDeck)
   const deleteDeck = useAppStore((s) => s.deleteDeck)
   const setActiveDeck = useAppStore((s) => s.setActiveDeck)
+  const onlineRole = useAppStore((s) => s.online.role)
+  const backTo = onlineRole ? 'lobby' : 'menu'
 
   const [zoom, setZoom] = useState<string | null>(null)
   const [detail, setDetail] = useState<string | null>(null)
@@ -117,7 +119,8 @@ export function DeckbuilderPage() {
       alert(err)
       return
     }
-    setView('menu')
+    if (onlineRole === 'host') useAppStore.getState().reshareDecks()
+    setView(backTo)
   }
 
   const newDeck = () => {
@@ -177,7 +180,7 @@ export function DeckbuilderPage() {
       <AppBanner subtitle="Deckbuilder" />
       <div className="row" style={{ marginBottom: 12 }}>
         <div className="spacer" />
-        <button className="ghost" onClick={() => setView('menu')}>Volver</button>
+        <button className="ghost" onClick={() => setView(backTo)}>Volver</button>
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: 16 }}>
@@ -368,7 +371,7 @@ export function DeckbuilderPage() {
           <div className="row" style={{ marginTop: 12 }}>
             <button className="primary" style={{ flex: 1 }} onClick={save}>Guardar mazo</button>
             {active && (
-              <button className="danger" onClick={() => { deleteDeck(active.name); setActiveDeck(null); setView('menu') }}>
+              <button className="danger" onClick={() => { deleteDeck(active.name); setActiveDeck(null); setView(backTo) }}>
                 Borrar
               </button>
             )}

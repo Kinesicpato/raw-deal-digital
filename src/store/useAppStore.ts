@@ -101,6 +101,7 @@ interface AppState {
   manualMove: (playerIdx: number, from: ManualZone, to: ManualZone, cardIds: string[]) => string | null
   setLastError: (msg: string | null) => void
 
+  reshareDecks: () => void
   createRoom: (name: string, seats: number) => void
   joinRoom: (code: string, name: string) => void
   leaveOnline: () => void
@@ -338,7 +339,8 @@ export const useAppStore = create<AppState>()(
 
         manualRingToArsenal: (playerIdx, cardIds) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return null
+          if (!s.game) return null
+          if (route('manualRingToArsenal', [playerIdx, cardIds])) return null
           const err = manualRingToArsenal(s.game, playerIdx, cardIds)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -347,7 +349,8 @@ export const useAppStore = create<AppState>()(
 
         manualShuffleArsenal: (playerIdx) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return
+          if (!s.game) return
+          if (route('manualShuffleArsenal', [playerIdx])) return
           manualShuffleArsenal(s.game, playerIdx)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -355,7 +358,8 @@ export const useAppStore = create<AppState>()(
 
         manualRevealHand: (playerIdx, revealed) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return
+          if (!s.game) return
+          if (route('manualRevealHand', [playerIdx, revealed])) return
           manualRevealHand(s.game, playerIdx, revealed)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -363,7 +367,8 @@ export const useAppStore = create<AppState>()(
 
         manualRemove: (playerIdx, zone, cardIds) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return null
+          if (!s.game) return null
+          if (route('manualRemove', [playerIdx, zone, cardIds])) return null
           const err = manualRemoveFromZone(s.game, playerIdx, cardIds, zone)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -372,7 +377,8 @@ export const useAppStore = create<AppState>()(
 
         manualZoneToArsenal: (playerIdx, zone, cardIds) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return null
+          if (!s.game) return null
+          if (route('manualZoneToArsenal', [playerIdx, zone, cardIds])) return null
           const err = manualZoneToArsenal(s.game, playerIdx, zone, cardIds)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -381,7 +387,8 @@ export const useAppStore = create<AppState>()(
 
         manualDrawFromArsenal: (playerIdx, count) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return null
+          if (!s.game) return null
+          if (route('manualDrawFromArsenal', [playerIdx, count])) return null
           const err = manualDrawFromArsenal(s.game, playerIdx, count)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -390,7 +397,8 @@ export const useAppStore = create<AppState>()(
 
         manualMove: (playerIdx, from, to, cardIds) => {
           const s = get()
-          if (!s.game || s.online.role === 'client') return null
+          if (!s.game) return null
+          if (route('manualMove', [playerIdx, from, to, cardIds])) return null
           const err = manualMoveCards(s.game, playerIdx, from, to, cardIds)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
@@ -400,6 +408,14 @@ export const useAppStore = create<AppState>()(
         // -------------------------------------------------------------------
         // ONLINE
         // -------------------------------------------------------------------
+
+        reshareDecks: () => {
+          const s = get()
+          if (s.online.role !== 'host') return
+          const decks = get().decks.map((d) => ({ ...d }))
+          set({ online: { ...s.online, sharedDecks: decks } })
+          hostShareDecks(decks)
+        },
 
         createRoom: (name, seats) => {
           stopOnline()
@@ -604,6 +620,16 @@ function actorFor(game: GameState | null, action: IntentName): number | null {
   }
 }
 
+const MANUAL_INTENTS: IntentName[] = [
+  'manualMove',
+  'manualRingToArsenal',
+  'manualZoneToArsenal',
+  'manualRemove',
+  'manualDrawFromArsenal',
+  'manualShuffleArsenal',
+  'manualRevealHand',
+]
+
 /** Host handles a remote client intent, validating it's that player's move. */
 function applyRemoteIntent(
   get: () => AppState,
@@ -612,6 +638,15 @@ function applyRemoteIntent(
   args: unknown[],
 ): void {
   const s = get()
+  if (MANUAL_INTENTS.includes(action)) {
+    if (args.length === 0 || args[0] !== idx) {
+      hostSendError(idx, 'Solo podés mover tus propias cartas.')
+      return
+    }
+    const fn = (s as unknown as Record<string, (...args: unknown[]) => void>)[action]
+    if (typeof fn === 'function') fn(...args)
+    return
+  }
   const allowed = actorFor(s.game, action)
   if (allowed === null || allowed !== idx) {
     hostSendError(idx, 'No es tu turno o la jugada no es válida.')
