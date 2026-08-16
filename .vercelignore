@@ -1,0 +1,13 @@
+node_modules
+dist
+Decks
+scripts/generated
+scripts/__pycache__
+*.pyc
+*.pdf
+preview_serve.txt
+rawdeal_game.png
+rawdeal_main.png
+rawdeal_menu.png
+rawdeal_mesa.png
+rawdeal_setup.png

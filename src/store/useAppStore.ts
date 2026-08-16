@@ -488,7 +488,8 @@ export const useAppStore = create<AppState>()(
 
         onlinePickSuperstar: (superstarId, deck = null, handSize = null) => {
           const st = get()
-          const pick = deck ?? { name: null, ...buildDefaultDeck(superstarId) }
+          const d = buildDefaultDeck(superstarId)
+          const pick = deck ?? { name: null, arsenal: d.arsenal, backlashPre: d.pre, backlashMid: d.mid }
           const hs =
             handSize ??
             st.online.roster[st.online.myIdx ?? -1]?.handSize ??
