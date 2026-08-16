@@ -241,7 +241,8 @@ export function DeckbuilderPage() {
           </div>
         </div>
 
-        <div className="card" style={{ alignSelf: 'start', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div className="card" style={{ alignSelf: 'start', maxHeight: '88vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+          <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: 14 }}>
           {superstar ? (
             <>
               <div className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
@@ -367,22 +368,25 @@ export function DeckbuilderPage() {
               </div>
             ))}
           </div>
+          </div>
 
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="primary" style={{ flex: 1 }} onClick={save}>Guardar mazo</button>
-            {active && (
-              <button className="danger" onClick={() => { deleteDeck(active.name); setActiveDeck(null); setView(backTo) }}>
-                Borrar
-              </button>
-            )}
-          </div>
-          <div className="row" style={{ marginTop: 8 }}>
-            <button className="ghost" style={{ flex: 1 }} onClick={newDeck}>Nuevo mazo</button>
-            <button className="ghost" style={{ flex: 1 }} onClick={quickBuild}>Mazo de ejemplo</button>
-            <button className="ghost" style={{ flex: 1 }} onClick={() => setArsenal([])}>Limpiar</button>
-          </div>
-          <div className="muted" style={{ marginTop: 6, fontSize: 11, textAlign: 'center' }}>
-            Mazos guardados: {decks.length}/10
+          <div style={{ borderTop: '1px solid var(--line)', padding: '12px 14px 14px', background: 'var(--bg-2)' }}>
+            <div className="row">
+              <button className="primary" style={{ flex: 1 }} onClick={save}>Guardar mazo</button>
+              {active && (
+                <button className="danger" onClick={() => { deleteDeck(active.name); setActiveDeck(null); setView(backTo) }}>
+                  Borrar
+                </button>
+              )}
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
+              <button className="ghost" style={{ flex: 1 }} onClick={newDeck}>Nuevo mazo</button>
+              <button className="ghost" style={{ flex: 1 }} onClick={quickBuild}>Mazo de ejemplo</button>
+              <button className="ghost" style={{ flex: 1 }} onClick={() => setArsenal([])}>Limpiar</button>
+            </div>
+            <div className="muted" style={{ marginTop: 6, fontSize: 11, textAlign: 'center' }}>
+              Mazos guardados: {decks.length}/10
+            </div>
           </div>
         </div>
       </div>
