@@ -1,0 +1,17 @@
+node_modules
+dist
+.DS_Store
+*.local
+*.log
+.vscode
+.vercel
+Decks
+preview_serve.txt
+/rawdeal_game.png
+/rawdeal_main.png
+/rawdeal_menu.png
+/rawdeal_mesa.png
+/rawdeal_setup.png
+scripts/generated
+scripts/__pycache__
+*.pyc

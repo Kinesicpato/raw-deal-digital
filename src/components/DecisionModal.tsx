@@ -1,0 +1,418 @@
+import { useEffect, useState } from 'react'
+import { getCardSafe, useAppStore } from '../store/useAppStore'
+import type { PendingDecision } from '../engine/types'
+import { decisionOwner } from '../online/types'
+import { CardFace } from './CardView'
+
+export function DecisionModal() {
+  const game = useAppStore((s) => s.game)
+  const online = useAppStore((s) => s.online)
+  const resolvePending = useAppStore((s) => s.resolvePending)
+  const resolveReversal = useAppStore((s) => s.resolveReversal)
+  const flipOverturn = useAppStore((s) => s.flipOverturn)
+  const stopOverturn = useAppStore((s) => s.stopOverturn)
+
+  const d: PendingDecision | null = game?.pendingDecision ?? null
+  if (!d || !game) return null
+
+  // In an online match, only the player responsible for this decision may see it.
+  const owner = decisionOwner(game)
+  if (online.role && online.myIdx !== owner) return null
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal">
+        {d.type === 'chooseTarget' && (
+          <ChooseTarget
+            decision={d}
+            onPick={(idx) => resolvePending(idx)}
+          />
+        )}
+        {d.type === 'reversalChoice' && (
+          <ReversalChoice decision={d} onResolve={resolveReversal} />
+        )}
+        {d.type === 'overturnCards' && (
+          <OverturnCards decision={d} onFlip={flipOverturn} onStop={stopOverturn} />
+        )}
+        {(d.type === 'chooseCardsFromHand') && (
+          <ChooseFromHand decision={d} onDone={(ids) => resolvePending(ids)} />
+        )}
+        {d.type === 'chooseOpponentHandCard' && (
+          <ChooseOpponentCard
+            decision={d}
+            onPick={(id) => resolvePending(id)}
+          />
+        )}
+        {d.type === 'chooseRingsideCards' && (
+          <ChooseRingside decision={d} onDone={(ids) => resolvePending(ids)} />
+        )}
+        {d.type === 'reorderOpponentArsenal' && (
+          <ReorderArsenal decision={d} onDone={(order) => resolvePending(order)} />
+        )}
+        {d.type === 'searchArsenal' && (
+          <SearchArsenal decision={d} onPick={(id) => resolvePending(id)} />
+        )}
+        {d.type === 'concedeChoice' && (
+          <ConcedeChoice decision={d} onResolve={(v) => resolvePending(v)} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ChooseTarget({ decision, onPick }: { decision: Extract<PendingDecision, { type: 'chooseTarget' }>; onPick: (idx: number) => void }) {
+  const players = useAppStore((s) => s.game?.players ?? [])
+  return (
+    <>
+      <h3>Elige objetivo</h3>
+      <p className="muted">La carta <b>{getCardSafe(decision.cardId).name}</b> necesita un objetivo.</p>
+      <div className="grid" style={{ marginTop: 10 }}>
+        {players.map((p, i) => {
+          if (i === decision.playerIdx || p.eliminated) return null
+          return (
+            <button key={p.id} className="row" style={{ justifyContent: 'space-between' }} onClick={() => onPick(i)}>
+              <span>{p.name}</span>
+              <span className="stat-chip mono">Arsenal {p.arsenal.length}</span>
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardId: string; zone: 'ring' | 'ringside' } | null) => void }) {
+  const game = useAppStore((s) => s.game)
+  const defender = game?.players[decision.defenderIdx]
+  const attacker = game?.players[game.resolution?.attacker ?? -1]
+  const [sel, setSel] = useState<string | null>(null)
+
+  if (sel) {
+    return (
+      <>
+        <h3>¿Dónde dejás «{getCardSafe(sel).name}»?</h3>
+        <p className="muted">
+          La reversión queda en tu <b>Ring Area</b> (suma fortitud en mesa) o en tu <b>Ringside</b> (descarte).
+        </p>
+        <div className="row" style={{ marginTop: 12, gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <button className="ghost" onClick={() => setSel(null)}>Volver</button>
+          <button className="primary" onClick={() => onResolve({ cardId: sel, zone: 'ring' })}>
+            Dejar en Ring Area
+          </button>
+          <button className="primary" onClick={() => onResolve({ cardId: sel, zone: 'ringside' })}>
+            Dejar en Ringside
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <h3>Ventana de Reversal</h3>
+      <p className="muted">
+        <b>{defender?.name}</b>, tu oponente <b>{attacker?.name}</b> jugó{' '}
+        <b>{game?.resolution ? getCardSafe(game.resolution.cardId).name : ''}</b>.
+        Elegí <b>cualquier carta</b> de tu mano para revertirlo (o no revertir).
+      </p>
+      <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
+      <div className="hand" style={{ maxHeight: 240, overflowY: 'auto', flexWrap: 'wrap' }}>
+        {defender?.hand.map((id) => (
+          <CardFace key={id} id={id} size="sm" playable onClick={() => setSel(id)} />
+        ))}
+        {(!defender || defender.hand.length === 0) && <span className="muted">Sin cartas en mano.</span>}
+      </div>
+      <div className="row" style={{ marginTop: 12, gap: 8 }}>
+        <button className="primary" onClick={() => onResolve(null)} style={{ flex: 1 }}>
+          No revertir (tomar el daño)
+        </button>
+      </div>
+    </>
+  )
+}
+
+function OverturnCards({ decision, onFlip, onStop }: { decision: Extract<PendingDecision, { type: 'overturnCards' }>; onFlip: () => void; onStop: () => void }) {
+  const game = useAppStore((s) => s.game)
+  const p = game?.players[decision.playerIdx]
+  const res = game?.resolution
+  const attacked = res ? getCardSafe(res.cardId) : null
+  const flipped = decision.overturned
+  const printed = decision.damageToDeal
+
+  if (!p || !game || !res) return null
+  const isAttacker = res.attacker === decision.playerIdx
+  const payerName = p.name
+  const foe = game.players[isAttacker ? res.target : res.attacker]
+
+  return (
+    <>
+      <h3>Daño — Voluntario (vos decidís cuánto tomás)</h3>
+      <p className="muted">
+        {attacked?.name} imprime <b>{printed} de daño</b>, pero el juego no lo impone: <b>{payerName}</b> elige
+        cuántas cartas voltear (contra <b>{foe?.name}</b>). Podés seguir mientras quieras o parar en cualquier momento.
+      </p>
+      <p className="muted">
+        Cada carta que voltees queda boca arriba en tu Ringside. Leé su texto: si aparece una reversión
+        que puedas pagar, aplicá la regla de mesa a mano.
+      </p>
+      <div className="row" style={{ marginTop: 8, gap: 10, alignItems: 'center' }}>
+        <span className="stat-chip badge-fort mono">Daño tomado {flipped}</span>
+        <span className="stat-chip mono">Arsenal {p.arsenal.length}</span>
+        {p.ringside.length > 0 && (
+          <span className="stat-chip mono">Ringside {p.ringside.length}</span>
+        )}
+      </div>
+      {flipped > 0 && (
+        <>
+          <div className="big-label" style={{ marginTop: 10 }}>
+            Cartas volteadas (última arriba)
+          </div>
+          <div className="hand" style={{ maxHeight: 210, overflowY: 'auto', flexWrap: 'wrap' }}>
+            {p.ringside
+              .slice(-flipped)
+              .map((id) => (
+                <CardFace key={id} id={id} size="sm" playable />
+              ))}
+          </div>
+        </>
+      )}
+      <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
+        <button
+          className="ghost"
+          onClick={onStop}
+          style={{ fontSize: 15, padding: '10px 18px' }}
+        >
+          ⏹ Parar (dejar de recibir daño)
+        </button>
+        <button
+          className="primary"
+          disabled={p.arsenal.length === 0}
+          onClick={onFlip}
+          style={{ fontSize: 15, padding: '10px 18px' }}
+        >
+          Voltear siguiente carta
+        </button>
+      </div>
+      {p.arsenal.length === 0 && (
+        <p className="muted" style={{ marginTop: 6 }}>
+          Arsenal vacío: no podés seguir volteando. Tocá "Parar" para terminar.
+        </p>
+      )}
+    </>
+  )
+}
+
+function ConcedeChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'concedeChoice' }>; onResolve: (v: boolean) => void }) {
+  const game = useAppStore((s) => s.game)
+  const p = game?.players[decision.playerIdx]
+  const foe = game?.players.find((q) => q.id !== p?.id && !q.eliminated)
+  return (
+    <>
+      <h3>Quedaste sin cartas en el Arsenal</h3>
+      <p className="muted">
+        <b>{p?.name}</b> no tiene más cartas en su Arsenal. En mesa eso suele significar derrota (pin/count-out),
+        pero acá el juego es manual: vos decidís.
+      </p>
+      <div className="row" style={{ marginTop: 14, gap: 8, justifyContent: 'flex-end' }}>
+        <button
+          className="ghost"
+          onClick={() => onResolve(false)}
+          style={{ fontSize: 15, padding: '10px 18px' }}
+        >
+          Seguir jugando (usar herramientas)
+        </button>
+        <button
+          className="danger"
+          onClick={() => onResolve(true)}
+          style={{ fontSize: 15, padding: '10px 18px' }}
+        >
+          Perder la partida
+        </button>
+      </div>
+      {foe && (
+        <p className="muted" style={{ marginTop: 10 }}>
+          Si perdés, la victoria va para <b>{foe.name}</b>.
+        </p>
+      )}
+    </>
+  )
+}
+
+function ChooseFromHand({ decision, onDone }: { decision: Extract<PendingDecision, { type: 'chooseCardsFromHand' }>; onDone: (ids: string[]) => void }) {
+  const players = useAppStore((s) => s.game?.players ?? [])
+  const p = players[decision.playerIdx]
+  const [sel, setSel] = useState<string[]>([])
+  const required = decision.count
+
+  useEffect(() => setSel([]), [decision])
+
+  if (!p) return null
+  const maxSelectable = required === 0 ? p.hand.length : required
+
+  const toggle = (id: string) =>
+    setSel((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length >= maxSelectable) return prev
+      return [...prev, id]
+    })
+
+  const canConfirm = required === 0 ? sel.length > 0 : sel.length === required
+
+  return (
+    <>
+      <h3>{decision.purpose === 'switch' ? 'The Switch' : 'Descarta cartas'}</h3>
+      <p className="muted">
+        {p.name}, {decision.purpose === 'switch' ? 'elige cuántas cartas descartar para recuperar la misma cantidad de Ringside' : `elige ${required} carta(s) de tu mano para descartar`}.
+      </p>
+      <div className="hand" style={{ maxHeight: 260, overflowY: 'auto', flexWrap: 'wrap' }}>
+        {p.hand.map((id) => (
+          <CardFace key={id} id={id} size="sm" selected={sel.includes(id)} onClick={() => toggle(id)} />
+        ))}
+      </div>
+      <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+        <span className="muted">{sel.length}/{maxSelectable}</span>
+        <button className="primary" disabled={!canConfirm} onClick={() => onDone(sel)}>
+          Confirmar
+        </button>
+      </div>
+    </>
+  )
+}
+
+function ChooseOpponentCard({ decision, onPick }: { decision: Extract<PendingDecision, { type: 'chooseOpponentHandCard' }>; onPick: (id: string) => void }) {
+  const players = useAppStore((s) => s.game?.players ?? [])
+  const p = players[decision.playerIdx]
+  if (!p) return null
+  return (
+    <>
+      <h3>Elige una carta de la mano</h3>
+      <p className="muted">Mira la mano de {p.name} y elige 1 carta que deba descartar.</p>
+      <div className="hand" style={{ maxHeight: 260, overflowY: 'auto', flexWrap: 'wrap' }}>
+        {p.hand.map((id) => (
+          <CardFace key={id} id={id} size="sm" onClick={() => onPick(id)} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ChooseRingside({ decision, onDone }: { decision: Extract<PendingDecision, { type: 'chooseRingsideCards' }>; onDone: (ids: string[]) => void }) {
+  const players = useAppStore((s) => s.game?.players ?? [])
+  const p = players[decision.playerIdx]
+  const [sel, setSel] = useState<string[]>([])
+
+  useEffect(() => setSel([]), [decision])
+
+  if (!p) return null
+  const toggle = (id: string) =>
+    setSel((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length >= decision.count) return prev
+      return [...prev, id]
+    })
+
+  return (
+    <>
+      <h3>Elige de Ringside</h3>
+      <p className="muted">
+        {p.name}, elige {decision.count} carta(s) de tu Ringside para llevarlas a tu mano.
+      </p>
+      <div className="hand" style={{ maxHeight: 260, overflowY: 'auto', flexWrap: 'wrap' }}>
+        {p.ringside.map((id) => (
+          <CardFace key={id} id={id} size="sm" selected={sel.includes(id)} onClick={() => toggle(id)} />
+        ))}
+      </div>
+      <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+        <button className="primary" disabled={sel.length !== decision.count} onClick={() => onDone(sel)}>
+          Confirmar
+        </button>
+      </div>
+    </>
+  )
+}
+
+function ReorderArsenal({ decision, onDone }: { decision: Extract<PendingDecision, { type: 'reorderOpponentArsenal' }>; onDone: (order: string[]) => void }) {
+  const players = useAppStore((s) => s.game?.players ?? [])
+  const game = useAppStore((s) => s.game)
+  const [order, setOrder] = useState<string[]>([])
+  useEffect(() => setOrder([]), [decision])
+  const me = game?.players[decision.playerIdx]
+  if (!me || !game) return null
+  const targetIdx = game.resolution?.target ?? (decision.playerIdx + 1) % players.length
+  const target = players[targetIdx]
+  if (!target) return null
+  const top = target.arsenal.slice(0, decision.amount)
+  const remaining = top.filter((id) => !order.includes(id))
+  const canConfirm = order.length === top.length
+
+  return (
+    <>
+      <h3>Reordena el Arsenal</h3>
+      <p className="muted">Mira las top {decision.amount} cartas del Arsenal de {target.name} y ordénalas de arriba a abajo.</p>
+      <div className="big-label">Orden actual</div>
+      <div className="row">
+        {order.map((id, i) => (
+          <div key={id} onClick={() => setOrder((o) => o.filter((x) => x !== id))} style={{ cursor: 'pointer' }}>
+            <CardFace id={id} size="xs" />
+            <div className="muted" style={{ fontSize: 10 }}>{i + 1}</div>
+          </div>
+        ))}
+        {order.length === 0 && <span className="muted">Aún sin elegir</span>}
+      </div>
+      <div className="big-label">Elige la siguiente</div>
+      <div className="row">
+        {remaining.map((id) => (
+          <div key={id} onClick={() => setOrder((o) => [...o, id])} style={{ cursor: 'pointer' }}>
+            <CardFace id={id} size="xs" />
+          </div>
+        ))}
+      </div>
+      <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+        <button className="primary" disabled={!canConfirm} onClick={() => onDone(order)}>
+          Confirmar orden
+        </button>
+      </div>
+    </>
+  )
+}
+
+function SearchArsenal({ decision, onPick }: { decision: Extract<PendingDecision, { type: 'searchArsenal' }>; onPick: (ids: string[]) => void }) {
+  const pool = useAppStore((s) => s.game?._searchPool ?? [])
+  const players = useAppStore((s) => s.game?.players ?? [])
+  const p = players[decision.playerIdx]
+  const [sel, setSel] = useState<string[]>([])
+
+  useEffect(() => setSel([]), [decision])
+
+  const toggle = (id: string) =>
+    setSel((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length >= decision.count) return prev
+      return [...prev, id]
+    })
+
+  const canConfirm = decision.count > 1 ? sel.length > 0 : sel.length === decision.count
+
+  return (
+    <>
+      <h3>Busca en tu Arsenal</h3>
+      <p className="muted">
+        {p?.name}, elige {decision.count > 1 ? `hasta ${decision.count}` : '1'} carta(s) de tu Arsenal para llevar a tu mano.
+      </p>
+      <div className="hand" style={{ maxHeight: 260, overflowY: 'auto', flexWrap: 'wrap' }}>
+        {pool.map((id) => (
+          <CardFace key={id} id={id} size="sm" selected={sel.includes(id)} onClick={() => toggle(id)} />
+        ))}
+        {pool.length === 0 && <span className="muted">No hay cartas que cumplan la búsqueda.</span>}
+      </div>
+      <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+        <button className="ghost" disabled={pool.length === 0} onClick={() => onPick([])}>
+          Omitir
+        </button>
+        <button className="primary" disabled={!canConfirm} onClick={() => onPick(sel)}>
+          Confirmar
+        </button>
+      </div>
+    </>
+  )
+}
