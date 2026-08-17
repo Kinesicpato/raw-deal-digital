@@ -823,6 +823,7 @@ export const OCR_CARDS: CardDef[] = [
     name: 'Panic Grab',
     type: 'Maneuver',
     subtypes: ['Submission'],
+    backlash: 'Mid-match',
     superstar: ['mankind'],
 
     fortitude: 0,
@@ -945,6 +946,7 @@ export const OCR_CARDS: CardDef[] = [
     name: 'Shoot Counter',
     type: 'Reversal',
     traits: ['Unique', 'Special', 'Active'],
+    backlash: 'Mid-match',
     superstar: ['mankind'],
 
     fortitude: 0,

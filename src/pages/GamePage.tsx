@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore, getCardSafe } from '../store/useAppStore'
 import type { GameState, PlayerState } from '../engine/types'
 import { PREMATCH_STAGES } from '../engine/game'
-import { CardFace, CardDetailModal } from '../components/CardView'
+import { CardFace, CardDetailModal, cardTypeLabel } from '../components/CardView'
 import { CardZoomPreview } from '../components/CardZoom'
 import { DecisionModal } from '../components/DecisionModal'
 import { PlayerToolsModal } from '../components/PlayerTools'
@@ -17,6 +17,7 @@ export function GamePage() {
   const [detail, setDetail] = useState<string | null>(null)
   const [zoom, setZoom] = useState<string | null>(null)
   const [tools, setTools] = useState<number | null>(null)
+  const [playConfirm, setPlayConfirm] = useState<{ id: string; zone?: 'hand' | 'midmatch' | 'prematch' } | null>(null)
 
   // Clear the corner zoom as soon as a playable card resolves (the hovered
   // card either left the hand or is no longer the active play), so it doesn't
@@ -75,6 +76,7 @@ export function GamePage() {
                 toolsOpen={tools === i}
                 toolsEnabled={!isOnline || online.role === 'host' || i === myIdx}
                 canControl={!isOnline || i === myIdx}
+                compact={isOnline ? i !== myIdx : i !== game.activeIndex}
               />
             ))}
           </div>
@@ -90,9 +92,9 @@ export function GamePage() {
           {active && !active.isAI && game.phase === 'main' && showHandControls && (
             <HandZone
               player={active}
-              onCardClick={(id) => {
+              onCardClick={(id, zone) => {
                 setZoom(null)
-                useAppStore.getState().playCardAction(id)
+                setPlayConfirm({ id, zone })
               }}
               onCardHover={setZoom}
             />
@@ -118,6 +120,7 @@ export function GamePage() {
 
       {tools !== null && <PlayerToolsModal game={game} playerIdx={tools} onClose={() => setTools(null)} />}
       <DecisionModal />
+      <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
       <CardZoomPreview id={detail ? null : zoom} />
       {lastError && (
@@ -150,6 +153,7 @@ function PlayerPanel({
   toolsOpen,
   toolsEnabled,
   canControl,
+  compact,
 }: {
   p: PlayerState
   idx: number
@@ -160,6 +164,7 @@ function PlayerPanel({
   toolsOpen: boolean
   toolsEnabled: boolean
   canControl: boolean
+  compact?: boolean
 }) {
   const isActive = game.activeIndex === idx && game.phase !== 'gameover'
   const isTarget = game.resolution?.target === idx
@@ -167,7 +172,7 @@ function PlayerPanel({
   const isHandRevealed = p.handRevealedTo !== null
   const hit = isTarget && isOverturning
   return (
-    <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''}`}>
+    <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''} ${compact ? 'compact' : ''}`}>
       {toolsEnabled && (
         <button className={`ghost tools-btn ${toolsOpen ? 'open' : ''}`} title="Herramientas manuales" onClick={onTools}>
           ⚙
@@ -185,7 +190,6 @@ function PlayerPanel({
           </span>
         )}
         <span>{p.name}</span>
-        <span className="stat-chip mono" title="Fortitude (Superestrella + Ring + Mid-match)">Fort {p.fortitude}</span>
         {p.isAI && <span className="stat-chip">IA</span>}
         {isTarget && <span className="stat-chip" style={{ background: 'var(--red-bright)' }}>Objetivo</span>}
       </div>
@@ -197,7 +201,18 @@ function PlayerPanel({
         </span>
         <span className="stat-chip mono">Ringside {p.ringside.length}</span>
       </div>
-      {p.eliminated ? (
+      {compact ? (
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '6px 0 2px' }}>
+          {!p.eliminated && (
+            <>
+              <span className="stat-chip mono" title="Mid-match / Pre-match jugadas">Mid {p.midmatchPlayed.length}</span>
+              <span className="stat-chip mono" title="Ring Area">Ring {p.ring.length}</span>
+              <span className="stat-chip mono" title="Backlash">Back {p.backlashPre.length + p.backlashMid.length}</span>
+            </>
+          )}
+          {p.eliminated && <span className="muted" style={{ fontSize: 11 }}>Eliminado ({p.eliminatedReason})</span>}
+        </div>
+      ) : p.eliminated ? (
         <div className="muted" style={{ fontSize: 12 }}>Eliminado ({p.eliminatedReason})</div>
       ) : (
         <div className="player-zones">
@@ -371,15 +386,7 @@ function Pile({
 
 function RingZone({ game, onCardClick, onCardHover }: { game: GameState; onCardClick: (id: string) => void; onCardHover: (id: string | null) => void }) {
   const res = game.resolution
-  if (!res) {
-    return (
-      <div className="ring-zone">
-        <div className="muted" style={{ textAlign: 'center' }}>
-          El Ring — {game.phase === 'main' ? 'juega una carta de tu mano' : 'esperando…'}
-        </div>
-      </div>
-    )
-  }
+  if (!res) return null
   const attacker = game.players[res.attacker]
   const defender = game.players[res.target]
 
@@ -564,7 +571,15 @@ function PrematchZone({ game, canInteract }: { game: GameState; canInteract: boo
   )
 }
 
-function HandZone({ player, onCardClick, onCardHover }: { player: PlayerState; onCardClick: (id: string) => void; onCardHover: (id: string | null) => void }) {
+function HandZone({
+  player,
+  onCardClick,
+  onCardHover,
+}: {
+  player: PlayerState
+  onCardClick: (id: string, zone?: 'hand' | 'midmatch' | 'prematch') => void
+  onCardHover: (id: string | null) => void
+}) {
   const game = useAppStore((s) => s.game)
   const [filter, setFilter] = useState<CardClassFilter>('all')
   if (!game) return null
@@ -587,7 +602,7 @@ function HandZone({ player, onCardClick, onCardHover }: { player: PlayerState; o
             id={id}
             size="sm"
             playable
-            onClick={() => onCardClick(id)}
+            onClick={() => onCardClick(id, 'hand')}
             onMouseEnter={() => onCardHover(id)}
             onMouseLeave={() => onCardHover(null)}
           />
@@ -606,10 +621,7 @@ function HandZone({ player, onCardClick, onCardHover }: { player: PlayerState; o
                 playable
                 onMouseEnter={() => onCardHover(id)}
                 onMouseLeave={() => onCardHover(null)}
-                onClick={() => {
-                  onCardHover(null)
-                  useAppStore.getState().playCardAction(id, 'midmatch')
-                }}
+                onClick={() => onCardClick(id, 'midmatch')}
               />
             ))}
           </div>
@@ -627,15 +639,77 @@ function HandZone({ player, onCardClick, onCardHover }: { player: PlayerState; o
                 playable
                 onMouseEnter={() => onCardHover(id)}
                 onMouseLeave={() => onCardHover(null)}
-                onClick={() => {
-                  onCardHover(null)
-                  useAppStore.getState().playCardAction(id, 'prematch')
-                }}
+                onClick={() => onCardClick(id, 'prematch')}
               />
             ))}
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+function PlayConfirmModal({
+  confirm,
+  onClose,
+}: {
+  confirm: { id: string; zone?: 'hand' | 'midmatch' | 'prematch' } | null
+  onClose: () => void
+}) {
+  if (!confirm) return null
+  const c = getCardSafe(confirm.id)
+  const zoneLabel = confirm.zone === 'hand' ? 'de tu mano' : confirm.zone === 'prematch' ? 'Pre-match (Backlash)' : 'Mid-match (Backlash)'
+  const zoneKind: 'hand' | 'midmatch' | 'prematch' = confirm.zone ?? 'hand'
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="row" style={{ alignItems: 'flex-start', gap: 14 }}>
+          <CardFace id={confirm.id} size="lg" />
+          <div className="grid" style={{ flex: 1, gap: 6 }}>
+            <h3 style={{ margin: 0 }}>{c.name}</h3>
+            <div className="muted">
+              {cardTypeLabel(c)} · {zoneLabel}
+            </div>
+            <div className="row" style={{ gap: 6 }}>
+              <span className="stat-chip">
+                Fortitud <b>{c.fortitude}F</b>
+              </span>
+              <span className="stat-chip">
+                Daño <b>{c.damage}D</b>
+              </span>
+            </div>
+            {c.traits && c.traits.length > 0 && (
+              <div className="row" style={{ gap: 6 }}>
+                {c.traits.map((t) => (
+                  <span key={t} className="stat-chip">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p style={{ lineHeight: 1.5, margin: 0 }}>{c.text}</p>
+          </div>
+        </div>
+        <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
+          <button className="ghost" onClick={onClose}>
+            Volver
+          </button>
+          <button
+            className="primary"
+            onClick={() => {
+              onClose()
+              useAppStore.getState().playCardAction(confirm.id, zoneKind)
+            }}
+          >
+            Jugar{' '}
+            {c.fortitude > 0 && (
+              <span className="mono" style={{ opacity: 0.85 }}>
+                ({c.fortitude}F)
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

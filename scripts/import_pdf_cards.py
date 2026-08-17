@@ -196,6 +196,10 @@ OVERRIDES = {
     "Jericho/56.png": "recovery",
     "Jericho/58.jpg": "y2j",
     "Jericho/59.jpg": "irish-whip",
+    # HHH.pdf — Triple H's scanned cards (the Superstar card + 2 plays).
+    "HHH/7.png": "superstar-triple-h",
+    "HHH/9.jpg": "leaping-knee-to-the-face",
+    "HHH/10.jpg": "facebuster",
 }
 
 W, H = 300, 420
@@ -331,7 +335,7 @@ def main():
                 imported_ids.append(cid)
             matched += 1
     # Manifest so generate_cards.py knows which faces come from the bank.
-    with open(manifest_path, "w") as f:
+    with open(manifest_path, "w", encoding="utf-8") as f:
         f.write("\n".join(sorted(set(imported_ids))))
     print("imported %d card images -> %s" % (matched, OUT))
     print("manifest: scripts/generated/pdf_cards.txt")

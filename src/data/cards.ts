@@ -100,6 +100,18 @@ export const SUPERSTARS: SuperstarDef[] = [
       'Before your Draw Segment, if your Fortitude Rating is greater than your opponent\'s Fortitude Rating, put up to 2 cards from your Ringside pile on the bottom of your Arsenal. (Habilidad sin automatizar en v1).',
     backlashLimit: { preMatch: 10, midMatch: 10 },
   },
+  {
+    id: 'triple-h',
+    name: 'Triple H',
+    value: 25,
+    handSize: 7,
+    brand: null,
+    alignment: 'Both',
+    gender: 'male',
+    abilityText:
+      'Your Starting Hand Size is 7. When this card is in your Ring area, the maximum number of cards with a Title in your Arsenal is +2. (Perfil de muestra; habilidad sin automatizar en v1).',
+    backlashLimit: { preMatch: 10, midMatch: 10 },
+  },
 ]
 
 export const GENERIC_CARDS: CardDef[] = [
@@ -1353,7 +1365,35 @@ export const BOOKER_T_CARDS: CardDef[] = [
   }),
 ]
 
-export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
+/** Cartas de Triple H extraídas del escaneo "HHH.pdf". */
+export const HHH_CARDS: CardDef[] = [
+  card({
+    id: 'facebuster',
+    name: 'Facebuster',
+    type: 'Reversal',
+    traits: ['Special', 'Unique'],
+    fortitude: 10,
+    damage: 0,
+    effect: [{ kind: 'youDraw', amount: 2 }],
+    text: 'Reversal: Special. Draw up to 2 cards. When played from your hand, reverse any maneuver played after the card titled Irish Whip and end your opponent\'s turn.',
+    notes: 'Valores F/D provisionales del OCR; verificar.',
+    set: 'PDF',
+  }),
+  card({
+    id: 'leaping-knee-to-the-face',
+    name: 'Leaping Knee to the Face',
+    type: 'Maneuver',
+    subtypes: ['Strike'],
+    traits: ['Unique'],
+    fortitude: 10,
+    damage: 10,
+    text: 'Strike. Cannot be reversed. Can only be played after the card titled Irish Whip. When successfully played, your opponent discards 1 card.',
+    notes: 'Valores F/D provisionales del OCR; verificar.',
+    set: 'PDF',
+  }),
+]
+
+export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
 
 /** Convenience lookup. */
 const index = new Map<string, CardDef>()

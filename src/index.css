@@ -347,6 +347,22 @@ h3 {
   color: #221a05;
   border-color: var(--gold);
 }
+.panel.compact {
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.panel.compact .panel-head {
+  font-size: 13px;
+  gap: 6px;
+}
+.panel.compact .panel-head .cardface {
+  width: auto !important;
+  height: 34px !important;
+}
+.panel.compact .stat-chip {
+  font-size: 11px;
+  padding: 2px 6px;
+}
 
 .stat-chip {
   display: inline-flex;

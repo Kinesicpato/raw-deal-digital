@@ -290,7 +290,7 @@ export function DeckbuilderPage() {
           <div className="big-label">Arsenal ({arsenal.length})</div>
           <div className="chiprow">
             {arsenal.map((id, i) => (
-              <div key={`${id}-${i}`} onClick={() => removeFromArsenal(id)} style={{ cursor: 'pointer' }}>
+              <div key={`${id}-${i}`}>
                 <CardFace
                   id={id}
                   size="xs"
@@ -313,7 +313,7 @@ export function DeckbuilderPage() {
           <div className="big-label">Pre-match ({pre.length}/10)</div>
           <div className="chiprow">
             {pre.map((id) => (
-              <div key={id} onClick={() => setPre((a) => a.filter((x) => x !== id))} style={{ cursor: 'pointer' }}>
+              <div key={id}>
                 <CardFace
                   id={id}
                   size="xs"
@@ -335,7 +335,7 @@ export function DeckbuilderPage() {
           <div className="big-label">Mid-match ({mid.length}/10)</div>
           <div className="chiprow">
             {mid.map((id) => (
-              <div key={id} onClick={() => setMid((a) => a.filter((x) => x !== id))} style={{ cursor: 'pointer' }}>
+              <div key={id}>
                 <CardFace
                   id={id}
                   size="xs"
@@ -357,7 +357,7 @@ export function DeckbuilderPage() {
           <div className="big-label">Añadir Backlash</div>
           <div className="chiprow">
             {ALL_CARDS.filter((c) => c.backlash).map((c) => (
-              <div key={c.id} onClick={() => addBacklash(c.id, c.backlash as Back)} style={{ cursor: 'pointer' }}>
+              <div key={c.id}>
                 <CardFace
                   id={c.id}
                   size="xs"
