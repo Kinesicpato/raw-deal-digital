@@ -94,7 +94,7 @@ interface AppState {
   clearError: () => void
   manualRingToArsenal: (playerIdx: number, cardIds: string[]) => string | null
   manualShuffleArsenal: (playerIdx: number) => void
-  manualRevealHand: (playerIdx: number, revealed: boolean) => void
+  manualRevealHand: (playerIdx: number, targetIdx: number | null) => void
   manualRemove: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
@@ -356,11 +356,11 @@ export const useAppStore = create<AppState>()(
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
         },
 
-        manualRevealHand: (playerIdx, revealed) => {
+        manualRevealHand: (playerIdx, targetIdx) => {
           const s = get()
           if (!s.game) return
-          if (route('manualRevealHand', [playerIdx, revealed])) return
-          manualRevealHand(s.game, playerIdx, revealed)
+          if (route('manualRevealHand', [playerIdx, targetIdx])) return
+          manualRevealHand(s.game, playerIdx, targetIdx)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
         },

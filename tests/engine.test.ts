@@ -12,6 +12,7 @@ import {
   passReversal,
   getValidPlays,
   startTurn,
+  manualRevealHand,
   type NewGameConfig,
 } from '../src/engine/game'
 import type { GameState } from '../src/engine/types'
@@ -142,7 +143,7 @@ describe('playing cards and reversal window', () => {
     expect(g.phase).toBe('main')
   })
 
-  it('lets the defender reverse from hand with any card, choosing its zone, ending the attacker turn', () => {
+  it('lets the defender reverse from hand with any card, choosing its zone, and the attacker continues their turn voluntarily', () => {
     const g = startGame(Array(10).fill(KICK), Array(10).fill(CLOTHESLINE))
     g.players[0]!.hand = [KICK]
     g.players[1]!.hand = [ELBOW]
@@ -158,11 +159,15 @@ describe('playing cards and reversal window', () => {
     expect(err).toBeNull()
     expect(g.players[1]!.ring).toContain(ELBOW)
     expect(g.players[0]!.ringside).toContain(KICK)
-    // Manual mode: no auto reversal damage — the attacker's turn just ends.
+    // Manual mode: no auto reversal damage, and the attacker's turn does NOT
+    // auto-end — they finish it with the "Terminar turno" button.
+    expect(g.activeIndex).toBe(0)
+    expect(g.phase).toBe('main')
+    endTurn(g)
     expect(g.activeIndex).toBe(1)
   })
 
-  it('places the reversal in Ringside when the defender chooses so', () => {
+  it('places the reversal in Ringside when the defender chooses so, keeping the attacker turn active', () => {
     const g = startGame(Array(10).fill(KICK), Array(10).fill(CLOTHESLINE))
     g.players[0]!.hand = [KICK]
     g.players[1]!.hand = [ELBOW]
@@ -175,7 +180,8 @@ describe('playing cards and reversal window', () => {
     expect(err).toBeNull()
     expect(g.players[1]!.ringside).toContain(ELBOW)
     expect(g.players[0]!.ringside).toContain(KICK)
-    expect(g.activeIndex).toBe(1)
+    expect(g.activeIndex).toBe(0)
+    expect(g.phase).toBe('main')
   })
 
   it('flips overturn cards one at a time, face-up to Ringside', () => {
@@ -339,5 +345,22 @@ describe('end of turn and next player', () => {
     startTurn(g)
     expect(kurt.hand.length).toBe(1)
     expect(g.phase).toBe('main')
+  })
+})
+
+describe('revealing a hand to a specific opponent (3+ players)', () => {
+  it('shows the hand only to the chosen opponent, never the rest', () => {
+    const g = newGame({
+      players: [
+        { name: 'A', superstarId: 'kurt-angle', arsenal: [], backlashPre: [], backlashMid: [] },
+        { name: 'B', superstarId: 'mankind', arsenal: [], backlashPre: [], backlashMid: [] },
+        { name: 'C', superstarId: 'cactus-jack', arsenal: [], backlashPre: [], backlashMid: [] },
+      ],
+    } satisfies Parameters<typeof newGame>[0])
+    g.players[0]!.hand = ['gen-kick']
+    manualRevealHand(g, 0, 2)
+    expect(g.players[0]!.handRevealedTo).toBe(2)
+    manualRevealHand(g, 0, null)
+    expect(g.players[0]!.handRevealedTo).toBeNull()
   })
 })

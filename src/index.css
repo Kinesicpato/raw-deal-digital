@@ -79,6 +79,11 @@ button.danger {
 button.ghost {
   background: transparent;
 }
+button.ghost.reveal-target {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
 
 .page {
   max-width: 1920px;

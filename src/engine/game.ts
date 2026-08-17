@@ -48,7 +48,7 @@ export function newGame(cfg: NewGameConfig): GameState {
     reversedLastTurn: false,
     lastSuccessfullyPlayed: null,
     playedThisTurn: [],
-    handRevealed: false,
+    handRevealedTo: null,
     hasUsedHeat: false,
   }))
 
@@ -630,8 +630,11 @@ export function playReversal(
   state.resolution = null
   state.pendingDecision = null
   state.pendingEffects = null
-  log(state, res.attacker, `${attacker.name}'s turn ends (reversed).`)
-  endTurn(state)
+  // The attacker's turn does NOT end automatically: after a reversal there are
+  // often effects to resolve, so the turn continues and the attacker ends it
+  // voluntarily with the "Terminar turno" button.
+  state.phase = 'main'
+  log(state, res.attacker, `${attacker.name}: ${attacked.name} fue revertido. Podés resolver efectos y terminar tu turno cuando quieras.`)
   return null
 }
 
@@ -660,8 +663,9 @@ function finishReversalCleanup(state: GameState, defenderIdx: number, _rev: Card
   state.resolution = null
   state.pendingDecision = null
   state.pendingEffects = null
-  log(state, res.attacker, `${attacker.name}'s turn ends.`)
-  endTurn(state)
+  // Same as playReversal: the attacker ends their turn voluntarily.
+  state.phase = 'main'
+  log(state, res.attacker, `${attacker.name}: reversión resuelta. Podés resolver efectos y terminar tu turno cuando quieras.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -1129,12 +1133,21 @@ export function manualShuffleArsenal(state: GameState, playerIdx: number): void 
   log(state, playerIdx, 'Shuffled their Arsenal.')
 }
 
-/** Manually reveal (or hide) one player's hand to everyone (house rule). */
-export function manualRevealHand(state: GameState, playerIdx: number, revealed: boolean): void {
+/** Show one player's hand to a specific opponent (or hide it with null). */
+export function manualRevealHand(state: GameState, playerIdx: number, targetIdx: number | null): void {
   const p = state.players[playerIdx]
   if (!p) return
-  p.handRevealed = revealed
-  log(state, playerIdx, revealed ? 'Revealed their hand.' : 'Concealed their hand.')
+  if (targetIdx !== null && (targetIdx === playerIdx || targetIdx < 0 || targetIdx >= state.players.length)) {
+    return
+  }
+  p.handRevealedTo = targetIdx
+  log(
+    state,
+    playerIdx,
+    targetIdx === null
+      ? 'Concealed their hand.'
+      : `Showed their hand to ${state.players[targetIdx]?.name ?? 'opponent'}.`,
+  )
 }
 
 /**

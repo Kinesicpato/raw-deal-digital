@@ -123,14 +123,25 @@ export function PlayerToolsModal({
             </button>
           ))}
         </div>
-        <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end', gap: 8 }}>
+        <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
           <button className="ghost" onClick={() => { store.manualShuffleArsenal(playerIdx); setFrom('arsenal'); setSelected([]) }}>
             Barajar Arsenal
           </button>
-          <button className="ghost" onClick={() => store.manualRevealHand(playerIdx, true)}>
-            Mostrar mano a todos
-          </button>
-          <button className="ghost" onClick={() => store.manualRevealHand(playerIdx, false)}>
+          <span className="muted" style={{ fontSize: 12 }}>Mostrar tu mano a:</span>
+          {game.players.map((op, i) => {
+            if (i === playerIdx) return null
+            const shown = p.handRevealedTo === i
+            return (
+              <button
+                key={i}
+                className={`ghost ${shown ? 'reveal-target' : ''}`}
+                onClick={() => store.manualRevealHand(playerIdx, shown ? null : i)}
+              >
+                {shown ? '✓ ' : ''}{op.name}
+              </button>
+            )
+          })}
+          <button className="ghost" onClick={() => store.manualRevealHand(playerIdx, null)}>
             Ocultar mano
           </button>
           <button className="primary" disabled={selected.length === 0} onClick={doMove}>

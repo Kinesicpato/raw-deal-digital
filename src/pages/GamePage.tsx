@@ -164,7 +164,7 @@ function PlayerPanel({
   const isActive = game.activeIndex === idx && game.phase !== 'gameover'
   const isTarget = game.resolution?.target === idx
   const isOverturning = game.resolution?.overturning === true
-  const isHandRevealed = p.handRevealed
+  const isHandRevealed = p.handRevealedTo !== null
   const hit = isTarget && isOverturning
   return (
     <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''}`}>
@@ -192,7 +192,7 @@ function PlayerPanel({
       <div className="row" style={{ gap: 6, margin: '8px 0' }}>
         {hit && <span className="stat-chip damage-chip mono" style={{ background: 'var(--red-bright)', color: '#fff' }}>−{game.resolution?.damageDealt}</span>}
         <span className="stat-chip mono">Arsenal {p.arsenal.length}</span>
-        <span className="stat-chip mono" title={isHandRevealed ? 'Mano revelada' : 'Mano oculta'}>
+        <span className="stat-chip mono" title={isHandRevealed ? `Mano visible para ${game.players[p.handRevealedTo!]?.name ?? 'un oponente'}` : 'Mano oculta'}>
           {isHandRevealed ? '👁' : ''} Mano {p.hand.length}
         </span>
         <span className="stat-chip mono">Ringside {p.ringside.length}</span>

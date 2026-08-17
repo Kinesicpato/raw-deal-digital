@@ -35,7 +35,8 @@ export interface PlayerState {
   reversedLastTurn: boolean
   lastSuccessfullyPlayed: { cardId: string; damage: number } | null
   playedThisTurn: string[]
-  handRevealed: boolean
+  /** If set, only this opponent (player index) may see your hand. null = hidden. */
+  handRevealedTo: number | null
   hasUsedHeat: boolean
 }
 

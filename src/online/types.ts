@@ -73,8 +73,8 @@ const HIDDEN = '__hidden__'
  * Builds the snapshot of a game that a given viewer is allowed to see.
  * Hidden information (other players' hands, Arsenal and Backlash decks) is
  * replaced by equal-length placeholders so counts stay accurate, unless the
- * game rules explicitly reveal it (handRevealed, reorder-opponent-arsenal,
- * look-at-opponent-hand).
+ * game rules explicitly reveal it (handRevealedTo target, reorder-opponent
+ * arsenal, look-at-opponent-hand).
  */
 export function buildClientView(game: GameState, viewerIdx: number): GameState {
   if (viewerIdx < 0) return game
@@ -86,7 +86,7 @@ export function buildClientView(game: GameState, viewerIdx: number): GameState {
     if (i === viewerIdx) return
 
     const revealHand =
-      p.handRevealed ||
+      p.handRevealedTo === i ||
       (owner === viewerIdx &&
         clone.pendingDecision?.type === 'chooseOpponentHandCard' &&
         clone.pendingDecision.playerIdx === i)
