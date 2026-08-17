@@ -903,3 +903,160 @@ input:focus {
     height: var(--card-xs-h);
   }
 }
+
+/* ============================================================
+   MOBILE / SMARTPHONE
+   ============================================================ */
+@media (max-width: 720px) {
+  :root {
+    --card-w: 116px;
+    --card-h: 161px;
+    --card-xs-w: 70px;
+    --card-xs-h: 97px;
+    --card-md-w: 168px;
+    --card-md-h: 233px;
+    --card-lg-w: 232px;
+    --card-lg-h: 322px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  .page {
+    padding: 8px 8px 84px;
+  }
+
+  .banner {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  .banner-logo {
+    font-size: 22px;
+  }
+  .banner-badge {
+    font-size: 12px;
+  }
+
+  /* A bigger, easier-to-tap primary action that stays visible while
+     scrolling the long mobile board. */
+  .opponents {
+    grid-template-columns: 1fr;
+  }
+
+  .ring-zone {
+    padding: 12px 10px;
+    border-radius: 16px;
+    min-height: 0;
+  }
+  .ring-cards {
+    gap: 12px;
+    min-height: 0;
+  }
+  .zone-cardrow {
+    gap: 6px;
+  }
+  .zone-cardrow .cardface {
+    width: calc(var(--card-w) + 14px);
+    height: calc(var(--card-h) + 20px);
+  }
+
+  .hand {
+    gap: 6px;
+    padding: 8px 2px;
+  }
+
+  /* Keep the end-turn button always reachable at the bottom. */
+  .btn-turn {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 40;
+    font-size: 17px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Zoom: compact thumbnail pinned to a corner just above the fixed
+     end-turn bar so it never covers the damage / reversal controls. */
+  .zoom-preview {
+    left: auto;
+    right: 10px;
+    top: auto;
+    bottom: 88px;
+    transform: none;
+    width: 148px;
+    max-width: 44vw;
+    gap: 6px;
+    padding: 8px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 12px;
+    animation: zoomInMobile 0.15s ease;
+  }
+  .zoom-preview img.cf-art {
+    width: 76px;
+    height: 106px;
+    flex: 0 0 auto;
+  }
+  .zoom-info {
+    gap: 3px;
+  }
+  .zoom-name {
+    font-size: 13px;
+  }
+  .zoom-text {
+    font-size: 12px;
+    max-height: 96px;
+    line-height: 1.35;
+  }
+  .zoom-stats {
+    gap: 4px;
+  }
+  @keyframes zoomInMobile {
+    from {
+      opacity: 0;
+      transform: scale(0.94) translateY(8px);
+    }
+  }
+
+  /* Decision modals: full-bleed, big touch targets. */
+  .modal-backdrop {
+    padding: 8px;
+    align-items: flex-end;
+  }
+  .modal {
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    padding: 14px;
+    font-size: 14px;
+  }
+  .modal h3 {
+    font-size: 16px;
+  }
+  .modal .row {
+    gap: 8px;
+  }
+  .modal .row > button,
+  .modal > .row > button {
+    min-height: 46px;
+    font-size: 15px;
+    flex: 1 0 100%;
+    width: 100%;
+  }
+  .modal .hand {
+    max-height: 200px;
+  }
+  .modal button {
+    padding: 12px 10px;
+  }
+
+  .game-side {
+    order: 2;
+  }
+  .game-main {
+    order: 1;
+  }
+}

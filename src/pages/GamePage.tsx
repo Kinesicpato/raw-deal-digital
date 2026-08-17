@@ -108,7 +108,7 @@ export function GamePage() {
       {tools !== null && <PlayerToolsModal game={game} playerIdx={tools} onClose={() => setTools(null)} />}
       <DecisionModal />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
-      <CardZoomPreview id={zoom} />
+      <CardZoomPreview id={detail ? null : zoom} />
       {lastError && (
         <div className="toast" onClick={clearError}>
           {lastError}

@@ -1,13 +1,16 @@
 import type { CardDef } from '../data/types'
-import { getCardSafe } from '../store/useAppStore'
+import { getCardSafe, useAppStore } from '../store/useAppStore'
 import { CardArt, cardTypeLabel } from './CardView'
 
 /**
  * Floating zoom preview: shows an enlarged version of the hovered card so it
  * can be inspected without playing it. Purely visual (pointer-events none).
+ * While a decision/modal is open it is suppressed so it never covers the
+ * action buttons (stop damage, reversal, end turn).
  */
 export function CardZoomPreview({ id }: { id: string | null }) {
-  if (!id) return null
+  const pending = useAppStore((s) => s.game?.pendingDecision)
+  if (pending || !id) return null
   const c = getCardSafe(id)
   return (
     <div className="zoom-preview" key={id}>
