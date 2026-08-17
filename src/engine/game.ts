@@ -229,6 +229,7 @@ export function playPrematchCard(state: GameState, playerIdx: number, cardId: st
   if (!p) return 'No player'
   p.backlashPre = p.backlashPre.filter((id) => id !== cardId)
   p.ring.push(cardId)
+  p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   log(state, playerIdx, `Played Pre-match card "${getCard(cardId).name}".`)
   advancePrematch(state, playerIdx)
   return null
@@ -607,8 +608,10 @@ export function playReversal(
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
-  if (zone === 'ring') defender.ring.push(reversalId)
-  else defender.ringside.push(reversalId)
+  if (zone === 'ring') {
+    defender.ring.push(reversalId)
+    defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
+  } else defender.ringside.push(reversalId)
 
   log(state, defenderIdx, `Played "${rev.name}" against "${attacked.name}".`)
 
@@ -812,11 +815,12 @@ function succeedCard(
   if (fromBacklash) {
     // Mid-match / Pre-match cards stay in the player's Mid-match zone.
     attacker.midmatchPlayed.push(res.cardId)
+    attacker.fortitude = computeFortitude([...attacker.midmatchPlayed, ...attacker.ring], getCard)
     log(state, attackerIdx, `"${card.name}" quedó en tu zona Mid-match.`)
   } else {
     // The successful card stays in the attacker's Ring and raises Fortitude.
     attacker.ring.push(res.cardId)
-    attacker.fortitude = computeFortitude(attacker.ring, getCard)
+    attacker.fortitude = computeFortitude([...attacker.midmatchPlayed, ...attacker.ring], getCard)
     log(state, attackerIdx, `"${card.name}" is in your Ring area (Fortitude Rating ${attacker.fortitude}).`)
   }
   attacker.lastSuccessfullyPlayed = { cardId: res.cardId, damage: res.damageDealt }
@@ -1050,7 +1054,7 @@ export function manualMoveCards(
   }
   dst.push(...ids)
   if (from === 'ring' || to === 'ring') {
-    p.fortitude = computeFortitude(p.ring, getCard)
+    p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   }
   log(state, playerIdx, `Moved ${ids.length} card${ids.length === 1 ? '' : 's'} from ${from} to ${to}.`)
   return null
@@ -1092,7 +1096,7 @@ export function manualZoneToArsenal(
     if (i >= 0) list.splice(i, 1)
   }
   p.arsenal.push(...ids)
-  if (zone === 'ring') p.fortitude = computeFortitude(p.ring, getCard)
+  if (zone === 'ring') p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   log(state, playerIdx, `Returned ${ids.length} card${ids.length === 1 ? '' : 's'} from ${zone} to Arsenal.`)
   return null
 }
@@ -1182,7 +1186,7 @@ export function manualRemoveFromZone(
     if (i >= 0) list.splice(i, 1)
   }
   p.outOfGame.push(...ids)
-  if (zone === 'ring') p.fortitude = computeFortitude(p.ring, getCard)
+  if (zone === 'ring') p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   log(state, playerIdx, `Removed ${ids.length} card${ids.length === 1 ? '' : 's'} from ${zone} to Out-Of-Game.`)
   return null
 }

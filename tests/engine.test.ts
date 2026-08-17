@@ -78,9 +78,10 @@ describe('deck construction', () => {
 })
 
 describe('fortitude & damage', () => {
-  it('computes fortitude from printed damage in the Ring', () => {
-    const ring = ['gen-kick', 'kurt-atomic-driver'] // 3 + 7 = 10
-    expect(computeFortitude(ring, getCard)).toBe(10)
+  it('computes fortitude from printed Fortitude in the Ring and Mid-match', () => {
+    const ring = ['gen-kick', 'kurt-atomic-driver'] // Kick F=0 + Atomic Driver F=13 = 13
+    expect(computeFortitude(ring, getCard)).toBe(13)
+    expect(computeFortitude(['gen-kick', ...ring], getCard)).toBe(13) // extra Mid-match Kick (F=0) adds 0
   })
 
   it('dealDamage overturns cards from Arsenal to Ringside', () => {
@@ -104,20 +105,20 @@ describe('playing cards and reversal window', () => {
     expect(err).toBeNull()
     expect(g.phase).toBe('reversalWindow')
     passReversal(g)
-    // Voluntary overturn: defender flips cards one at a time (KICK prints 3).
+    // Voluntary overturn: defender flips cards one at a time (KICK prints 5).
     expect(g.pendingDecision?.type).toBe('overturnCards')
     for (let i = 0; i < 3; i++) {
       const d = g.pendingDecision
       if (d && d.type === 'overturnCards') applyDecision(g, d, 'flip')
     }
-    // After 3 flips (equal to printed damage) the decision is STILL open.
+    // After 3 flips (less than printed damage) the decision is STILL open.
     expect(g.pendingDecision?.type).toBe('overturnCards')
     const dStop = g.pendingDecision
     if (dStop && dStop.type === 'overturnCards') applyDecision(g, dStop, 'stop')
     expect(g.players[1]!.arsenal.length).toBe(0)
     expect(g.players[1]!.ringside.length).toBe(3)
     expect(g.players[0]!.ring).toContain(KICK)
-    expect(g.players[0]!.fortitude).toBe(3)
+    expect(g.players[0]!.fortitude).toBe(0) // Kick is a 0F card
     expect(g.phase).toBe('main')
   })
 
@@ -194,7 +195,7 @@ describe('playing cards and reversal window', () => {
     const dStop = g.pendingDecision
     if (dStop && dStop.type === 'overturnCards') applyDecision(g, dStop, 'stop')
     expect(g.players[0]!.ring).toContain(KICK)
-    expect(g.players[0]!.fortitude).toBe(3)
+    expect(g.players[0]!.fortitude).toBe(0) // Kick is a 0F card
     expect(g.phase).toBe('main')
   })
 

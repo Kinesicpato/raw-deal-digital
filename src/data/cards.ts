@@ -1,5 +1,6 @@
 import type { CardDef, SuperstarDef } from './types'
 import { OCR_CARDS } from './ocrCards.ts'
+import { applyVerifiedStats } from './r2fVerified'
 
 /**
  * Card bank — Etapa 1.
@@ -1352,7 +1353,7 @@ export const BOOKER_T_CARDS: CardDef[] = [
   }),
 ]
 
-export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...OCR_CARDS]
+export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
 
 /** Convenience lookup. */
 const index = new Map<string, CardDef>()

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppStore, getCardSafe } from '../store/useAppStore'
 import type { GameState, PlayerState } from '../engine/types'
 import { PREMATCH_STAGES } from '../engine/game'
@@ -17,6 +17,14 @@ export function GamePage() {
   const [detail, setDetail] = useState<string | null>(null)
   const [zoom, setZoom] = useState<string | null>(null)
   const [tools, setTools] = useState<number | null>(null)
+
+  // Clear the corner zoom as soon as a playable card resolves (the hovered
+  // card either left the hand or is no longer the active play), so it doesn't
+  // stay stuck on mobile where mouseleave never fires.
+  const resolutionId = game?.resolution?.cardId ?? null
+  useEffect(() => {
+    if (!resolutionId) setZoom(null)
+  }, [resolutionId])
 
   if (!game) {
     return (
@@ -82,7 +90,10 @@ export function GamePage() {
           {active && !active.isAI && game.phase === 'main' && showHandControls && (
             <HandZone
               player={active}
-              onCardClick={(id) => useAppStore.getState().playCardAction(id)}
+              onCardClick={(id) => {
+                setZoom(null)
+                useAppStore.getState().playCardAction(id)
+              }}
               onCardHover={setZoom}
             />
           )}
@@ -174,6 +185,7 @@ function PlayerPanel({
           </span>
         )}
         <span>{p.name}</span>
+        <span className="stat-chip mono" title="Fortitude (Superestrella + Ring + Mid-match)">Fort {p.fortitude}</span>
         {p.isAI && <span className="stat-chip">IA</span>}
         {isTarget && <span className="stat-chip" style={{ background: 'var(--red-bright)' }}>Objetivo</span>}
       </div>
@@ -594,7 +606,10 @@ function HandZone({ player, onCardClick, onCardHover }: { player: PlayerState; o
                 playable
                 onMouseEnter={() => onCardHover(id)}
                 onMouseLeave={() => onCardHover(null)}
-                onClick={() => useAppStore.getState().playCardAction(id, 'midmatch')}
+                onClick={() => {
+                  onCardHover(null)
+                  useAppStore.getState().playCardAction(id, 'midmatch')
+                }}
               />
             ))}
           </div>
@@ -612,7 +627,10 @@ function HandZone({ player, onCardClick, onCardHover }: { player: PlayerState; o
                 playable
                 onMouseEnter={() => onCardHover(id)}
                 onMouseLeave={() => onCardHover(null)}
-                onClick={() => useAppStore.getState().playCardAction(id, 'prematch')}
+                onClick={() => {
+                  onCardHover(null)
+                  useAppStore.getState().playCardAction(id, 'prematch')
+                }}
               />
             ))}
           </div>
