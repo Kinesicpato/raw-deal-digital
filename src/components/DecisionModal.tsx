@@ -85,6 +85,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
   const game = useAppStore((s) => s.game)
   const defender = game?.players[decision.defenderIdx]
   const attacker = game?.players[game.resolution?.attacker ?? -1]
+  const played = game?.resolution ? getCardSafe(game.resolution.cardId) : null
   const [sel, setSel] = useState<string | null>(null)
 
   if (sel) {
@@ -112,9 +113,21 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       <h3>Ventana de Reversal</h3>
       <p className="muted">
         <b>{defender?.name}</b>, tu oponente <b>{attacker?.name}</b> jugó{' '}
-        <b>{game?.resolution ? getCardSafe(game.resolution.cardId).name : ''}</b>.
-        Elegí <b>cualquier carta</b> de tu mano para revertirlo (o no revertir).
+        <b>{played?.name ?? ''}</b>. Elegí <b>cualquier carta</b> de tu mano para revertirlo (o no revertir).
       </p>
+      {played && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
+          <CardFace id={played.id} size="md" />
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span className="stat-chip">Fortitud <b>{played.fortitude}F</b></span>
+            <span className="stat-chip">Daño <b>{played.damage}D</b></span>
+            {played.traits && played.traits.length > 0 && (
+              <span className="stat-chip">{played.traits.join(' · ')}</span>
+            )}
+          </div>
+          <p className="muted" style={{ textAlign: 'center', margin: 0, maxWidth: 420 }}>{played.text}</p>
+        </div>
+      )}
       <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
       <div className="hand" style={{ maxHeight: 240, overflowY: 'auto', flexWrap: 'wrap' }}>
         {defender?.hand.map((id) => (
