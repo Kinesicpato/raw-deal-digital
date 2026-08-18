@@ -3,12 +3,14 @@ import { useAppStore } from '../store/useAppStore'
 import { ALL_CARDS, getCard, getSuperstar } from '../data/cards'
 import type { CardDef } from '../data/types'
 import { validateBacklashDeck, validateDeck, getCopiesLimit } from '../engine/rules'
-import { CardFace, CardDetailModal } from '../components/CardView'
+import { CardFace, CardDetailModal, CardRemoveModal } from '../components/CardView'
 import { CardZoomPreview } from '../components/CardZoom'
 import { CardTypeTabs, classifyCard, type CardClassFilter } from '../components/CardTypeTabs'
 import { AppBanner } from '../components/Branding'
 
 type Back = 'none' | 'Pre-match' | 'Mid-match'
+
+type RemoveTarget = { id: string; zone: 'arsenal' | 'pre' | 'mid' }
 
 export function DeckbuilderPage() {
   const decks = useAppStore((s) => s.decks)
@@ -22,6 +24,7 @@ export function DeckbuilderPage() {
 
   const [zoom, setZoom] = useState<string | null>(null)
   const [detail, setDetail] = useState<string | null>(null)
+  const [pendingRemove, setPendingRemove] = useState<RemoveTarget | null>(null)
 
   const active = decks.find((d) => d.name === activeDeckId)
 
@@ -107,6 +110,15 @@ export function DeckbuilderPage() {
     } else {
       setMid((a) => (a.length < 10 ? [...a, id] : a))
     }
+  }
+
+  const confirmRemove = () => {
+    if (!pendingRemove) return
+    const { id, zone } = pendingRemove
+    if (zone === 'arsenal') removeFromArsenal(id)
+    else if (zone === 'pre') setPre((a) => a.filter((x) => x !== id))
+    else setMid((a) => a.filter((x) => x !== id))
+    setPendingRemove(null)
   }
 
   const save = () => {
@@ -296,14 +308,7 @@ export function DeckbuilderPage() {
                   size="xs"
                   onMouseEnter={() => setZoom(id)}
                   onMouseLeave={() => setZoom(null)}
-                  onClick={() => {
-                    if (id === zoom) {
-                      setDetail(id)
-                      setZoom(null)
-                    } else {
-                      removeFromArsenal(id)
-                    }
-                  }}
+                  onClick={() => setPendingRemove({ id, zone: 'arsenal' })}
                 />
               </div>
             ))}
@@ -319,14 +324,7 @@ export function DeckbuilderPage() {
                   size="xs"
                   onMouseEnter={() => setZoom(id)}
                   onMouseLeave={() => setZoom(null)}
-                  onClick={() => {
-                    if (id === zoom) {
-                      setDetail(id)
-                      setZoom(null)
-                    } else {
-                      setPre((a) => a.filter((x) => x !== id))
-                    }
-                  }}
+                  onClick={() => setPendingRemove({ id, zone: 'pre' })}
                 />
               </div>
             ))}
@@ -341,14 +339,7 @@ export function DeckbuilderPage() {
                   size="xs"
                   onMouseEnter={() => setZoom(id)}
                   onMouseLeave={() => setZoom(null)}
-                  onClick={() => {
-                    if (id === zoom) {
-                      setDetail(id)
-                      setZoom(null)
-                    } else {
-                      setMid((a) => a.filter((x) => x !== id))
-                    }
-                  }}
+                  onClick={() => setPendingRemove({ id, zone: 'mid' })}
                 />
               </div>
             ))}
@@ -392,6 +383,7 @@ export function DeckbuilderPage() {
       </div>
 
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
+      <CardRemoveModal id={pendingRemove?.id ?? null} onConfirm={confirmRemove} onCancel={() => setPendingRemove(null)} />
       <CardZoomPreview id={zoom} />
     </div>
   )
