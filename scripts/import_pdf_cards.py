@@ -200,6 +200,44 @@ OVERRIDES = {
     "HHH/7.png": "superstar-triple-h",
     "HHH/9.jpg": "leaping-knee-to-the-face",
     "HHH/10.jpg": "facebuster",
+    # PDF FINAL RAW DEAL RVD BOOKER T.pdf — Rob Van Dam's cards (5.jpg
+    # Spinnerooni through 57.jpg Superkick). The three landscape (horizontal)
+    # cards are Backlash cards: 28.jpg Van Daminator (Mid-match), 31.jpg
+    # Everything's Cool When You're... (Mid-match), 53.jpg R-V-D (Pre-match).
+    # 18.jpg is Booker T's Superstar card (take 2 cards from Ringside to the
+    # bottom of your Arsenal). 39/43/54 are duplicate printings and map to the
+    # same card ids as their first copies.
+    "PDF FINAL RAW DEAL RVD BOOKER T/5.jpg": "spinnerooni",
+    "PDF FINAL RAW DEAL RVD BOOKER T/7.jpg": "bookend",
+    "PDF FINAL RAW DEAL RVD BOOKER T/8.jpg": "you-didnt-just-try-that",
+    "PDF FINAL RAW DEAL RVD BOOKER T/9.jpg": "houston-hangover",
+    "PDF FINAL RAW DEAL RVD BOOKER T/12.jpg": "booker-s-spinning-kick",
+    "PDF FINAL RAW DEAL RVD BOOKER T/13.jpg": "booker-s-scissor-kick",
+    "PDF FINAL RAW DEAL RVD BOOKER T/14.jpg": "can-you-dig-it-sucka",
+    "PDF FINAL RAW DEAL RVD BOOKER T/15.jpg": "booker-s-thrust-kick",
+    "PDF FINAL RAW DEAL RVD BOOKER T/18.jpg": "superstar-booker-t",
+    "PDF FINAL RAW DEAL RVD BOOKER T/19.jpg": "spinning-straight-elbow",
+    "PDF FINAL RAW DEAL RVD BOOKER T/20.jpg": "nobody-gets-higher",
+    "PDF FINAL RAW DEAL RVD BOOKER T/21.jpg": "flying-higher-than-ever",
+    "PDF FINAL RAW DEAL RVD BOOKER T/27.jpg": "split-legged-moonsault",
+    "PDF FINAL RAW DEAL RVD BOOKER T/28.jpg": "van-daminator",
+    "PDF FINAL RAW DEAL RVD BOOKER T/31.jpg": "everythings-cool-when-youre",
+    "PDF FINAL RAW DEAL RVD BOOKER T/32.jpg": "step-over-heel-kick",
+    "PDF FINAL RAW DEAL RVD BOOKER T/33.jpg": "rolling-thunder",
+    "PDF FINAL RAW DEAL RVD BOOKER T/34.jpg": "the-whole-dam-show",
+    "PDF FINAL RAW DEAL RVD BOOKER T/37.jpg": "van-terminator",
+    "PDF FINAL RAW DEAL RVD BOOKER T/38.jpg": "dude-whatever",
+    "PDF FINAL RAW DEAL RVD BOOKER T/39.jpg": "dude-whatever",
+    "PDF FINAL RAW DEAL RVD BOOKER T/40.jpg": "the-fury-of-the-storm",
+    "PDF FINAL RAW DEAL RVD BOOKER T/43.jpg": "the-fury-of-the-storm",
+    "PDF FINAL RAW DEAL RVD BOOKER T/46.jpg": "five-star-frog-splash",
+    "PDF FINAL RAW DEAL RVD BOOKER T/47.jpg": "one-of-a-kind",
+    "PDF FINAL RAW DEAL RVD BOOKER T/48.jpg": "chair-shot",
+    "PDF FINAL RAW DEAL RVD BOOKER T/49.jpg": "insurrextion",
+    "PDF FINAL RAW DEAL RVD BOOKER T/52.jpg": "still-one-of-a-kind",
+    "PDF FINAL RAW DEAL RVD BOOKER T/53.jpg": "r-v-d",
+    "PDF FINAL RAW DEAL RVD BOOKER T/54.jpg": "step-over-heel-kick",
+    "PDF FINAL RAW DEAL RVD BOOKER T/57.jpg": "superkick",
 }
 
 W, H = 300, 420
