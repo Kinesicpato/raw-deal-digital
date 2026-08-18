@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { getCard, getSuperstar, KURT_CARDS, GENERIC_CARDS, KURT_BACKLASH_CARDS } from '../src/data/cards'
 import { validateDeck, validateBacklashDeck, computeFortitude, getCopiesLimit, dealDamage } from '../src/engine/rules'
+import { buildClientView } from '../src/online/types'
 import {
   newGame,
   startMatch,
@@ -362,5 +363,41 @@ describe('revealing a hand to a specific opponent (3+ players)', () => {
     expect(g.players[0]!.handRevealedTo).toBe(2)
     manualRevealHand(g, 0, null)
     expect(g.players[0]!.handRevealedTo).toBeNull()
+  })
+})
+
+describe('buildClientView hand reveal (online view filtering)', () => {
+  let g: GameState
+  beforeEach(() => {
+    g = newGame({
+      players: [
+        { name: 'A', superstarId: 'kurt-angle', arsenal: Array(15).fill('gen-kick'), backlashPre: [], backlashMid: [] },
+        { name: 'B', superstarId: 'mankind', arsenal: Array(15).fill('punch'), backlashPre: [], backlashMid: [] },
+        { name: 'C', superstarId: 'cactus-jack', arsenal: Array(15).fill('gen-elbow-to-the-face'), backlashPre: [], backlashMid: [] },
+      ],
+    } satisfies Parameters<typeof newGame>[0])
+  })
+
+  it("keeps an opponent's hand hidden until it's revealed to the viewer", () => {
+    const view = buildClientView(g, 0)
+    expect(view.players[1]!.hand.every((id) => id === '__hidden__')).toBe(true)
+  })
+
+  it("shows a hand once that player reveals it to THIS viewer (not to themselves)", () => {
+    manualRevealHand(g, 1, 0) // player B reveals their hand to viewer A (idx 0)
+    const view = buildClientView(g, 0)
+    expect(view.players[1]!.hand.every((id) => id === '__hidden__')).toBe(false)
+    expect(view.players[1]!.hand).toEqual(g.players[1]!.hand)
+  })
+
+  it("still hides that hand from a different viewer", () => {
+    manualRevealHand(g, 1, 0)
+    const view = buildClientView(g, 2) // player C looks: B's hand stays hidden
+    expect(view.players[1]!.hand.every((id) => id === '__hidden__')).toBe(true)
+  })
+
+  it("never hides the viewer's own hand", () => {
+    const view = buildClientView(g, 1)
+    expect(view.players[1]!.hand).toEqual(g.players[1]!.hand)
   })
 })

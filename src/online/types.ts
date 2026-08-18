@@ -86,7 +86,7 @@ export function buildClientView(game: GameState, viewerIdx: number): GameState {
     if (i === viewerIdx) return
 
     const revealHand =
-      p.handRevealedTo === i ||
+      p.handRevealedTo === viewerIdx ||
       (owner === viewerIdx &&
         clone.pendingDecision?.type === 'chooseOpponentHandCard' &&
         clone.pendingDecision.playerIdx === i)
