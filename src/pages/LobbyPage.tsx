@@ -4,6 +4,7 @@ import { SUPERSTARS } from '../data/cards'
 import { buildDefaultDeck } from '../data/defaultDeck'
 import { AppBanner } from '../components/Branding'
 import { CardFace } from '../components/CardView'
+import { Toast } from '../components/Toast'
 
 export function LobbyPage() {
   const store = useAppStore.getState()
@@ -66,7 +67,7 @@ export function LobbyPage() {
         </div>
 
         {lastError && (
-          <div className="toast" onClick={clearError}>{lastError}</div>
+          <Toast message={lastError} onClose={clearError} />
         )}
       </div>
     )
@@ -282,7 +283,7 @@ export function LobbyPage() {
       </div>
 
       {lastError && (
-        <div className="toast" onClick={clearError}>{lastError}</div>
+        <Toast message={lastError} onClose={clearError} />
       )}
     </div>
   )

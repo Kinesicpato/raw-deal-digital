@@ -8,6 +8,8 @@ import { DecisionModal } from '../components/DecisionModal'
 import { PlayerToolsModal } from '../components/PlayerTools'
 import { CardTypeTabs, classifyCard, type CardClassFilter } from '../components/CardTypeTabs'
 import { AppBanner } from '../components/Branding'
+import { Toast } from '../components/Toast'
+import { buildClientView } from '../online/types'
 
 export function GamePage() {
   const game = useAppStore((s) => s.game)
@@ -36,11 +38,15 @@ export function GamePage() {
     )
   }
 
-  const active = game.players[game.activeIndex]
   const isOnline = online.role !== null && online.role !== undefined
   const myIdx = online.myIdx
-  const isMyTurn = !isOnline || game.activeIndex === myIdx
-  const showHandControls = isMyTurn && !!active && !active.isAI
+  // Online viewers only ever see the rules-allowed snapshot of the game
+  // (opponents' hands/Arsenal/Backlash stay hidden unless a reveal decision
+  // exposes them), applied to the host's own screen too.
+  const displayGame = isOnline && myIdx != null ? buildClientView(game, myIdx) : game
+  const displayActive = displayGame.players[displayGame.activeIndex]
+  const isMyTurn = !isOnline || displayGame.activeIndex === myIdx
+  const showHandControls = isMyTurn && !!displayActive && !displayActive.isAI
 
   return (
     <div className="page">
@@ -48,10 +54,10 @@ export function GamePage() {
         subtitle={isOnline && online.role === 'host' ? 'Partida en línea · anfitrión' : isOnline ? 'Partida en línea' : 'Partida en curso'}
         right={
           <>
-            <span className="stat-chip">Turno {game.turnNumber}</span>
-            <span className="stat-chip">{phaseLabel[game.phase] ?? game.phase}</span>
-            {game.phase !== 'gameover' && active && (
-              <span className="stat-chip">Juega {active.name}</span>
+            <span className="stat-chip">Turno {displayGame.turnNumber}</span>
+            <span className="stat-chip">{phaseLabel[displayGame.phase] ?? displayGame.phase}</span>
+            {displayGame.phase !== 'gameover' && displayActive && (
+              <span className="stat-chip">Juega {displayActive.name}</span>
             )}
             {isOnline && <span className="stat-chip mono">Código: {online.code}</span>}
             <button className="ghost" onClick={() => useAppStore.getState().setView('menu')}>
@@ -64,34 +70,34 @@ export function GamePage() {
       <div className="game-layout" style={{ marginTop: 12 }}>
         <div className="game-main">
           <div className="opponents">
-            {game.players.map((p, i) => (
+            {displayGame.players.map((p, i) => (
               <PlayerPanel
                 key={p.id}
                 p={p}
                 idx={i}
-                game={game}
+                game={displayGame}
                 onCardClick={setDetail}
                 onCardHover={setZoom}
                 onTools={() => setTools(i)}
                 toolsOpen={tools === i}
-                toolsEnabled={!isOnline || online.role === 'host' || i === myIdx}
+                toolsEnabled={!isOnline || i === myIdx}
                 canControl={!isOnline || i === myIdx}
-                compact={isOnline ? i !== myIdx : i !== game.activeIndex}
+                compact={isOnline ? i !== myIdx : i !== displayGame.activeIndex}
               />
             ))}
           </div>
 
-          <RingZone game={game} onCardClick={setDetail} onCardHover={setZoom} />
+          <RingZone game={displayGame} onCardClick={setDetail} onCardHover={setZoom} />
 
-          {game.phase === 'opening' && <OpeningZone game={game} canInteract={showHandControls} />}
+          {displayGame.phase === 'opening' && <OpeningZone game={displayGame} canInteract={showHandControls} />}
 
-          {game.phase === 'prematch' && <PrematchZone game={game} canInteract={showHandControls} />}
+          {displayGame.phase === 'prematch' && <PrematchZone game={displayGame} canInteract={showHandControls} />}
 
-          {game.phase === 'gameover' && <GameOver game={game} />}
+          {displayGame.phase === 'gameover' && <GameOver game={displayGame} />}
 
-          {active && !active.isAI && game.phase === 'main' && showHandControls && (
+          {displayActive && !displayActive.isAI && displayGame.phase === 'main' && showHandControls && (
             <HandZone
-              player={active}
+              player={displayActive}
               onCardClick={(id, zone) => {
                 setZoom(null)
                 setPlayConfirm({ id, zone })
@@ -99,35 +105,31 @@ export function GamePage() {
               onCardHover={setZoom}
             />
           )}
-          {game.phase === 'main' && !showHandControls && (
+          {displayGame.phase === 'main' && !showHandControls && (
             <div className="card" style={{ textAlign: 'center' }}>
               <span className="muted">
-                {isOnline ? `Esperando que juegue ${active?.name ?? 'otro jugador'}…` : 'Turno de la IA…'}
+                {isOnline ? `Esperando que juegue ${displayActive?.name ?? 'otro jugador'}…` : 'Turno de la IA…'}
               </span>
             </div>
           )}
         </div>
 
         <div className="game-side">
-          {showHandControls && game.phase === 'main' && (
+          {showHandControls && displayGame.phase === 'main' && (
             <button className="primary btn-turn" onClick={() => useAppStore.getState().endTurnAction()}>
               Terminar turno
             </button>
           )}
-          <GameLog game={game} />
+          <GameLog game={displayGame} />
         </div>
       </div>
 
-      {tools !== null && <PlayerToolsModal game={game} playerIdx={tools} onClose={() => setTools(null)} />}
+      {tools !== null && <PlayerToolsModal game={displayGame} playerIdx={tools} onClose={() => setTools(null)} />}
       <DecisionModal />
       <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
       <CardZoomPreview id={detail ? null : zoom} />
-      {lastError && (
-        <div className="toast" onClick={clearError}>
-          {lastError}
-        </div>
-      )}
+      {lastError && <Toast message={lastError} onClose={clearError} />}
     </div>
   )
 }
@@ -173,11 +175,6 @@ function PlayerPanel({
   const hit = isTarget && isOverturning
   return (
     <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''} ${compact ? 'compact' : ''}`}>
-      {toolsEnabled && (
-        <button className={`ghost tools-btn ${toolsOpen ? 'open' : ''}`} title="Herramientas manuales" onClick={onTools}>
-          ⚙
-        </button>
-      )}
       <div className="panel-head">
         {p.superstarId && (
           <span
@@ -200,6 +197,15 @@ function PlayerPanel({
           {isHandRevealed ? '👁' : ''} Mano {p.hand.length}
         </span>
         <span className="stat-chip mono">Ringside {p.ringside.length}</span>
+        {toolsEnabled && (
+          <button
+            className={`ghost tools-btn ${toolsOpen ? 'open' : ''}`}
+            title="Herramientas manuales"
+            onClick={onTools}
+          >
+            ⚙
+          </button>
+        )}
       </div>
       {compact ? (
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '6px 0 2px' }}>

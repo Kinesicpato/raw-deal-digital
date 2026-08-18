@@ -336,9 +336,7 @@ h3 {
   font-size: 15px;
 }
 .panel .tools-btn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  margin-left: auto;
   padding: 3px 8px;
   font-size: 13px;
 }

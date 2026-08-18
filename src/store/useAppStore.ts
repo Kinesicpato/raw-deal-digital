@@ -556,14 +556,20 @@ export const useAppStore = create<AppState>()(
             return
           }
           const cfg: NewGameConfig = {
-            players: players.map((r) => ({
-              name: r.name,
-              superstarId: r.superstarId!,
-              handSize: r.handSize ?? undefined,
-              arsenal: r.deck?.arsenal?.length ? r.deck.arsenal : buildDefaultDeck(r.superstarId!).arsenal,
-              backlashPre: r.deck?.backlashPre?.length ? r.deck.backlashPre : buildDefaultDeck(r.superstarId!).pre,
-              backlashMid: r.deck?.backlashMid?.length ? r.deck.backlashMid : buildDefaultDeck(r.superstarId!).mid,
-            })),
+            players: players.map((r) => {
+              const dd = buildDefaultDeck(r.superstarId!)
+              // A picked deck is used exactly as designed: if the player saved
+              // it without Pre-match / Mid-match (Backlash) cards, those stay
+              // empty instead of silently falling back to the default deck.
+              return {
+                name: r.name,
+                superstarId: r.superstarId!,
+                handSize: r.handSize ?? undefined,
+                arsenal: r.deck ? r.deck.arsenal : dd.arsenal,
+                backlashPre: r.deck ? r.deck.backlashPre : dd.pre,
+                backlashMid: r.deck ? r.deck.backlashMid : dd.mid,
+              }
+            }),
           }
           const game = newGame(cfg)
           set({ game, lastError: null, view: 'game' })
@@ -639,7 +645,19 @@ function applyRemoteIntent(
 ): void {
   const s = get()
   if (MANUAL_INTENTS.includes(action)) {
-    if (args.length === 0 || args[0] !== idx) {
+    if (action === 'manualRevealHand') {
+      // A player may show their own hand to anyone, or reveal a specific
+      // opponent's hand to themselves (and hide either reveal they made).
+      const [player, target] = args as [number, number | null]
+      const valid =
+        player === idx ||
+        (target !== null && target === idx) ||
+        (target === null && s.game?.players[player]?.handRevealedTo === idx)
+      if (!valid) {
+        hostSendError(idx, 'Solo podés revelar tu mano o la de un oponente para vos mismo.')
+        return
+      }
+    } else if (args.length === 0 || args[0] !== idx) {
       hostSendError(idx, 'Solo podés mover tus propias cartas.')
       return
     }
