@@ -24,7 +24,7 @@ export function AppBanner({
 }) {
   return (
     <div className="banner">
-      <div className="banner-logo">{title}</div>
+      <img className="banner-logo" src="/logo.png" alt={title} />
       <div className="banner-tag">
         <span className="banner-sub">{subtitle}</span>
       </div>

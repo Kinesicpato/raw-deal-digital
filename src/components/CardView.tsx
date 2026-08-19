@@ -81,7 +81,7 @@ export function CardDetailModal({ id, onClose }: { id: string | null; onClose: (
             <div className="muted">{cardTypeLabel(c)}</div>
             <div className="row">
               <span className="stat-chip">
-                Fortitud <b>{c.fortitude}F</b>
+                Fortitude <b>{c.fortitude}F</b>
               </span>
               <span className="stat-chip">
                 Daño <b>{c.damage}D</b>
@@ -136,7 +136,7 @@ export function CardRemoveModal({
             <div className="muted">{cardTypeLabel(c)}</div>
             <div className="row">
               <span className="stat-chip">
-                Fortitud <b>{c.fortitude}F</b>
+                Fortitude <b>{c.fortitude}F</b>
               </span>
               <span className="stat-chip">
                 Daño <b>{c.damage}D</b>

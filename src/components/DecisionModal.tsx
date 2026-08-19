@@ -119,7 +119,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
           <CardFace id={played.id} size="md" />
           <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <span className="stat-chip">Fortitud <b>{played.fortitude}F</b></span>
+            <span className="stat-chip">Fortitude <b>{played.fortitude}F</b></span>
             <span className="stat-chip">Daño <b>{played.damage}D</b></span>
             {played.traits && played.traits.length > 0 && (
               <span className="stat-chip">{played.traits.join(' · ')}</span>

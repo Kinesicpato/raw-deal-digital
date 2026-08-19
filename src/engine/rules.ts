@@ -2,14 +2,14 @@ import type { CardDef, CardTrait, ManeuverSubtype } from '../data/types'
 import type { PlayerState } from './types'
 
 /**
- * Fortitude Rating = sum of the printed Fortitude (F) of the cards in a
+ * Fortitude Rating = sum of the printed Damage (the "D" box) of the cards in a
  * player's Ring area plus their Mid-match/Pre-match cards played during the
  * match (values verified against readytofight.cl when the card name matches).
  */
 export function computeFortitude(ids: string[], getCard: (id: string) => CardDef): number {
   let total = 0
   for (const id of ids) {
-    total += getCard(id).fortitude
+    total += getCard(id).damage
   }
   return total
 }

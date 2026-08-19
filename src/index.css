@@ -1,13 +1,13 @@
 :root {
-  --bg: #0d0d10;
-  --bg-2: #15151b;
-  --bg-3: #1e1e26;
-  --line: #2c2c36;
-  --text: #eceaf1;
-  --text-dim: #9a9aa8;
+  --bg: #0b0a0a;
+  --bg-2: #141111;
+  --bg-3: #1d1a1a;
+  --line: #2e2727;
+  --text: #f2efec;
+  --text-dim: #a79d9d;
   --gold: #d8a92f;
-  --red: #c0392b;
-  --red-bright: #e74c3c;
+  --red: #b81818;
+  --red-bright: #e03030;
   --blue: #2e6bc0;
   --yellow: #d9b531;
   --green: #2e9e5b;
@@ -38,11 +38,14 @@ body,
 }
 
 body {
-  background: radial-gradient(circle at 50% 0%, #1c1c26 0%, var(--bg) 62%);
+  background: radial-gradient(circle at 50% 0%, #2a0e0e 0%, var(--bg) 62%);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
   font-size: 15px;
   -webkit-tap-highlight-color: transparent;
+  /* The board is a game surface: keep it strictly single-column-wide so a wide
+     panel/zone never forces horizontal scrolling during play. */
+  overflow-x: hidden;
 }
 
 button {
@@ -86,7 +89,7 @@ button.ghost.reveal-target {
 }
 
 .page {
-  max-width: 1920px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 14px 18px 28px;
   min-height: 100vh;
@@ -147,24 +150,17 @@ h3 {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: linear-gradient(180deg, #1a0d0d, #0f0707);
-  border: 1px solid #3a2020;
+  background: linear-gradient(180deg, #1a0c0c, #0f0606);
+  border: 1px solid #4a1717;
   border-radius: 16px;
   padding: 10px 18px;
-  box-shadow: inset 0 0 40px rgba(216, 169, 47, 0.06);
+  box-shadow: inset 0 0 40px rgba(184, 24, 24, 0.10);
 }
 .banner-logo {
-  font-weight: 900;
-  font-style: italic;
-  font-size: 34px;
-  letter-spacing: 1px;
-  line-height: 1;
-  background: linear-gradient(180deg, #ffd75e, #b8860b);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
+  display: block;
+  height: 44px;
+  width: auto;
+  flex: 0 0 auto;
 }
 .banner-tag {
   display: flex;
@@ -278,6 +274,41 @@ h3 {
   font-weight: 800;
 }
 
+/* Larger zone tabs used in the manual-tools modal. */
+.tab-lg {
+  padding: 10px 20px;
+  font-size: 15px;
+}
+.tool-tabs .tab::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex: 0 0 auto;
+}
+.tool-tabs .tab[data-zone='hand']::before {
+  background: var(--green);
+}
+.tool-tabs .tab[data-zone='arsenal']::before {
+  background: var(--yellow);
+}
+.tool-tabs .tab[data-zone='ring']::before {
+  background: var(--gold);
+}
+.tool-tabs .tab[data-zone='ringside']::before {
+  background: var(--red-bright);
+}
+.tool-tabs .tab[data-zone='out']::before {
+  background: var(--text-dim);
+}
+@media (max-width: 1180px) {
+  .tab-lg {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+}
+
 /* ============================================================
    PLAYER PANEL / ZONES
    ============================================================ */
@@ -337,13 +368,25 @@ h3 {
 }
 .panel .tools-btn {
   margin-left: auto;
-  padding: 3px 8px;
-  font-size: 13px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #f0c94a, var(--gold));
+  color: #221a05;
+  border: 1px solid #b8860b;
+  box-shadow: 0 0 14px rgba(216, 169, 47, 0.35);
+  white-space: nowrap;
+}
+.panel .tools-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
 }
 .panel .tools-btn.open {
-  background: var(--gold);
-  color: #221a05;
-  border-color: var(--gold);
+  background: linear-gradient(180deg, #ffe27a, #f0b90b);
+  box-shadow: 0 0 18px rgba(216, 169, 47, 0.6);
+}
+.panel.compact .tools-btn {
+  padding: 7px 11px;
+  font-size: 13px;
 }
 .panel.compact {
   padding: 6px 10px;
@@ -375,6 +418,66 @@ h3 {
 .badge-fort {
   background: linear-gradient(180deg, #eec23e, var(--gold));
   color: #221a05;
+}
+
+/* Fortitude counter in the player count row (bigger than the generic chip). */
+.player-counts .badge-fort {
+  padding: 7px 12px;
+  font-size: 14px;
+}
+.player-counts .badge-fort b {
+  font-size: 17px;
+}
+.panel.compact .player-counts .badge-fort {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+.panel.compact .player-counts .badge-fort b {
+  font-size: 13px;
+}
+
+/* Bigger, clickable Arsenal/Mano/Ringside counters. */
+.zone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+}
+.zone-chip:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: rgba(216, 169, 47, 0.08);
+}
+.zone-chip:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.zone-chip b {
+  font-size: 16px;
+  margin-left: 2px;
+}
+.zone-chip.zone-arsenal {
+  border-left: 4px solid var(--yellow);
+}
+.zone-chip.zone-hand {
+  border-left: 4px solid var(--green);
+}
+.zone-chip.zone-ringside {
+  border-left: 4px solid var(--red-bright);
+}
+.panel.compact .zone-chip {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.panel.compact .zone-chip b {
+  font-size: 13px;
 }
 
 .chiprow {
@@ -467,7 +570,9 @@ h3 {
 }
 .player-zones {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Auto-fit so the three zones wrap into extra rows instead of overflowing
+     when the active panel is narrow (2+ columns of opponents). */
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 10px;
   margin-top: 6px;
 }
@@ -515,7 +620,11 @@ h3 {
 }
 .zone-cardrow .cardface {
   width: calc(var(--card-w) + 30px);
-  height: calc(var(--card-h) + 42px);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: var(--card-w) / var(--card-h);
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .ring-card-cell {
   position: relative;
@@ -541,10 +650,11 @@ h3 {
    ============================================================ */
 .hand {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   padding: 10px 4px;
-  scrollbar-width: thin;
 }
 .hand .cardface {
   cursor: pointer;
@@ -556,11 +666,13 @@ h3 {
   padding: 10px 12px 14px;
 }
 .hand-fan .hand {
-  flex-wrap: nowrap;
+  /* Wrap into multiple rows instead of the original sideways-fan so there is
+     no horizontal scrolling while playing. */
+  flex-wrap: wrap;
   max-width: 100%;
 }
 .hand-fan .hand .cardface {
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 .fan-title {
   display: flex;
@@ -579,7 +691,6 @@ h3 {
 }
 .game-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 14px;
   align-items: start;
 }
@@ -591,18 +702,16 @@ h3 {
 .game-side {
   display: grid;
   gap: 12px;
-  position: sticky;
-  top: 12px;
-  max-height: calc(100vh - 24px);
-  overflow-y: auto;
 }
 .btn-turn {
   font-size: 16px;
-  padding: 12px 16px;
+  padding: 12px 18px;
+  width: fit-content;
+  justify-self: center;
 }
 .opponents {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   gap: 12px;
 }
 .ring-zone {
@@ -615,6 +724,7 @@ h3 {
 .ring-cards {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 28px;
   align-items: center;
   min-height: 300px;
@@ -875,10 +985,10 @@ input:focus {
     --card-lg-h: 527px;
   }
   .banner-logo {
-    font-size: 42px;
+    height: 52px;
   }
   .game-layout {
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -912,7 +1022,7 @@ input:focus {
     justify-content: space-between;
   }
   .banner-logo {
-    font-size: 26px;
+    height: 32px;
   }
   .opponents {
     grid-template-columns: 1fr 1fr;
@@ -943,7 +1053,7 @@ input:focus {
   }
 
   .page {
-    padding: 8px 8px 84px;
+    padding: 8px 8px 28px;
   }
 
   .banner {
@@ -951,7 +1061,7 @@ input:focus {
     gap: 10px;
   }
   .banner-logo {
-    font-size: 22px;
+    height: 24px;
   }
   .banner-badge {
     font-size: 12px;
@@ -977,7 +1087,9 @@ input:focus {
   }
   .zone-cardrow .cardface {
     width: calc(var(--card-w) + 14px);
-    height: calc(var(--card-h) + 20px);
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: var(--card-w) / var(--card-h);
   }
 
   .hand {
@@ -985,26 +1097,21 @@ input:focus {
     padding: 8px 2px;
   }
 
-  /* Keep the end-turn button always reachable at the bottom. */
+  /* End-turn: now flows at the very bottom of the board, never covering UI. */
   .btn-turn {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    z-index: 40;
+    width: 100%;
+    justify-self: stretch;
     font-size: 17px;
     padding: 14px 16px;
     border-radius: 14px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
   }
 
-  /* Zoom: compact thumbnail pinned to a corner just above the fixed
-     end-turn bar so it never covers the damage / reversal controls. */
+  /* Zoom: compact thumbnail pinned to the bottom corner. */
   .zoom-preview {
     left: auto;
     right: 10px;
     top: auto;
-    bottom: 88px;
+    bottom: 12px;
     transform: none;
     width: 148px;
     max-width: 44vw;

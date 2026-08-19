@@ -20,15 +20,17 @@ const ZONE_LABEL: Record<ManualZone, string> = {
 export function PlayerToolsModal({
   game,
   playerIdx,
+  initialZone,
   onClose,
 }: {
   game: GameState
   playerIdx: number
+  initialZone?: ManualZone
   onClose: () => void
 }) {
   const store = useAppStore.getState()
   const p = game.players[playerIdx]
-  const [from, setFrom] = useState<ManualZone>('hand')
+  const [from, setFrom] = useState<ManualZone>(initialZone ?? 'hand')
   const [to, setTo] = useState<ManualZone>('arsenal')
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [revealPick, setRevealPick] = useState(false)
@@ -96,11 +98,12 @@ export function PlayerToolsModal({
           <button className="ghost" onClick={onClose}>Cerrar</button>
         </div>
 
-        <div className="tabs" style={{ marginBottom: 8 }}>
+        <div className="tabs tool-tabs" style={{ marginBottom: 8 }}>
           {ZONES.map((z) => (
             <button
               key={z}
-              className={`tab ${from === z ? 'active' : ''}`}
+              data-zone={z}
+              className={`tab tab-lg ${from === z ? 'active' : ''}`}
               onClick={() => switchFrom(z)}
             >
               {ZONE_LABEL[z]} ({count(z)})
@@ -132,7 +135,8 @@ export function PlayerToolsModal({
           {ZONES.filter((z) => z !== from).map((z) => (
             <button
               key={z}
-              className={`tab ${to === z ? 'active' : ''}`}
+              data-zone={z}
+              className={`tab tab-lg ${to === z ? 'active' : ''}`}
               onClick={() => setTo(z)}
             >
               {ZONE_LABEL[z]} ({count(z)})

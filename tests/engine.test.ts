@@ -80,10 +80,10 @@ describe('deck construction', () => {
 })
 
 describe('fortitude & damage', () => {
-  it('computes fortitude from printed Fortitude in the Ring and Mid-match', () => {
-    const ring = ['gen-kick', 'kurt-atomic-driver'] // Kick F=0 + Atomic Driver F=13 = 13
-    expect(computeFortitude(ring, getCard)).toBe(13)
-    expect(computeFortitude(['gen-kick', ...ring], getCard)).toBe(13) // extra Mid-match Kick (F=0) adds 0
+  it('computes fortitude from printed Damage (the D box) in the Ring and Mid-match', () => {
+    const ring = ['gen-kick', 'kurt-atomic-driver'] // Kick D=5 + Atomic Driver D=12 = 17
+    expect(computeFortitude(ring, getCard)).toBe(17)
+    expect(computeFortitude(['gen-kick', ...ring], getCard)).toBe(22) // extra Mid-match Kick (D=5) adds 5
   })
 
   it('dealDamage overturns cards from Arsenal to Ringside', () => {
@@ -120,7 +120,7 @@ describe('playing cards and reversal window', () => {
     expect(g.players[1]!.arsenal.length).toBe(0)
     expect(g.players[1]!.ringside.length).toBe(3)
     expect(g.players[0]!.ring).toContain(KICK)
-    expect(g.players[0]!.fortitude).toBe(0) // Kick is a 0F card
+    expect(g.players[0]!.fortitude).toBe(5) // Kick prints 5D, so Fortitude Rating = 5
     expect(g.phase).toBe('main')
   })
 
@@ -202,7 +202,7 @@ describe('playing cards and reversal window', () => {
     const dStop = g.pendingDecision
     if (dStop && dStop.type === 'overturnCards') applyDecision(g, dStop, 'stop')
     expect(g.players[0]!.ring).toContain(KICK)
-    expect(g.players[0]!.fortitude).toBe(0) // Kick is a 0F card
+    expect(g.players[0]!.fortitude).toBe(5) // Kick prints 5D, so Fortitude Rating = 5
     expect(g.phase).toBe('main')
   })
 

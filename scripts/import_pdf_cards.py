@@ -200,6 +200,10 @@ OVERRIDES = {
     "HHH/7.png": "superstar-triple-h",
     "HHH/9.jpg": "leaping-knee-to-the-face",
     "HHH/10.jpg": "facebuster",
+    # Booker T.doc — "Don't Hate da Playa, Hate da Game!" was scanned sideways
+    # (landscape); the bank file 26.jpg is already rotated upright, keep the
+    # mapping pinned so a re-import renders it portrait like the other cards.
+    "Booker T.doc/26.jpg": "dont-hate-da-playa-hate-da-game",
     # PDF FINAL RAW DEAL RVD BOOKER T.pdf — Rob Van Dam's cards (5.jpg
     # Spinnerooni through 57.jpg Superkick). The three landscape (horizontal)
     # cards are Backlash cards: 28.jpg Van Daminator (Mid-match), 31.jpg
@@ -238,6 +242,24 @@ OVERRIDES = {
     "PDF FINAL RAW DEAL RVD BOOKER T/53.jpg": "r-v-d",
     "PDF FINAL RAW DEAL RVD BOOKER T/54.jpg": "step-over-heel-kick",
     "PDF FINAL RAW DEAL RVD BOOKER T/57.jpg": "superkick",
+    # Extras Jericho.pdf — one multi-card sheet (10.jpg) with Chris Jericho's
+    # extras. The bottom row holds only 2 landscape cards that overflow the 3x3
+    # grid, so s_10_r2c0.png and s_10_happy.png were re-cropped directly from
+    # the sheet at the cards' true bounds (r2c0: "Superior Acrobatics",
+    # y-bbox 1116..1491, x-bbox ~20..517; s_10_happy.png: "Happy You're Here,
+    # Happier You're Gone", x-bbox ~536..1032). r2c1/r2c2 are dead grid slices
+    # and skipped. y2j and Don't You Never...Eeeever! already have art imported
+    # from the Jericho deck scan, so those cells are skipped here.
+    "Extras Jericho/s_10_r0c0.png": "jericho-walls-of-jericho",
+    "Extras Jericho/s_10_r0c1.png": None,
+    "Extras Jericho/s_10_r0c2.png": "jericho-roll-the-footage-monkeys",
+    "Extras Jericho/s_10_r1c0.png": "jericho-my-obscenely-expensive-jeri-tron-5000",
+    "Extras Jericho/s_10_r1c1.png": None,
+    "Extras Jericho/s_10_r1c2.png": "jericho-dont-try-this-at-home",
+    "Extras Jericho/s_10_r2c0.png": "jericho-superior-acrobatics",
+    "Extras Jericho/s_10_r2c1.png": None,
+    "Extras Jericho/s_10_r2c2.png": None,
+    "Extras Jericho/s_10_happy.png": "jericho-happy-youre-here",
 }
 
 W, H = 300, 420

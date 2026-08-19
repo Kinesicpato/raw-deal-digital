@@ -6,6 +6,8 @@ import { CardFace, CardDetailModal, cardTypeLabel } from '../components/CardView
 import { CardZoomPreview } from '../components/CardZoom'
 import { DecisionModal } from '../components/DecisionModal'
 import { PlayerToolsModal } from '../components/PlayerTools'
+import type { ManualZone } from '../engine/game'
+import { computeFortitude } from '../engine/rules'
 import { CardTypeTabs, classifyCard, type CardClassFilter } from '../components/CardTypeTabs'
 import { AppBanner } from '../components/Branding'
 import { Toast } from '../components/Toast'
@@ -18,7 +20,7 @@ export function GamePage() {
   const online = useAppStore((s) => s.online)
   const [detail, setDetail] = useState<string | null>(null)
   const [zoom, setZoom] = useState<string | null>(null)
-  const [tools, setTools] = useState<number | null>(null)
+  const [tools, setTools] = useState<{ player: number; zone?: ManualZone } | null>(null)
   const [playConfirm, setPlayConfirm] = useState<{ id: string; zone?: 'hand' | 'midmatch' | 'prematch' } | null>(null)
 
   // Clear the corner zoom as soon as a playable card resolves (the hovered
@@ -28,6 +30,20 @@ export function GamePage() {
   useEffect(() => {
     if (!resolutionId) setZoom(null)
   }, [resolutionId])
+
+  // Each time the turn passes, bring the active player's panel into view so
+  // the screen "expands" toward whoever is on turn (notably in local play on
+  // mobile/with several seats).
+  const activeIdx = game?.activeIndex ?? null
+  useEffect(() => {
+    if (activeIdx == null) return
+    const raf = requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-player="${activeIdx}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [activeIdx])
 
   if (!game) {
     return (
@@ -78,8 +94,8 @@ export function GamePage() {
                 game={displayGame}
                 onCardClick={setDetail}
                 onCardHover={setZoom}
-                onTools={() => setTools(i)}
-                toolsOpen={tools === i}
+                onTools={(zone) => setTools({ player: i, zone })}
+                toolsOpen={tools?.player === i}
                 toolsEnabled={!isOnline || i === myIdx}
                 canControl={!isOnline || i === myIdx}
                 compact={isOnline ? i !== myIdx : i !== displayGame.activeIndex}
@@ -112,19 +128,25 @@ export function GamePage() {
               </span>
             </div>
           )}
-        </div>
 
-        <div className="game-side">
+          <GameLog game={displayGame} />
+
           {showHandControls && displayGame.phase === 'main' && (
             <button className="primary btn-turn" onClick={() => useAppStore.getState().endTurnAction()}>
               Terminar turno
             </button>
           )}
-          <GameLog game={displayGame} />
         </div>
       </div>
 
-      {tools !== null && <PlayerToolsModal game={displayGame} playerIdx={tools} onClose={() => setTools(null)} />}
+      {tools !== null && (
+        <PlayerToolsModal
+          game={displayGame}
+          playerIdx={tools.player}
+          initialZone={tools.zone}
+          onClose={() => setTools(null)}
+        />
+      )}
       <DecisionModal />
       <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
@@ -162,7 +184,7 @@ function PlayerPanel({
   game: GameState
   onCardClick: (id: string) => void
   onCardHover: (id: string | null) => void
-  onTools: () => void
+  onTools: (zone?: ManualZone) => void
   toolsOpen: boolean
   toolsEnabled: boolean
   canControl: boolean
@@ -173,8 +195,11 @@ function PlayerPanel({
   const isOverturning = game.resolution?.overturning === true
   const isHandRevealed = p.handRevealedTo !== null
   const hit = isTarget && isOverturning
+  // Fortitude Rating shown live: sum of the "D" (Damage) box of every card in
+  // the player's Ring area plus Mid-match/Pre-match cards played.
+  const rating = computeFortitude([...p.midmatchPlayed, ...p.ring], getCardSafe)
   return (
-    <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''} ${compact ? 'compact' : ''}`}>
+    <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''} ${compact ? 'compact' : ''}`} data-player={idx}>
       <div className="panel-head">
         {p.superstarId && (
           <span
@@ -190,20 +215,31 @@ function PlayerPanel({
         {p.isAI && <span className="stat-chip">IA</span>}
         {isTarget && <span className="stat-chip" style={{ background: 'var(--red-bright)' }}>Objetivo</span>}
       </div>
-      <div className="row" style={{ gap: 6, margin: '8px 0' }}>
+      <div className="row player-counts" style={{ gap: 8, margin: '8px 0' }}>
         {hit && <span className="stat-chip damage-chip mono" style={{ background: 'var(--red-bright)', color: '#fff' }}>−{game.resolution?.damageDealt}</span>}
-        <span className="stat-chip mono">Arsenal {p.arsenal.length}</span>
-        <span className="stat-chip mono" title={isHandRevealed ? `Mano visible para ${game.players[p.handRevealedTo!]?.name ?? 'un oponente'}` : 'Mano oculta'}>
-          {isHandRevealed ? '👁' : ''} Mano {p.hand.length}
+        <span className="stat-chip badge-fort mono" title="Fortitude Rating = suma de la casilla D (Daño) de tus cartas en Ring Area y Mid-match/Pre-match jugadas">
+          Fortitude <b>{rating}</b>
         </span>
-        <span className="stat-chip mono">Ringside {p.ringside.length}</span>
+        <button
+          className="zone-chip zone-hand"
+          title={isHandRevealed ? `Mano visible para ${game.players[p.handRevealedTo!]?.name ?? 'un oponente'}` : 'Mano oculta · clic para ver/mover cartas'}
+          onClick={() => onTools('hand')}
+        >
+          {isHandRevealed ? '👁 ' : ''}Mano <b>{p.hand.length}</b>
+        </button>
+        <button className="zone-chip zone-arsenal" title="Clic para ver/mover cartas del Arsenal" onClick={() => onTools('arsenal')}>
+          Arsenal <b>{p.arsenal.length}</b>
+        </button>
+        <button className="zone-chip zone-ringside" title="Clic para ver/mover cartas del Ringside" onClick={() => onTools('ringside')}>
+          Ringside <b>{p.ringside.length}</b>
+        </button>
         {toolsEnabled && (
           <button
-            className={`ghost tools-btn ${toolsOpen ? 'open' : ''}`}
+            className={`tools-btn ${toolsOpen ? 'open' : ''}`}
             title="Herramientas manuales"
-            onClick={onTools}
+            onClick={() => onTools()}
           >
-            ⚙
+            ⚙ Herramientas
           </button>
         )}
       </div>
@@ -264,7 +300,7 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone clickable ${isActive ? 'zone-active' : ''}`} onClick={toolsEnabled ? onTools : undefined} title="Clic para ver/mover cartas del Ring Area">
+          <div className={`zone clickable ${isActive ? 'zone-active' : ''}`} onClick={toolsEnabled ? () => onTools('ring') : undefined} title="Clic para ver/mover cartas del Ring Area">
             <div className="zone-title">
               <span>Ring Area</span>
               <span className="mono">{p.ring.length}</span>
@@ -303,7 +339,7 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone clickable ${isTarget ? 'zone-target' : ''}`} onClick={toolsEnabled ? onTools : undefined} title="Clic para ver/mover cartas del Ringside">
+          <div className={`zone clickable ${isTarget ? 'zone-target' : ''}`} onClick={toolsEnabled ? () => onTools('ringside') : undefined} title="Clic para ver/mover cartas del Ringside">
             <div className="zone-title">
               <span>Ringside · descarte/daño</span>
               <span className="mono">{p.ringside.length}</span>
@@ -678,11 +714,11 @@ function PlayConfirmModal({
             </div>
             <div className="row" style={{ gap: 6 }}>
               <span className="stat-chip">
-                Fortitud <b>{c.fortitude}F</b>
-              </span>
-              <span className="stat-chip">
-                Daño <b>{c.damage}D</b>
-              </span>
+Fortitude <b>{c.fortitude}F</b>
+                </span>
+                <span className="stat-chip">
+                  Daño <b>{c.damage}D</b>
+                </span>
             </div>
             {c.traits && c.traits.length > 0 && (
               <div className="row" style={{ gap: 6 }}>
