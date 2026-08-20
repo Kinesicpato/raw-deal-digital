@@ -34,6 +34,8 @@ export function PlayerToolsModal({
   const [to, setTo] = useState<ManualZone>('arsenal')
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [revealPick, setRevealPick] = useState(false)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [overIdx, setOverIdx] = useState<number | null>(null)
 
   const list = useMemo(() => {
     if (!p) return []
@@ -89,6 +91,28 @@ export function PlayerToolsModal({
     setSelected(new Set())
   }
 
+  const isArsenal = from === 'arsenal'
+
+  const handleDrop = (targetIdx: number) => {
+    setOverIdx(null)
+    if (dragIdx === null || dragIdx === targetIdx) {
+      setDragIdx(null)
+      return
+    }
+    const arr = [...list]
+    const [moved] = arr.splice(dragIdx, 1)
+    if (!moved) {
+      setDragIdx(null)
+      return
+    }
+    const insertAt = targetIdx > dragIdx ? targetIdx - 1 : targetIdx
+    arr.splice(insertAt, 0, moved)
+    const err = store.manualReorderArsenal(playerIdx, arr)
+    if (err) store.setLastError(err)
+    setSelected(new Set())
+    setDragIdx(null)
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -113,21 +137,63 @@ export function PlayerToolsModal({
 
         <div className="muted" style={{ marginBottom: 6, fontSize: 12 }}>
           Cartas de <b>{ZONE_LABEL[from]}</b> — tocá para seleccionar y luego elegí a dónde moverlas.
+          {isArsenal && <span> Arrastrá las cartas para reordenar el Arsenal.</span>}
         </div>
 
-        <div className="hand" style={{ width: '100%', maxHeight: 340, overflowY: 'auto', flexWrap: 'wrap' }}>
+        <div
+          className="hand"
+          style={{ width: '100%', maxHeight: 340, overflowY: 'auto', flexWrap: 'wrap' }}
+          onDragOver={isArsenal ? (e) => e.preventDefault() : undefined}
+          onDrop={isArsenal ? (e) => { e.preventDefault(); handleDrop(list.length) } : undefined}
+        >
           {list.length === 0 ? (
             <span className="muted">Zona vacía.</span>
           ) : (
-            list.map((id, idx) => (
-              <CardFace
-                key={`${id}-${idx}`}
-                id={id}
-                size="sm"
-                selected={selected.has(idx)}
-                onClick={() => toggle(idx)}
-              />
-            ))
+            list.map((id, idx) =>
+              isArsenal ? (
+                <div
+                  key={`${id}-${idx}`}
+                  className={`pt-drag-item ${dragIdx === idx ? 'pt-dragging' : ''} ${overIdx === idx ? 'pt-drop-target' : ''}`}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragIdx(idx)
+                    if (overIdx === idx) setOverIdx(null)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (overIdx !== idx) setOverIdx(idx)
+                  }}
+                  onDragLeave={() => {
+                    if (overIdx === idx) setOverIdx(null)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    handleDrop(idx)
+                  }}
+                  onDragEnd={() => {
+                    setDragIdx(null)
+                    setOverIdx(null)
+                  }}
+                >
+                  <CardFace
+                    id={id}
+                    size="sm"
+                    selected={selected.has(idx)}
+                    onClick={() => toggle(idx)}
+                  />
+                </div>
+              ) : (
+                <CardFace
+                  key={`${id}-${idx}`}
+                  id={id}
+                  size="sm"
+                  selected={selected.has(idx)}
+                  onClick={() => toggle(idx)}
+                />
+              ),
+            )
           )}
         </div>
 

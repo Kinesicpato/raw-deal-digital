@@ -44,6 +44,7 @@ export type IntentName =
   | 'manualRemove'
   | 'manualDrawFromArsenal'
   | 'manualShuffleArsenal'
+  | 'manualReorderArsenal'
   | 'manualRevealHand'
 
 export type ClientMsg =

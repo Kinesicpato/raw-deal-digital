@@ -230,6 +230,29 @@ h3 {
 }
 
 /* ============================================================
+   PLAYER TOOLS — arsenal drag-and-drop reorder
+   ============================================================ */
+.pt-drag-item {
+  flex: 0 0 auto;
+  cursor: grab;
+  border-radius: 8px;
+}
+.pt-drag-item:active {
+  cursor: grabbing;
+}
+.pt-drag-item .cardface {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.pt-drag-item.pt-dragging .cardface {
+  opacity: 0.45;
+  transform: scale(0.97);
+}
+.pt-drag-item.pt-drop-target .cardface {
+  box-shadow: 0 0 0 3px var(--gold), 0 3px 10px rgba(0, 0, 0, 0.55);
+  transform: scale(1.04);
+}
+
+/* ============================================================
    TABS (classification)
    ============================================================ */
 .tabs {

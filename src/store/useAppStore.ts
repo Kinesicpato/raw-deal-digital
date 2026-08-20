@@ -12,6 +12,7 @@ import {
   applyDecision,
   manualRingToArsenal,
   manualShuffleArsenal,
+  manualReorderArsenal,
   manualRevealHand,
   manualRemoveFromZone,
   manualZoneToArsenal,
@@ -94,6 +95,7 @@ interface AppState {
   clearError: () => void
   manualRingToArsenal: (playerIdx: number, cardIds: string[]) => string | null
   manualShuffleArsenal: (playerIdx: number) => void
+  manualReorderArsenal: (playerIdx: number, orderedIds: string[]) => string | null
   manualRevealHand: (playerIdx: number, targetIdx: number | null) => void
   manualRemove: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
@@ -354,6 +356,16 @@ export const useAppStore = create<AppState>()(
           manualShuffleArsenal(s.game, playerIdx)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
+        },
+
+        manualReorderArsenal: (playerIdx, orderedIds) => {
+          const s = get()
+          if (!s.game) return null
+          if (route('manualReorderArsenal', [playerIdx, orderedIds])) return null
+          const err = manualReorderArsenal(s.game, playerIdx, orderedIds)
+          set((st) => ({ game: st.game ? { ...st.game } : null }))
+          if (s.online.role === 'host' && s.game) broadcastState(s.game)
+          return err
         },
 
         manualRevealHand: (playerIdx, targetIdx) => {
@@ -633,6 +645,7 @@ const MANUAL_INTENTS: IntentName[] = [
   'manualRemove',
   'manualDrawFromArsenal',
   'manualShuffleArsenal',
+  'manualReorderArsenal',
   'manualRevealHand',
 ]
 

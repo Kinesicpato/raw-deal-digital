@@ -86,34 +86,18 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
   const defender = game?.players[decision.defenderIdx]
   const attacker = game?.players[game.resolution?.attacker ?? -1]
   const played = game?.resolution ? getCardSafe(game.resolution.cardId) : null
-  const [sel, setSel] = useState<string | null>(null)
 
-  if (sel) {
-    return (
-      <>
-        <h3>¿Dónde dejás «{getCardSafe(sel).name}»?</h3>
-        <p className="muted">
-          La reversión queda en tu <b>Ring Area</b> (suma fortitud en mesa) o en tu <b>Ringside</b> (descarte).
-        </p>
-        <div className="row" style={{ marginTop: 12, gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button className="ghost" onClick={() => setSel(null)}>Volver</button>
-          <button className="primary" onClick={() => onResolve({ cardId: sel, zone: 'ring' })}>
-            Dejar en Ring Area
-          </button>
-          <button className="primary" onClick={() => onResolve({ cardId: sel, zone: 'ringside' })}>
-            Dejar en Ringside
-          </button>
-        </div>
-      </>
-    )
-  }
+  // A picked card is reverted right away: reversals always go to the Ringside
+  // pile (no placement prompt) and the attacker's turn keeps going (main phase).
+  const pick = (id: string) => onResolve({ cardId: id, zone: 'ringside' })
 
   return (
     <>
       <h3>Ventana de Reversal</h3>
       <p className="muted">
         <b>{defender?.name}</b>, tu oponente <b>{attacker?.name}</b> jugó{' '}
-        <b>{played?.name ?? ''}</b>. Elegí <b>cualquier carta</b> de tu mano para revertirlo (o no revertir).
+        <b>{played?.name ?? ''}</b>. Elegí <b>cualquier carta</b> de tu mano para revertirlo
+        (va directo a tu <b>Ringside</b>; o no revertir).
       </p>
       {played && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
@@ -131,7 +115,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
       <div className="hand" style={{ maxHeight: 240, overflowY: 'auto', flexWrap: 'wrap' }}>
         {defender?.hand.map((id) => (
-          <CardFace key={id} id={id} size="sm" playable onClick={() => setSel(id)} />
+          <CardFace key={id} id={id} size="sm" playable onClick={() => pick(id)} />
         ))}
         {(!defender || defender.hand.length === 0) && <span className="muted">Sin cartas en mano.</span>}
       </div>

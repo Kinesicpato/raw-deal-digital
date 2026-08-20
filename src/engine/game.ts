@@ -582,15 +582,17 @@ export function reversalMatches(reversal: CardDef, attacked: CardDef): boolean {
 }
 
 /**
- * Manual reversal: the defender picks ANY card from hand to reverse, and
- * chooses where it goes (Ring Area or Ringside). The attacker's card goes to
- * Ringside and the attacker's turn ends.
+ * Manual reversal: the defender picks ANY card from hand to reverse. The
+ * reversal always goes to the defender's Ringside pile (no placement prompt).
+ * The attacker's card goes to Ringside and the attacker's turn does NOT end:
+ * it stays in "main" so effects can be resolved and the attacker ends the
+ * turn voluntarily with the "Terminar turno" button.
  */
 export function playReversal(
   state: GameState,
   defenderIdx: number,
   reversalId: string,
-  zone: 'ring' | 'ringside' = 'ring',
+  zone: 'ring' | 'ringside' = 'ringside',
 ): string | null {
   const res = state.resolution
   if (!res) return 'No active card to reverse.'
@@ -868,7 +870,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
         passReversal(state)
       } else {
         const p = payload as { cardId: string; zone: 'ring' | 'ringside' }
-        const err = playReversal(state, decision.defenderIdx, p.cardId, p.zone ?? 'ring')
+        const err = playReversal(state, decision.defenderIdx, p.cardId, p.zone ?? 'ringside')
         if (err) return err
       }
       return null
@@ -1131,6 +1133,25 @@ export function manualShuffleArsenal(state: GameState, playerIdx: number): void 
     p.arsenal[j] = tmp
   }
   log(state, playerIdx, 'Shuffled their Arsenal.')
+}
+
+/** Reorder the player's Arsenal (house-rule): `orderedIds` must be a
+ * permutation of the current Arsenal contents. */
+export function manualReorderArsenal(
+  state: GameState,
+  playerIdx: number,
+  orderedIds: string[],
+): string | null {
+  const p = state.players[playerIdx]
+  if (!p) return 'No player.'
+  if (orderedIds.length !== p.arsenal.length) return 'La carta ordenada no coincide con el Arsenal.'
+  const idSet = new Set(p.arsenal)
+  for (const id of orderedIds) {
+    if (!idSet.has(id)) return 'La carta ordenada no coincide con el Arsenal.'
+  }
+  p.arsenal = [...orderedIds]
+  log(state, playerIdx, 'Reordered their Arsenal.')
+  return null
 }
 
 /** Show one player's hand to a specific opponent (or hide it with null). */
