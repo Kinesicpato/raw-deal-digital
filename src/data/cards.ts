@@ -1767,9 +1767,9 @@ export const AJ_STYLES_FANSET_CARDS: CardDef[] = [
     subtypes: ['High Risk'],
     superstar: ['aj-styles'],
     fortitude: 0,
-    damage: 0,
+    damage: 8,
     text: 'High Risk. Can only be played after a successfully played card or as a Counter. When played from hand, your opponent must discard 1 random card from his Backlash in order to play reversals to this card.',
-    notes: 'Valores F/D del OCR; verificar.',
+    notes: 'D corregido por el usuario; F del OCR (verificar).',
     set: 'ALE',
   }),
   card({
