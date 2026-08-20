@@ -40,22 +40,23 @@ export function PlayerToolsModal({
   const dragIdxRef = useRef<number | null>(null)
 
   const list = useMemo(() => {
-    if (!p) return []
+    const pl = game.players[playerIdx]
+    if (!pl) return []
     switch (from) {
       case 'hand':
-        return p.hand
+        return pl.hand
       case 'arsenal':
-        return p.arsenal
+        return pl.arsenal
       case 'ring':
-        return p.ring
+        return pl.ring
       case 'ringside':
-        return p.ringside
+        return pl.ringside
       case 'midmatch':
-        return p.midmatchPlayed
+        return pl.midmatchPlayed
       case 'out':
-        return p.outOfGame
+        return pl.outOfGame
     }
-  }, [p, from])
+  }, [game, from, playerIdx])
 
   if (!p) return null
 
