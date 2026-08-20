@@ -85,7 +85,7 @@ abilityText:
     alignment: 'Both',
     gender: 'male',
     abilityText:
-      'Your Starting Hand Size is 7. (Perfil de muestra; habilidad sin automatizar en v1).',
+      'Superstar Ability — Once during each of your turns, before your Draw Segment, your opponent overturns 1 card. (Habilidad sin automatizar en v1.)',
     backlashLimit: { preMatch: 10, midMatch: 10 },
   },
   {
@@ -2352,7 +2352,26 @@ export const REVERSAL_EXTRAS_CARDS: CardDef[] = [
   }),
 ]
 
-export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
+/** Cartas del set fan "El pepe 2_merged" v14 (hojas 3x3 de reimpresiones).
+ *  La mayoría son reimpresiones de cartas genéricas ya en el catálogo; la única
+ *  nueva es la firma de Vince McMahon ("I'm Vincent Kennedy McMahon, Dammit!"). */
+export const PEPE_V14_CARDS: CardDef[] = [
+  card({
+    id: 'im-vincent-kennedy-mcmahon-dammit',
+    name: 'I\'m Vincent Kennedy McMahon, Dammit!',
+    type: 'Action',
+    extraTypes: ['Reversal'],
+    traits: ['Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { cardKinds: ['Action', 'Chain', 'Unique', 'Heat', 'Multi'] },
+    text: 'Action / Reversal: Special. As an action, your next card played this turn cannot be reversed. As a reversal, reverse any Unique or Superstar-specific card and end your opponent\'s turn.',
+    notes: 'Signature de Vince McMahon (set fan "El pepe" v14). Valores F/D del OCR; verificar. Superstar no presente en el catálogo; trata el rango de reversión como "Unique o Superstar-specific".',
+    set: 'El pepe v14',
+  }),
+]
+
+export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
 
 /** Convenience lookup. */
 const index = new Map<string, CardDef>()
