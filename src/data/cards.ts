@@ -761,9 +761,9 @@ export const KURT_BACKLASH_CARDS: CardDef[] = [
     name: 'Angle\'s … (carta sin nombre legible)',
     type: 'Maneuver',
     fortitude: 4,
-    damage: 6,
+    damage: 12,
     text: 'Can only be played after a successfully played maneuver. When successfully played, you may put 1 Unique card from your Ringside pile into your hand. While in your Ring area, your Maneuver cards are -6F.',
-    notes: 'Nombre ilegible en escaneo (pág. 12); completar.',
+    notes: 'Nombre ilegible en escaneo (pág. 12); D corregido a 12 por el usuario.',
     set: 'Unforgiven',
   }),
   card({
