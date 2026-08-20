@@ -322,7 +322,7 @@ h3 {
 .tool-tabs .tab[data-zone='ringside']::before {
   background: var(--red-bright);
 }
-.tool-tabs .tab[data-zone='backlash']::before {
+.tool-tabs .tab[data-zone='midmatch']::before {
   background: var(--purple);
 }
 .tool-tabs .tab[data-zone='out']::before {

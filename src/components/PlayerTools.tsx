@@ -4,13 +4,13 @@ import { CardFace } from './CardView'
 import type { GameState } from '../engine/types'
 import type { ManualZone } from '../engine/game'
 
-const ZONES: ManualZone[] = ['hand', 'arsenal', 'ring', 'ringside', 'backlash', 'out']
+const ZONES: ManualZone[] = ['hand', 'arsenal', 'ring', 'ringside', 'midmatch', 'out']
 const ZONE_LABEL: Record<ManualZone, string> = {
   hand: 'Mano',
   arsenal: 'Arsenal',
   ring: 'Ring Area',
   ringside: 'Ringside',
-  backlash: 'Backlash Deck',
+  midmatch: 'Mid Match',
   out: 'Fuera del juego',
 }
 
@@ -49,8 +49,8 @@ export function PlayerToolsModal({
         return p.ring
       case 'ringside':
         return p.ringside
-      case 'backlash':
-        return [...p.backlashPre, ...p.backlashMid]
+      case 'midmatch':
+        return p.midmatchPlayed
       case 'out':
         return p.outOfGame
     }
@@ -68,8 +68,8 @@ export function PlayerToolsModal({
         return p.ring.length
       case 'ringside':
         return p.ringside.length
-      case 'backlash':
-        return p.backlashPre.length + p.backlashMid.length
+      case 'midmatch':
+        return p.midmatchPlayed.length
       case 'out':
         return p.outOfGame.length
     }

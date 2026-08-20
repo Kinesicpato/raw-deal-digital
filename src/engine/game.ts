@@ -1022,7 +1022,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
 // MANUAL TABLE ACTIONS (house rules / player convenience)
 // ---------------------------------------------------------------------------
 
-export type ManualZone = 'hand' | 'arsenal' | 'ring' | 'ringside' | 'backlash' | 'out'
+export type ManualZone = 'hand' | 'arsenal' | 'ring' | 'ringside' | 'midmatch' | 'out'
 
 function zoneList(p: PlayerState, zone: ManualZone): string[] {
   switch (zone) {
@@ -1034,33 +1034,11 @@ function zoneList(p: PlayerState, zone: ManualZone): string[] {
       return p.ring
     case 'ringside':
       return p.ringside
-    case 'backlash':
-      return [...p.backlashPre, ...p.backlashMid]
+    case 'midmatch':
+      return p.midmatchPlayed
     case 'out':
       return p.outOfGame
   }
-}
-
-function removeFromPlayerZone(p: PlayerState, zone: ManualZone, id: string): void {
-  if (zone === 'backlash') {
-    const pile = p.backlashPre.includes(id) ? p.backlashPre : p.backlashMid
-    const i = pile.indexOf(id)
-    if (i >= 0) pile.splice(i, 1)
-    return
-  }
-  const list = zoneList(p, zone)
-  const i = list.indexOf(id)
-  if (i >= 0) list.splice(i, 1)
-}
-
-function pushToPlayerZone(p: PlayerState, zone: ManualZone, id: string): void {
-  if (zone === 'backlash') {
-    const c = getCard(id)
-    const pile = c.backlash === 'Pre-match' ? p.backlashPre : p.backlashMid
-    pile.push(id)
-    return
-  }
-  zoneList(p, zone).push(id)
 }
 
 /** Move any cards between any of a player's zones (house rule). Recomputes Fortitude. */
@@ -1074,15 +1052,16 @@ export function manualMoveCards(
   const p = state.players[playerIdx]
   if (!p) return 'No player.'
   if (from === to) return 'La zona de origen y destino son iguales.'
-  const hasInFrom = (id: string) =>
-    from === 'backlash' ? p.backlashPre.includes(id) || p.backlashMid.includes(id) : zoneList(p, from).includes(id)
-  const ids = cardIds.filter(hasInFrom)
+  const src = zoneList(p, from)
+  const dst = zoneList(p, to)
+  const ids = cardIds.filter((id) => src.includes(id))
   if (ids.length === 0) return 'No hay cartas seleccionadas en esa zona.'
   for (const id of ids) {
-    removeFromPlayerZone(p, from, id)
-    pushToPlayerZone(p, to, id)
+    const i = src.indexOf(id)
+    if (i >= 0) src.splice(i, 1)
   }
-  if (from === 'ring' || to === 'ring') {
+  dst.push(...ids)
+  if (from === 'ring' || to === 'ring' || from === 'midmatch' || to === 'midmatch') {
     p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   }
   log(state, playerIdx, `Moved ${ids.length} card${ids.length === 1 ? '' : 's'} from ${from} to ${to}.`)
