@@ -1755,6 +1755,128 @@ export const AJ_STYLES_CARDS: CardDef[] = [
   }),
 ]
 
+/** Cartas extra de AJ Styles del escaneo "AJ Styles.pdf" (hojas 6x6 con el
+ *  mismo set fan ALE). Las celdas repetidas de cartas ya existentes se mapean a
+ *  sus ids previos en OVERRIDES; aquí solo viven las 9 cartas nuevas. Las dos
+ *  últimas (xj 37/39) son Backlash Mid-match horizontales. */
+export const AJ_STYLES_FANSET_CARDS: CardDef[] = [
+  card({
+    id: 'aj-phenomenal-dropkick',
+    name: 'Phenomenal Dropkick',
+    type: 'Maneuver',
+    subtypes: ['High Risk'],
+    superstar: ['aj-styles'],
+    fortitude: 0,
+    damage: 0,
+    text: 'High Risk. Can only be played after a successfully played card or as a Counter. When played from hand, your opponent must discard 1 random card from his Backlash in order to play reversals to this card.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-the-face-that-runs-the-place',
+    name: 'The Face That Runs The Place',
+    type: 'Action',
+    traits: ['Multi', 'Unique'],
+    superstar: ['aj-styles'],
+    fortitude: 12,
+    damage: 0,
+    text: 'Action + Action. Draw up to 2 cards. Put up to 1 card from your Ringside into your hand; when that card is the next card you play this turn, it is -10F, reversals to it are +20F, and choose one: it is Multi, ignore the "Can only be played after..." text, or it cannot be reversed from hand by non-Superstar-specific reversals. Unique.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'maintain-hold',
+    name: 'Maintain Hold',
+    type: 'Action',
+    traits: ['Multi'],
+    fortitude: 10,
+    damage: 0,
+    text: 'Action + Action. Can only be played after a successfully played non-Restricted-Modification-Symbol Submission maneuver. End your turn. The maintained maneuver is not considered a Multi maneuver. You and your opponent cannot play any cards that do not reverse the maintained maneuver until it is reversed. Once during each of your turns, the maintained maneuver does its damage again with any effects. If the maintained maneuver is reversed, it is no longer considered maintained.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-styles-clash',
+    name: 'Styles Clash',
+    type: 'Maneuver',
+    extraTypes: ['Reversal'],
+    subtypes: ['Trademark Finisher'],
+    traits: ['Special', 'Unique'],
+    superstar: ['aj-styles'],
+    fortitude: 40,
+    damage: 25,
+    reverses: { cardTitles: ['rana'] },
+    text: 'Trademark Finisher / Reversal: Special. When played from Ringside, remove 4 cards in your Backlash from the game. As a maneuver, when you have 2+ other Trademark Finishers in your Ring, cannot be reversed from Arsenal. As a reversal, ignore any reversal restrictions from your opponent and reverse any card with "rana" in the title. Unique.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-beat-up-by-the-club',
+    name: 'Beat Up by The Club',
+    type: 'Reversal',
+    traits: ['Special', 'Run-in', 'Unique'],
+    superstar: ['aj-styles'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { maneuverTypes: ['*'] },
+    text: 'Reversal: Special: Run-in. Reverse any non-Superstar-specific maneuver, your opponent discards 1 random card, and shuffle up to 2 cards from your Ringside into your Arsenal; when he has a John Cena-specific card in his Ring, increase those numbers by 1, and when you are a Tag Team, double those numbers. During your turn when this card is in your hand or Ringside, you may remove it from the game and draw 1 card.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-the-club-stands-together',
+    name: 'The Club Stands Together',
+    type: 'Action',
+    traits: ['Multi', 'Unique', 'Run-in'],
+    superstar: ['aj-styles'],
+    fortitude: 12,
+    damage: 0,
+    text: 'Action + Action: Run-in. This card can only be reversed by 1 reversal card. When this card is in your Ring and you play a non-Chain maneuver as a Counter, your opponent must remove the top 2 cards of their Arsenal from the game to play a reversal from hand or Backlash to it. Unique.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-this-club-is-too-sweet',
+    name: 'This Club is Too Sweet!',
+    type: 'Action',
+    traits: ['Multi', 'Unique'],
+    superstar: ['aj-styles'],
+    fortitude: 0,
+    damage: 0,
+    text: 'Action + Action. Choose one: search your Arsenal for 1 non-Unique reversal, reveal it, put it in your hand and shuffle; OR shuffle up to 3 cards from your Ringside into your Arsenal and draw up to 3 cards; OR put up to 1 action and up to 1 reversal from your Ringside into your hand. Unique.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-phenomenal-combination',
+    name: 'AJ\'s Phenomenal Combination',
+    type: 'Maneuver',
+    subtypes: ['Strike'],
+    traits: ['Multi', 'Unique'],
+    superstar: ['aj-styles'],
+    backlash: 'Mid-match',
+    fortitude: 11,
+    damage: 11,
+    text: 'Mid-match Strike + Strike + Strike. This card requires 3 reversals to be reversed instead of 2. Your Mid-match Capacity is +1. When this maneuver is unsuccessful and your opponent played only 1 reversal in response to it, you may put it in your Backlash regardless of other effects. Unique.',
+    notes: 'Valores F/D del OCR; verificar. Mid-match Capacity +1 no automatizado.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'aj-aint-nobody-breaking-this-redneck',
+    name: 'Ain\'t Nobody Breakin\' This Redneck',
+    type: 'Reversal',
+    traits: ['Special', 'Permanent', 'Unique'],
+    superstar: ['aj-styles'],
+    backlash: 'Mid-match',
+    fortitude: 10,
+    damage: 0,
+    reverses: { cardTitles: ['break'], cardKinds: ['Action', 'Chain', 'Heat', 'Multi'] },
+    text: 'Mid-match Reversal: Special. Reverse any card with "break" in the title or any non-maneuver card. When this card is in your Ring, you may ignore effects from your opponent\'s cards with "psychology" in the title that would prevent you from playing cards or cause you to discard cards. Permanent. Unique.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+]
+
 /** Cartas de Braun Strowman extraídas del banco "Aj y Extras.pdf".
  *  Los textos se limpiaron a partir del OCR; valores F/D provisionales. */
 export const BRAUN_STROWMAN_CARDS: CardDef[] = [
@@ -2371,7 +2493,7 @@ export const PEPE_V14_CARDS: CardDef[] = [
   }),
 ]
 
-export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
+export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...AJ_STYLES_FANSET_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
 
 /** Convenience lookup. */
 const index = new Map<string, CardDef>()

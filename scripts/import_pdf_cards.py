@@ -461,6 +461,26 @@ OVERRIDES = {
     "El pepe 2_merged 2/s_28_r2c0.png": "between-the-ropes",
     "El pepe 2_merged 2/s_28_r2c1.png": "im-vincent-kennedy-mcmahon-dammit",
     "El pepe 2_merged 2/s_28_r2c2.png": "im-vincent-kennedy-mcmahon-dammit",
+    # AJ Styles.pdf — extra AJ Styles fan-set cards. Three A4 "sheets" where each
+    # card is its own placed image: pages 0-1 hold 6 portraits each (5 are
+    # repeats of existing ids and get their scanned art reinforced), page 2 holds
+    # the two horizontal (landscape) Backlash cards (37.jpg AJ's Phenomenal
+    # Combination, 39.jpg Ain't Nobody Breakin' This Redneck), both Mid-match so
+    # the deckbuilder drops them into the Mid-match Backlash zone.
+    "AJ Styles/10.jpg": "superstar-aj-styles",
+    "AJ Styles/12.jpg": "aj-phenomenal-dropkick",
+    "AJ Styles/14.jpg": "aj-phenomenal-forearm",
+    "AJ Styles/16.jpg": "aj-pele-kick",
+    "AJ Styles/18.jpg": "aj-calf-crusher",
+    "AJ Styles/20.jpg": "aj-the-face-that-runs-the-place",
+    "AJ Styles/23.jpg": "maintain-hold",
+    "AJ Styles/25.jpg": "aj-styles-clash",
+    "AJ Styles/27.jpg": "aj-i-am-phenomenal",
+    "AJ Styles/29.jpg": "aj-beat-up-by-the-club",
+    "AJ Styles/31.jpg": "aj-the-club-stands-together",
+    "AJ Styles/33.jpg": "aj-this-club-is-too-sweet",
+    "AJ Styles/37.jpg": "aj-phenomenal-combination",
+    "AJ Styles/39.jpg": "aj-aint-nobody-breaking-this-redneck",
 }
 
 W, H = 300, 420
