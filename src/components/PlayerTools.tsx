@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { CardFace } from './CardView'
 import type { GameState } from '../engine/types'
@@ -37,6 +37,7 @@ export function PlayerToolsModal({
   const [revealPick, setRevealPick] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
+  const dragIdxRef = useRef<number | null>(null)
 
   const list = useMemo(() => {
     if (!p) return []
@@ -100,22 +101,18 @@ export function PlayerToolsModal({
 
   const handleDrop = (targetIdx: number) => {
     setOverIdx(null)
-    if (dragIdx === null || dragIdx === targetIdx) {
-      setDragIdx(null)
-      return
-    }
+    const fromIdx = dragIdxRef.current
+    if (fromIdx === null) return
+    dragIdxRef.current = null
+    if (fromIdx === targetIdx) return
     const arr = [...list]
-    const [moved] = arr.splice(dragIdx, 1)
-    if (!moved) {
-      setDragIdx(null)
-      return
-    }
-    const insertAt = targetIdx > dragIdx ? targetIdx - 1 : targetIdx
+    const [moved] = arr.splice(fromIdx, 1)
+    if (!moved) return
+    const insertAt = targetIdx > fromIdx ? targetIdx - 1 : targetIdx
     arr.splice(insertAt, 0, moved)
     const err = store.manualReorderArsenal(playerIdx, arr)
     if (err) store.setLastError(err)
     setSelected(new Set())
-    setDragIdx(null)
   }
 
   return (
@@ -148,8 +145,8 @@ export function PlayerToolsModal({
         <div
           className="hand"
           style={{ width: '100%', maxHeight: 340, overflowY: 'auto', flexWrap: 'wrap' }}
-          onDragOver={isArsenal ? (e) => e.preventDefault() : undefined}
-          onDrop={isArsenal ? (e) => { e.preventDefault(); handleDrop(list.length) } : undefined}
+          onDragOver={isArsenal ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } : undefined}
+          onDrop={isArsenal ? (e) => { e.preventDefault(); if (e.target === e.currentTarget) handleDrop(list.length) } : undefined}
         >
           {list.length === 0 ? (
             <span className="muted">Zona vacía.</span>
@@ -158,11 +155,13 @@ export function PlayerToolsModal({
               isArsenal ? (
                 <div
                   key={`${id}-${idx}`}
-                  className={`pt-drag-item ${dragIdx === idx ? 'pt-dragging' : ''} ${overIdx === idx ? 'pt-drop-target' : ''}`}
+                  className={`pt-drag-item ${dragIdx === idx ? 'pt-dragging' : ''} ${overIdx === idx && dragIdx !== idx ? 'pt-drop-target' : ''}`}
                   draggable
                   onDragStart={(e) => {
+                    dragIdxRef.current = idx
                     setDragIdx(idx)
                     if (overIdx === idx) setOverIdx(null)
+                    e.dataTransfer.setData('text/plain', String(idx))
                     e.dataTransfer.effectAllowed = 'move'
                   }}
                   onDragOver={(e) => {
@@ -175,9 +174,11 @@ export function PlayerToolsModal({
                   }}
                   onDrop={(e) => {
                     e.preventDefault()
+                    e.stopPropagation()
                     handleDrop(idx)
                   }}
                   onDragEnd={() => {
+                    dragIdxRef.current = null
                     setDragIdx(null)
                     setOverIdx(null)
                   }}
