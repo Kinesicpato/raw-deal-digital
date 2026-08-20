@@ -377,6 +377,20 @@ OVERRIDES = {
     "Aj y Extras/414.jpg": None,
     "Aj y Extras/415.jpg": None,
     "Aj y Extras/416.jpg": None,
+    # Reversal extras.pdf — one 3x3 sheet (xref 10, 1136x1599 px). Cell r0c2 is
+    # the official "The Coach Says, "Today's the Day!"" already in the catalog
+    # (No Way Out 19.0); the rest are new generic fan cards (ALE/V1x) and all are
+    # upright portraits. The sheet raster itself (10.jpg) is not a card face.
+    "Reversal extras/10.jpg": None,
+    "Reversal extras/s_10_r0c0.png": "just-bring-it",
+    "Reversal extras/s_10_r0c1.png": "there-are-two-things-you-can-do-nothing",
+    "Reversal extras/s_10_r0c2.png": "the-coach-says-today-s-the-day",
+    "Reversal extras/s_10_r1c0.png": "lift-a-boot",
+    "Reversal extras/s_10_r1c1.png": "overshot-your-mark",
+    "Reversal extras/s_10_r1c2.png": "spot-adjustment",
+    "Reversal extras/s_10_r2c0.png": "blown-spot",
+    "Reversal extras/s_10_r2c1.png": "get-crowd-support",
+    "Reversal extras/s_10_r2c2.png": "im-desperate",
 }
 
 W, H = 300, 420

@@ -2252,7 +2252,107 @@ export const CLASSIC_CARDS: CardDef[] = [
   }),
 ]
 
-export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
+/** Cartas de la hoja 3x3 "Reversal extras.pdf". Cartas genéricas.
+ *  Los textos se limpiaron a partir del OCR; valores F/D provisionales. */
+export const REVERSAL_EXTRAS_CARDS: CardDef[] = [
+  card({
+    id: 'just-bring-it',
+    name: 'Just Bring It!',
+    type: 'Reversal',
+    traits: ['Face', 'Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { cardKinds: ['Action'] },
+    text: 'Reversal: Action: Face. Reverse any Action card if it is not the first Action card played this turn, and end your opponent\'s turn. He reveals his hand and discards all Action cards.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'there-are-two-things-you-can-do-nothing',
+    name: 'There Are Two Things You Can Do: Nothing, and Like It!',
+    type: 'Reversal',
+    traits: ['Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { cardKinds: ['Action'] },
+    text: 'Reversal: Action. Reverse any Action card and end your opponent\'s turn. He draws up to # cards, where # is equal to the reversed card\'s printed Fortitude Value.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'lift-a-boot',
+    name: 'Lift a Boot',
+    type: 'Reversal',
+    subtypes: ['High Risk'],
+    traits: ['Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { maneuverTypes: ['High Risk'], handOnly: true },
+    text: 'Reversal: High Risk: Special. Can only reverse a High Risk maneuver if played from your hand. End your opponent\'s turn. "He came to at the last moment." - Jim Ross.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'overshot-your-mark',
+    name: 'Overshot Your Mark',
+    type: 'Reversal',
+    traits: ['Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { maneuverTypes: ['Strike', 'High Risk'] },
+    text: 'Reversal: Special. Reverse any Strike maneuver, any High Risk maneuver of 5D or greater, or any maneuver played after the card titled Irish Whip, and end your opponent\'s turn. This card is +#D, where # is equal to the reversed maneuver\'s Damage.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'spot-adjustment',
+    name: 'Spot Adjustment',
+    type: 'Reversal',
+    traits: ['Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { maneuverTypes: ['*'] },
+    text: 'Reversal: Special. When played from your hand and when your Fortitude Rating is less than your opponent\'s Fortitude Rating, reverse any non-unique maneuver and end his turn. During your next turn, the first card you play is -#F, where # is equal to the Fortitude Value of the reversed maneuver.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'blown-spot',
+    name: 'Blown Spot',
+    type: 'Reversal',
+    traits: ['Special'],
+    fortitude: 0,
+    damage: 0,
+    reverses: { maneuverTypes: ['Strike', 'High Risk'] },
+    text: 'Reversal: Special. If your Fortitude Rating is equal to or less than your opponent\'s Fortitude Rating, you may reverse any Strike or High Risk maneuver and end your opponent\'s turn. If played from your hand, the first card played on your next turn is #F, where # is equal to the Fortitude Value of the maneuver being reversed.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'get-crowd-support',
+    name: 'Get Crowd Support',
+    type: 'Action',
+    traits: ['Face'],
+    fortitude: 10,
+    damage: 0,
+    text: 'Action: Face. Draw 1 card. Your next maneuver played this turn is +4D and your opponent\'s Reversal card to it is +12F.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+  card({
+    id: 'im-desperate',
+    name: 'I\'m Desperate',
+    type: 'Action',
+    traits: ['Face'],
+    fortitude: 0,
+    damage: 0,
+    text: 'Action: Face. Can only be played when your Fortitude Rating is less than your opponent\'s Fortitude Rating or you have at least 5 fewer cards in your hand than him. Your next card played this turn cannot be reversed.',
+    notes: 'Valores F/D del OCR; verificar.',
+    set: 'ALE',
+  }),
+]
+
+export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...OCR_CARDS].map((c) => applyVerifiedStats(c))
 
 /** Convenience lookup. */
 const index = new Map<string, CardDef>()
