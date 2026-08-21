@@ -309,15 +309,21 @@ export function startTurn(state: GameState): void {
 }
 
 export function endTurn(state: GameState): void {
-  if (state.winner !== null) return
+  if (state.winner !== null) {
+    // Game is already over, just clean up
+    state.pendingDecision = null
+    state.pendingEffects = null
+    return
+  }
   const active = state.players[state.activeIndex]
   if (active) active.reversedLastTurn = false
   // Count Out check at end of turn.
   if (active && active.arsenal.length === 0) {
     openConcedeChoice(state, state.activeIndex, 'countout')
-    if (state.pendingDecision?.type === 'concedeChoice') return
+    // pendingDecision is set by openConcedeChoice; we still advance the turn
+    // so the player can decide to continue or lose.
   }
-  if (state.winner !== null) return
+  // Always advance the turn so the phase changes to 'start'
   advanceTurn(state)
 }
 
