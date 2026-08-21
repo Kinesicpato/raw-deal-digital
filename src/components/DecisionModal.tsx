@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getCardSafe, useAppStore } from '../store/useAppStore'
 import type { PendingDecision } from '../engine/types'
 import { decisionOwner } from '../online/types'
@@ -12,12 +12,27 @@ export function DecisionModal() {
   const flipOverturn = useAppStore((s) => s.flipOverturn)
   const stopOverturn = useAppStore((s) => s.stopOverturn)
 
+  const processingRef = useRef(false)
+
   const d: PendingDecision | null = game?.pendingDecision ?? null
+
+  // Reset processing flag when the pending decision changes.
+  useEffect(() => {
+    processingRef.current = false
+  }, [d])
+
   if (!d || !game) return null
 
   // In an online match, only the player responsible for this decision may see it.
   const owner = decisionOwner(game)
   if (online.role && online.myIdx !== owner) return null
+
+  const guard = <T extends unknown[]>(fn: (...args: T) => void) =>
+    (...args: T) => {
+      if (processingRef.current) return
+      processingRef.current = true
+      fn(...args)
+    }
 
   return (
     <div className="modal-backdrop">
@@ -25,35 +40,35 @@ export function DecisionModal() {
         {d.type === 'chooseTarget' && (
           <ChooseTarget
             decision={d}
-            onPick={(idx) => resolvePending(idx)}
+            onPick={guard((idx) => resolvePending(idx))}
           />
         )}
         {d.type === 'reversalChoice' && (
-          <ReversalChoice decision={d} onResolve={resolveReversal} />
+          <ReversalChoice decision={d} onResolve={guard(resolveReversal)} />
         )}
         {d.type === 'overturnCards' && (
-          <OverturnCards decision={d} onFlip={flipOverturn} onStop={stopOverturn} />
+          <OverturnCards decision={d} onFlip={guard(flipOverturn)} onStop={guard(stopOverturn)} />
         )}
         {(d.type === 'chooseCardsFromHand') && (
-          <ChooseFromHand decision={d} onDone={(ids) => resolvePending(ids)} />
+          <ChooseFromHand decision={d} onDone={guard((ids) => resolvePending(ids))} />
         )}
         {d.type === 'chooseOpponentHandCard' && (
           <ChooseOpponentCard
             decision={d}
-            onPick={(id) => resolvePending(id)}
+            onPick={guard((id) => resolvePending(id))}
           />
         )}
         {d.type === 'chooseRingsideCards' && (
-          <ChooseRingside decision={d} onDone={(ids) => resolvePending(ids)} />
+          <ChooseRingside decision={d} onDone={guard((ids) => resolvePending(ids))} />
         )}
         {d.type === 'reorderOpponentArsenal' && (
-          <ReorderArsenal decision={d} onDone={(order) => resolvePending(order)} />
+          <ReorderArsenal decision={d} onDone={guard((order) => resolvePending(order))} />
         )}
         {d.type === 'searchArsenal' && (
-          <SearchArsenal decision={d} onPick={(id) => resolvePending(id)} />
+          <SearchArsenal decision={d} onPick={guard((id) => resolvePending(id))} />
         )}
         {d.type === 'concedeChoice' && (
-          <ConcedeChoice decision={d} onResolve={(v) => resolvePending(v)} />
+          <ConcedeChoice decision={d} onResolve={guard((v) => resolvePending(v))} />
         )}
       </div>
     </div>

@@ -266,7 +266,6 @@ export const useAppStore = create<AppState>()(
           if (!s.game) return
           const d = s.game.pendingDecision
           if (!d || d.type !== 'reversalChoice') return
-          s.game.pendingDecision = null
           const err = applyDecision(
             s.game,
             { type: 'reversalChoice', defenderIdx: d.defenderIdx, cardId: d.cardId },
