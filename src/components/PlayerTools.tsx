@@ -34,7 +34,6 @@ export function PlayerToolsModal({
   const [from, setFrom] = useState<ManualZone>(initialZone ?? 'hand')
   const [to, setTo] = useState<ManualZone>('arsenal')
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [revealPick, setRevealPick] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
   const dragIdxRef = useRef<number | null>(null)
@@ -240,55 +239,26 @@ export function PlayerToolsModal({
         </div>
 
         <div className="row" style={{ marginTop: 10, gap: 6, flexWrap: 'wrap' }}>
-          <button className="ghost" onClick={() => setRevealPick((v) => !v)}>
-            👁 {revealPick ? 'Elegí un jugador…' : 'Revelar mano del oponente'}
+          <span className="muted" style={{ fontSize: 12 }}>Mostrar tu mano a:</span>
+          {game.players.map((op, i) => {
+            if (i === playerIdx) return null
+            const shown = p.handRevealedTo === i
+            return (
+              <button
+                key={i}
+                className={`ghost ${shown ? 'reveal-target' : ''}`}
+                onClick={() => store.manualRevealHand(playerIdx, shown ? null : i)}
+              >
+                {shown ? '✓ ' : ''}{op.name}
+              </button>
+            )
+          })}
+          <button className="ghost" onClick={() => store.manualRevealHand(playerIdx, null)}>
+            Ocultar mano
           </button>
-          {revealPick && (
-            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              {game.players.map((op, i) => {
-                if (i === playerIdx) return null
-                const revealed = op.handRevealedTo === playerIdx
-                return (
-                  <button
-                    key={i}
-                    className={`ghost ${revealed ? 'reveal-target' : ''}`}
-                    onClick={() => {
-                      store.manualRevealHand(i, revealed ? null : playerIdx)
-                      setRevealPick(false)
-                    }}
-                  >
-                    {revealed ? '✓ ' : ''}{op.name}
-                  </button>
-                )
-              })}
-            </div>
-          )}
         </div>
 
         <ShowCardToOpponent game={game} playerIdx={playerIdx} list={list} from={from} selected={selected} />
-
-        {game.players.map((op, i) => {
-          if (i === playerIdx || op.handRevealedTo !== playerIdx) return null
-          return (
-            <div key={`revealed-${i}`} className="card" style={{ marginTop: 10 }}>
-              <div className="row" style={{ marginBottom: 6 }}>
-                <div className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
-                  Mano revelada de {op.name}
-                </div>
-                <button className="ghost" onClick={() => store.manualRevealHand(i, null)}>Ocultar</button>
-              </div>
-              {op.hand.length === 0 ? (
-                <span className="muted">Mano vacía.</span>
-              ) : (
-                <div className="hand" style={{ width: '100%', maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap' }}>
-                  {op.hand.map((id, j) => (
-                    <CardFace key={`${id}-${j}`} id={id} size="sm" />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
 
         <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
           <button className="primary" disabled={selected.size === 0} onClick={doMove}>
@@ -314,6 +284,8 @@ function ShowCardToOpponent({
   selected: Set<number>
 }) {
   const store = useAppStore.getState()
+  const [showPick, setShowPick] = useState(false)
+  const [pickCards, setPickCards] = useState<Set<number>>(new Set())
   const [pickOpponent, setPickOpponent] = useState<number | null>(null)
   const shown = game._shownCard
 
@@ -333,35 +305,81 @@ function ShowCardToOpponent({
     )
   }
 
-  const cardIds = [...selected].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
-  if (cardIds.length === 0) return null
+  // Cards selected in the zone viewer
+  const selectedIds = [...selected].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
+  // Cards picked within this component
+  const pickedIds = [...pickCards].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
+  const cardIds = selectedIds.length > 0 ? selectedIds : pickedIds
 
   return (
     <div className="show-opponent-pick" style={{ marginTop: 10 }}>
       <div className="row" style={{ marginBottom: 6 }}>
-        <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
-          Mostrar {cardIds.length === 1 ? 'esta carta' : 'estas cartas'} a:
-        </span>
+        <button
+          className="ghost"
+          onClick={() => {
+            setShowPick((v) => !v)
+            setPickCards(new Set())
+          }}
+        >
+          👁 {showPick ? 'Cerrar selector' : 'Mostrar carta(s) a oponente'}
+        </button>
       </div>
-      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-        {game.players.map((op, i) => {
-          if (i === playerIdx) return null
-          return (
-            <button
-              key={i}
-              className={`ghost ${pickOpponent === i ? 'reveal-target' : ''}`}
-              onClick={() => {
-                for (const cid of cardIds) {
-                  store.showCardToOpponent(playerIdx, cid, i)
-                }
-                setPickOpponent(null)
-              }}
-            >
-              {op.name}
-            </button>
-          )
-        })}
-      </div>
+      {showPick && (
+        <>
+          <p className="muted" style={{ fontSize: 12, margin: '0 0 6px' }}>
+            Seleccioná cartas de <b>{ZONE_LABEL[from]}</b> para mostrar:
+          </p>
+          <div className="show-opponent-pick" style={{ maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap', gap: 4, display: 'flex' }}>
+            {list.length === 0 && <span className="muted">Zona vacía.</span>}
+            {list.map((id, idx) => (
+              <div
+                key={`${id}-${idx}`}
+                onClick={() => {
+                  setPickCards((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(idx)) next.delete(idx)
+                    else next.add(idx)
+                    return next
+                  })
+                }}
+                style={{ cursor: 'pointer', border: pickCards.has(idx) ? '2px solid var(--gold)' : '2px solid transparent', borderRadius: 4 }}
+              >
+                <CardFace id={id} size="xs" />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {cardIds.length > 0 && (
+        <>
+          <div className="row" style={{ marginTop: 6, marginBottom: 4 }}>
+            <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
+              Mostrar {cardIds.length === 1 ? 'esta carta' : 'estas cartas'} a:
+            </span>
+          </div>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {game.players.map((op, i) => {
+              if (i === playerIdx) return null
+              return (
+                <button
+                  key={i}
+                  className={`ghost ${pickOpponent === i ? 'reveal-target' : ''}`}
+                  onClick={() => {
+                    for (const cid of cardIds) {
+                      store.showCardToOpponent(playerIdx, cid, i)
+                    }
+                    setPickCards(new Set())
+                    setShowPick(false)
+                    setPickOpponent(null)
+                  }}
+                >
+                  {op.name}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }

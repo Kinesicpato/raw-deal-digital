@@ -172,10 +172,7 @@ export function keepOpeningHand(state: GameState, playerIdx: number): void {
   if (!acted.includes(playerIdx)) acted.push(playerIdx)
   const alive = state.players.filter((ph) => !ph.eliminated).length
   if (acted.length >= alive) {
-    state.phase = 'prematch'
-    state._prematchActed = []
-    state.activeIndex = nextAlive(state, playerIdx)
-    log(state, state.activeIndex, 'Pre-match phase started.')
+    startMatch(state)
     return
   }
   state.activeIndex = nextAlive(state, playerIdx)

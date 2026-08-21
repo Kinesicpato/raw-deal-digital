@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppStore, getCardSafe } from '../store/useAppStore'
 import type { GameState, PlayerState } from '../engine/types'
-import { PREMATCH_STAGES } from '../engine/game'
 import { CardFace, CardDetailModal, cardTypeLabel } from '../components/CardView'
 import { CardZoomPreview } from '../components/CardZoom'
 import { DecisionModal } from '../components/DecisionModal'
@@ -111,8 +110,6 @@ export function GamePage() {
 
           {displayGame.phase === 'opening' && <OpeningZone game={displayGame} canInteract={showHandControls} />}
 
-          {displayGame.phase === 'prematch' && <PrematchZone game={displayGame} canInteract={showHandControls} />}
-
           {displayGame.phase === 'gameover' && <GameOver game={displayGame} />}
 
           {displayActive && !displayActive.isAI && displayGame.phase === 'main' && showHandControls && (
@@ -162,7 +159,6 @@ export function GamePage() {
 
 const phaseLabel: Record<string, string> = {
   opening: 'Elegí tu mano inicial',
-  prematch: 'Fase Pre-match',
   start: 'Inicio de turno',
   draw: 'Draw Segment',
   main: 'Main Segment',
@@ -576,47 +572,6 @@ function OpeningZone({ game, canInteract }: { game: GameState; canInteract: bool
   )
 }
 
-function PrematchZone({ game, canInteract }: { game: GameState; canInteract: boolean }) {
-  const active = game.players[game.activeIndex]
-  const stage = PREMATCH_STAGES[game.prematchStage] ?? 'Event'
-  const store = useAppStore.getState()
-
-  return (
-    <div className="card">
-      <h3>Fase Pre-match — Etapa: {stage}</h3>
-      <p className="muted">
-        {canInteract ? <>Actúa: <b>{active?.name}</b></> : <>{active?.name} está decidiendo…</>}
-      </p>
-      {canInteract && active && (
-        <>
-          <div className="card" style={{ marginTop: 8 }}>
-            <div className="big-label" style={{ marginTop: 0 }}>
-              Mano inicial de {active.name} ({active.hand.length} cartas)
-            </div>
-            <div className="hand" style={{ flexWrap: 'wrap', maxHeight: 260, overflowY: 'auto' }}>
-              {active.hand.map((id) => (
-                <CardFace key={id} id={id} size="sm" />
-              ))}
-              {active.hand.length === 0 && <span className="muted">Sin cartas en mano.</span>}
-            </div>
-          </div>
-          <div className="row" style={{ marginTop: 10 }}>
-            <div className="hand" style={{ flexWrap: 'wrap', maxHeight: 260, overflowY: 'auto', flex: 1 }}>
-              {active.backlashPre.map((id) => (
-                <CardFace key={id} id={id} size="sm" onClick={() => store.playPrematchAction(id)} />
-              ))}
-              {active.backlashPre.length === 0 && <span className="muted">No tienes Pre-match cards restantes.</span>}
-            </div>
-            <button className="ghost" onClick={() => store.passPrematchAction()}>
-              Pasar
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
 function HandZone({
   player,
   onCardClick,
@@ -766,20 +721,23 @@ function OverturnBanner({ game }: { game: GameState }) {
   const p = game.players[d.playerIdx]
   const res = game.resolution
   if (!p || !res) return null
-  const lastFlipped = d.overturned > 0 ? p.ringside[p.ringside.length - 1] : null
-  const lastCard = lastFlipped ? getCardSafe(lastFlipped) : null
+  const flipped = p.ringside.slice(-d.overturned)
+  if (flipped.length === 0) return null
   return (
-    <div className="overturn-banner" key={d.overturned}>
-      <span className="overturn-label">Volteando</span>
-      {lastCard && (
-        <span className="overturn-count">
-          Última: <b>{lastCard.name}</b>
-        </span>
-      )}
-      <span className="overturn-count">
-        Daño {d.overturned}/{d.damageToDeal}
-      </span>
-      <span className="overturn-count">Arsenal {p.arsenal.length}</span>
+    <div className="card" style={{ border: '1px solid var(--gold)', marginBottom: 8 }}>
+      <div className="row" style={{ alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span className="overturn-label">Volteando cartas</span>
+        <span className="stat-chip mono">Daño {d.overturned}/{d.damageToDeal}</span>
+        <span className="stat-chip mono">Arsenal {p.arsenal.length}</span>
+      </div>
+      <div className="hand" style={{ flexWrap: 'wrap', gap: 6 }}>
+        {flipped.map((id, i) => (
+          <div key={`${id}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <CardFace id={id} size="xs" />
+            <span className="muted" style={{ fontSize: 10, marginTop: 2 }}>#{i + 1}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

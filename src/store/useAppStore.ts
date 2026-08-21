@@ -7,8 +7,6 @@ import {
   playCard,
   endTurn,
   activateRingCard,
-  passPrematch,
-  playPrematchCard,
   applyDecision,
   manualRingToArsenal,
   manualShuffleArsenal,
@@ -83,8 +81,6 @@ interface AppState {
   redrawOpeningAction: (count: number) => void
   keepHandAction: () => void
   playCardAction: (cardId: string, source?: 'hand' | 'midmatch' | 'prematch') => void
-  playPrematchAction: (cardId: string) => void
-  passPrematchAction: () => void
   endTurnAction: () => void
   activateRingAction: (cardId: string) => void
   resolvePending: (payload: unknown) => void
@@ -227,26 +223,6 @@ export const useAppStore = create<AppState>()(
             set({ lastError: err })
             return
           }
-          refreshGame(set, get)
-        },
-
-        playPrematchAction: (cardId) => {
-          if (route('playPrematchAction', [cardId])) return
-          const s = get()
-          if (!s.game) return
-          const err = playPrematchCard(s.game, s.game.activeIndex, cardId)
-          if (err) {
-            set({ lastError: err })
-            return
-          }
-          refreshGame(set, get)
-        },
-
-        passPrematchAction: () => {
-          if (route('passPrematchAction', [])) return
-          const s = get()
-          if (!s.game) return
-          passPrematch(s.game)
           refreshGame(set, get)
         },
 
