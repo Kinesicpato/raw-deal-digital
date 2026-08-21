@@ -117,4 +117,6 @@ export interface GameState {
   _prematchActed: number[]
   /** Players who already chose (kept) their opening hand. */
   _openingKept: number[]
+  /** Manual house-rule: a card being shown to a specific opponent. */
+  _shownCard?: { cardId: string; from: number; to: number } | null
 }

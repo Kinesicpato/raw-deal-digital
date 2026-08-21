@@ -545,8 +545,8 @@ export function getPlayableReversals(state: GameState, defenderIdx: number): str
   if (!res) return []
   const defender = state.players[defenderIdx]
   if (!defender) return []
-  // Manual mode: any card in hand may be used to reverse.
-  return [...defender.hand]
+  // Manual mode: any card in hand OR any Mid-match Backlash card may reverse.
+  return [...defender.hand, ...defender.backlashMid]
 }
 
 /** For the AI only: keep the reversal-criteria matching to pick smart reversals. */
@@ -592,7 +592,7 @@ export function playReversal(
   state: GameState,
   defenderIdx: number,
   reversalId: string,
-  zone: 'ring' | 'ringside' = 'ringside',
+  zone: 'ring' | 'ringside' | 'midmatch' = 'ringside',
 ): string | null {
   const res = state.resolution
   if (!res) return 'No active card to reverse.'
@@ -601,16 +601,26 @@ export function playReversal(
   if (!res.waitingHandReversal && !res.partialReversal) return 'No reversal window open.'
   if (state.activeIndex === defenderIdx) return 'You cannot reverse your own card.'
 
+  // Check if the card is in hand or in the Mid-match Backlash deck.
   const handIdx = defender.hand.indexOf(reversalId)
-  if (handIdx < 0) return 'Card is not in your hand.'
-  defender.hand.splice(handIdx, 1)
+  const backlashIdx = defender.backlashMid.indexOf(reversalId)
+  if (handIdx < 0 && backlashIdx < 0) return 'Card is not in your hand or Backlash deck.'
+  if (handIdx >= 0) {
+    defender.hand.splice(handIdx, 1)
+  } else {
+    defender.backlashMid.splice(backlashIdx, 1)
+  }
 
   const rev = getCard(reversalId)
   const attacked = getCard(res.cardId)
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
-  if (zone === 'ring') {
+  // Backlash reversal cards go to Mid-match zone; hand reversals go to Ringside or Ring.
+  const cameFromBacklash = backlashIdx >= 0
+  if (cameFromBacklash) {
+    defender.midmatchPlayed.push(reversalId)
+  } else if (zone === 'ring') {
     defender.ring.push(reversalId)
     defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
   } else defender.ringside.push(reversalId)
@@ -869,7 +879,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
       if (payload === null) {
         passReversal(state)
       } else {
-        const p = payload as { cardId: string; zone: 'ring' | 'ringside' }
+        const p = payload as { cardId: string; zone: 'ring' | 'ringside' | 'midmatch' }
         const err = playReversal(state, decision.defenderIdx, p.cardId, p.zone ?? 'ringside')
         if (err) return err
       }

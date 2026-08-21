@@ -46,6 +46,7 @@ export type IntentName =
   | 'manualShuffleArsenal'
   | 'manualReorderArsenal'
   | 'manualRevealHand'
+  | 'showCardToOpponent'
 
 export type ClientMsg =
   | { type: 'hello'; name: string }

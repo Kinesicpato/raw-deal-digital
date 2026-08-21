@@ -265,6 +265,8 @@ export function PlayerToolsModal({
           )}
         </div>
 
+        <ShowCardToOpponent game={game} playerIdx={playerIdx} list={list} from={from} selected={selected} />
+
         {game.players.map((op, i) => {
           if (i === playerIdx || op.handRevealedTo !== playerIdx) return null
           return (
@@ -293,6 +295,72 @@ export function PlayerToolsModal({
             Mover {selected.size || ''} → {ZONE_LABEL[to]}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ShowCardToOpponent({
+  game,
+  playerIdx,
+  list,
+  from,
+  selected,
+}: {
+  game: GameState
+  playerIdx: number
+  list: string[]
+  from: ManualZone
+  selected: Set<number>
+}) {
+  const store = useAppStore.getState()
+  const [pickOpponent, setPickOpponent] = useState<number | null>(null)
+  const shown = game._shownCard
+
+  if (shown && shown.from === playerIdx) {
+    return (
+      <div className="show-opponent-pick" style={{ marginTop: 10 }}>
+        <div className="row" style={{ marginBottom: 6 }}>
+          <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
+            Mostrando a {game.players[shown.to]?.name}:
+          </span>
+          <button className="ghost" onClick={() => store.clearShownCard()}>Ocultar</button>
+        </div>
+        <div className="hand" style={{ flexWrap: 'wrap' }}>
+          <CardFace id={shown.cardId} size="sm" />
+        </div>
+      </div>
+    )
+  }
+
+  const cardIds = [...selected].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
+  if (cardIds.length === 0) return null
+
+  return (
+    <div className="show-opponent-pick" style={{ marginTop: 10 }}>
+      <div className="row" style={{ marginBottom: 6 }}>
+        <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
+          Mostrar {cardIds.length === 1 ? 'esta carta' : 'estas cartas'} a:
+        </span>
+      </div>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        {game.players.map((op, i) => {
+          if (i === playerIdx) return null
+          return (
+            <button
+              key={i}
+              className={`ghost ${pickOpponent === i ? 'reveal-target' : ''}`}
+              onClick={() => {
+                for (const cid of cardIds) {
+                  store.showCardToOpponent(playerIdx, cid, i)
+                }
+                setPickOpponent(null)
+              }}
+            >
+              {op.name}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

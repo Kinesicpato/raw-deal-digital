@@ -88,7 +88,7 @@ interface AppState {
   endTurnAction: () => void
   activateRingAction: (cardId: string) => void
   resolvePending: (payload: unknown) => void
-  resolveReversal: (payload: { cardId: string; zone: 'ring' | 'ringside' } | null) => void
+  resolveReversal: (payload: { cardId: string; zone: 'ring' | 'ringside' | 'midmatch' } | null) => void
   flipOverturn: () => void
   stopOverturn: () => void
   newGameAgain: () => void
@@ -101,6 +101,8 @@ interface AppState {
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
   manualMove: (playerIdx: number, from: ManualZone, to: ManualZone, cardIds: string[]) => string | null
+  showCardToOpponent: (fromPlayer: number, cardId: string, toPlayer: number) => void
+  clearShownCard: () => void
   setLastError: (msg: string | null) => void
 
   reshareDecks: () => void
@@ -373,6 +375,23 @@ export const useAppStore = create<AppState>()(
           if (!s.game) return
           if (route('manualRevealHand', [playerIdx, targetIdx])) return
           manualRevealHand(s.game, playerIdx, targetIdx)
+          set((st) => ({ game: st.game ? { ...st.game } : null }))
+          if (s.online.role === 'host' && s.game) broadcastState(s.game)
+        },
+
+        showCardToOpponent: (fromPlayer, cardId, toPlayer) => {
+          const s = get()
+          if (!s.game) return
+          if (route('showCardToOpponent', [fromPlayer, cardId, toPlayer])) return
+          s.game._shownCard = { cardId, from: fromPlayer, to: toPlayer }
+          set((st) => ({ game: st.game ? { ...st.game } : null }))
+          if (s.online.role === 'host' && s.game) broadcastState(s.game)
+        },
+
+        clearShownCard: () => {
+          const s = get()
+          if (!s.game) return
+          s.game._shownCard = null
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
         },

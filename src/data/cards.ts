@@ -317,7 +317,7 @@ export const KURT_CARDS: CardDef[] = [
     type: 'Maneuver',
     subtypes: ['Submission'],
     fortitude: 2,
-    damage: 5,
+    damage: 3,
     effect: [{ kind: 'lookAtOpponentArsenal', amount: 5, order: 'any' }],
     text: 'When successfully played, look at the top 5 cards of your opponent\'s Arsenal and put them back on top of his Arsenal in any order.',
     notes: 'Reordenamiento manual se resuelve en UI.',

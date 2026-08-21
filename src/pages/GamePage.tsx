@@ -105,6 +105,10 @@ export function GamePage() {
 
           <RingZone game={displayGame} onCardClick={setDetail} onCardHover={setZoom} />
 
+          {displayGame.resolution?.overturning && displayGame.pendingDecision?.type === 'overturnCards' && (
+            <OverturnBanner game={displayGame} />
+          )}
+
           {displayGame.phase === 'opening' && <OpeningZone game={displayGame} canInteract={showHandControls} />}
 
           {displayGame.phase === 'prematch' && <PrematchZone game={displayGame} canInteract={showHandControls} />}
@@ -752,6 +756,30 @@ Fortitude <b>{c.fortitude}F</b>
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function OverturnBanner({ game }: { game: GameState }) {
+  const d = game.pendingDecision
+  if (!d || d.type !== 'overturnCards') return null
+  const p = game.players[d.playerIdx]
+  const res = game.resolution
+  if (!p || !res) return null
+  const lastFlipped = d.overturned > 0 ? p.ringside[p.ringside.length - 1] : null
+  const lastCard = lastFlipped ? getCardSafe(lastFlipped) : null
+  return (
+    <div className="overturn-banner" key={d.overturned}>
+      <span className="overturn-label">Volteando</span>
+      {lastCard && (
+        <span className="overturn-count">
+          Última: <b>{lastCard.name}</b>
+        </span>
+      )}
+      <span className="overturn-count">
+        Daño {d.overturned}/{d.damageToDeal}
+      </span>
+      <span className="overturn-count">Arsenal {p.arsenal.length}</span>
     </div>
   )
 }

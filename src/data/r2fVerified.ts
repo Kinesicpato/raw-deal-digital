@@ -19,7 +19,7 @@ export const R2F_VERIFIED: Record<string, { f: number; d: number; sv: number | n
   "Atomic Driver": { f: 13, d: 12, sv: 1, src: "Set_16.0 #30/181" },
   "Atomic Power Slam": { f: 18, d: 12, sv: 2, src: "NoWayOut_19.0 #29/172" },
   "Backslide": { f: 5, d: 1, sv: null, src: "Mania_5.0 #16/150" },
-  "Bear Hug": { f: 4, d: 5, sv: null, src: "Premiere_1.0 #53/150 (D:5 confirmado con la carta física de Kurt)" },
+  "Bear Hug": { f: 4, d: 3, sv: null, src: "Premiere_1.0 #53/150 (D:3 corregido por el usuario)" },
   "Between the Ropes": { f: 0, d: 0, sv: null, src: "NoWayOut_19.0 #49/172" },
   "Big Splash in the Corner": { f: 8, d: 10, sv: 1, src: "Backlash_3.0 #02/150" },
   "Blatant Chokehold": { f: 7, d: 13, sv: null, src: "Tournament #32/TK (F) Blatant Chokehold" },
