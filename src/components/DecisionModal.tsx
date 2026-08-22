@@ -16,10 +16,12 @@ export function DecisionModal() {
 
   const d: PendingDecision | null = game?.pendingDecision ?? null
 
-  // Reset processing flag when the pending decision changes.
+  // Reset processing flag whenever the game state changes (new broadcast,
+  // turn advance, etc.) so the anti-double-click guard never stays stale
+  // across different decisions or phases.
   useEffect(() => {
     processingRef.current = false
-  }, [d])
+  }, [game])
 
   if (!d || !game) return null
 

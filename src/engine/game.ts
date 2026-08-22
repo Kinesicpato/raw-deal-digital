@@ -320,10 +320,11 @@ export function endTurn(state: GameState): void {
   // Count Out check at end of turn.
   if (active && active.arsenal.length === 0) {
     openConcedeChoice(state, state.activeIndex, 'countout')
-    // pendingDecision is set by openConcedeChoice; we still advance the turn
-    // so the player can decide to continue or lose.
+    // Wait for the player to decide (concede or keep playing) before
+    // advancing the turn.  The concedeChoice handler calls advanceTurn
+    // when the player declines.
+    return
   }
-  // Always advance the turn so the phase changes to 'start'
   advanceTurn(state)
 }
 
