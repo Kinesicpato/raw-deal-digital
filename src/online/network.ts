@@ -11,7 +11,7 @@ import {
 } from './types'
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-export const MAX_SEATS = 5
+export const MAX_SEATS = 4
 
 export function randomCode(length = 5): string {
   let out = ''

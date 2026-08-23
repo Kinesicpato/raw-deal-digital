@@ -14,7 +14,7 @@ export function LobbyPage() {
   const clearError = useAppStore((s) => s.clearError)
 
   const [name, setName] = useState('')
-  const [seats, setSeats] = useState(2)
+  const [guests, setGuests] = useState(1)
   const [code, setCode] = useState('')
 
   if (!online.role) {
@@ -25,18 +25,21 @@ export function LobbyPage() {
           <h3>Crear una sala</h3>
           <label>Tu nombre</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Dwayne" />
-          <label style={{ marginTop: 8 }}>Jugadores</label>
-          <select value={seats} onChange={(e) => setSeats(Number(e.target.value))}>
-            {[2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>{n} jugadores</option>
+          <label style={{ marginTop: 8 }}>Invitados</label>
+          <select value={guests} onChange={(e) => setGuests(Number(e.target.value))}>
+            {[1, 2, 3].map((n) => (
+              <option key={n} value={n}>{n} {n === 1 ? 'invitado' : 'invitados'}</option>
             ))}
           </select>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {guests + 1} jugadores en total (vos + {guests})
+          </div>
           <div className="row" style={{ marginTop: 14, gap: 8, justifyContent: 'flex-end' }}>
             <button className="ghost" onClick={() => store.setView('menu')}>Volver</button>
             <button
               className="primary"
               disabled={!name.trim()}
-              onClick={() => store.createRoom(name.trim(), seats)}
+              onClick={() => store.createRoom(name.trim(), guests + 1)}
             >
               Crear sala
             </button>
@@ -115,6 +118,9 @@ export function LobbyPage() {
 
       <div className="card" style={{ maxWidth: 640, margin: '0 auto' }}>
         <h3>Jugadores ({online.roster.filter((r) => r.connected).length}/{online.roster.length})</h3>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+          {online.roster.length - 1} {online.roster.length - 1 === 1 ? 'invitado' : 'invitados'} máximo
+        </div>
         {online.roster.map((r) => {
           const isMe = myIdx === r.idx
           return (
@@ -274,7 +280,7 @@ export function LobbyPage() {
             {!canStart && (
               <span className="muted">
                 {online.roster.filter((r) => r.connected).length < online.roster.length
-                  ? `Faltan conectarse ${online.roster.length - online.roster.filter((r) => r.connected).length} jugador(es). Compartí el código ${online.code} para que ingresen.`
+                  ? `Faltan conectarse ${online.roster.length - online.roster.filter((r) => r.connected).length} invitado(s). Compartí el código ${online.code} para que ingresen.`
                   : 'Todos deben elegir Superestrella y mazo.'}
               </span>
             )}
