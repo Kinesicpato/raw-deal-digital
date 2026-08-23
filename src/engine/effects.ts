@@ -3,10 +3,6 @@ import { getCard } from '../data/cards'
 import type { GameState, PendingEffects } from './types'
 import { countTrait, isChainCard } from './rules'
 
-function log(state: GameState, player: number, text: string) {
-  state.log.push({ turn: state.turnNumber, player, text })
-}
-
 function computeAmount(state: GameState, player: number, amount: number | string): number {
   if (typeof amount === 'number') return amount
   if (amount === 'chainManeuversInRing') {
@@ -51,7 +47,6 @@ export function resolveNextEffect(state: GameState): void {
         if (c) source.hand.push(c)
         drawn++
       }
-      log(state, q.sourcePlayer, `Drew ${drawn} card${drawn === 1 ? '' : 's'}.`)
       break
     }
 
@@ -70,7 +65,6 @@ export function resolveNextEffect(state: GameState): void {
       if (n < amt) {
         eliminate(state, target, 'pin', q.sourcePlayer)
       }
-      log(state, target, `Overturned ${n} card${n === 1 ? '' : 's'} (effect).`)
       break
     }
 
@@ -82,7 +76,6 @@ export function resolveNextEffect(state: GameState): void {
         if (c) source.ringside.push(c)
         n++
       }
-      log(state, q.sourcePlayer, `Discarded ${n} card${n === 1 ? '' : 's'}.`)
       break
     }
 
@@ -99,7 +92,6 @@ export function resolveNextEffect(state: GameState): void {
           if (c) p.ringside.push(c)
           n++
         }
-        log(state, target, `Discarded ${n} card${n === 1 ? '' : 's'}.`)
       } else {
         state.pendingDecision = { type: 'chooseCardsFromHand', playerIdx: target, count: amt, purpose: 'discard' }
         return
@@ -115,7 +107,6 @@ export function resolveNextEffect(state: GameState): void {
         if (c) source.arsenal.push(c)
         n++
       }
-      log(state, q.sourcePlayer, `Shuffled ${n} card${n === 1 ? '' : 's'} from Ringside into your Arsenal.`)
       break
     }
 
@@ -127,7 +118,6 @@ export function resolveNextEffect(state: GameState): void {
           if (c) source.hand.push(c)
           n++
         }
-        log(state, q.sourcePlayer, `Put ${n} card${n === 1 ? '' : 's'} from Ringside into hand.`)
       } else {
         state.pendingDecision = {
           type: 'chooseRingsideCards',
@@ -154,7 +144,6 @@ export function resolveNextEffect(state: GameState): void {
           }
           n++
         }
-        log(state, q.sourcePlayer, `Searched your Arsenal for ${n} card${n === 1 ? '' : 's'}.`)
       } else {
         const candidates = source.arsenal.filter((id) => matchesSearch(getCard(id), effect.filter))
         const count = Math.min(effect.amount, candidates.length)
@@ -171,7 +160,6 @@ export function resolveNextEffect(state: GameState): void {
     }
 
     case 'lookAtOpponentHand': {
-      log(state, q.sourcePlayer, 'Looked at your opponent\'s hand.')
       break
     }
 
@@ -194,7 +182,6 @@ export function resolveNextEffect(state: GameState): void {
     case 'lookAtOpponentArsenal': {
       if (state.players[q.sourcePlayer]?.isAI) {
         // AI keeps order.
-        log(state, q.sourcePlayer, `Looked at the top ${effect.amount} cards of your opponent's Arsenal.`)
       } else {
         state.pendingDecision = {
           type: 'reorderOpponentArsenal',
@@ -215,18 +202,15 @@ export function resolveNextEffect(state: GameState): void {
         cannotBeTitled: effect.cannotBeTitled ?? prev?.cannotBeTitled,
         countAsSetUp: effect.countAsSetUp === true || (prev?.countAsSetUp ?? false),
       }
-      log(state, q.sourcePlayer, 'Prepared a bonus for your next card.')
       break
     }
 
     case 'opponentCannotPlayCardTitled': {
-      log(state, q.sourcePlayer, `Your opponent cannot play ${effect.titles.join(', ')} ${effect.during}.`)
       break
     }
 
     case 'gainFortitude': {
       source.fortitude += effect.amount
-      log(state, q.sourcePlayer, `Fortitude Rating +${effect.amount}.`)
       break
     }
 
@@ -237,7 +221,6 @@ export function resolveNextEffect(state: GameState): void {
         if (c) source.hand.push(c)
         n++
       }
-      log(state, q.sourcePlayer, `Drew ${n} card${n === 1 ? '' : 's'} from Stun Value.`)
       break
     }
 
@@ -257,7 +240,6 @@ export function resolveNextEffect(state: GameState): void {
           if (c) source.hand.push(c)
           n++
         }
-        log(state, q.sourcePlayer, `Discarded ${count} and put ${count} from Ringside into hand.`)
       } else {
         state.pendingDecision = { type: 'chooseCardsFromHand', playerIdx: q.sourcePlayer, count: 0, purpose: 'switch' }
         return
@@ -304,7 +286,6 @@ export function eliminate(state: GameState, idx: number, reason: 'pin' | 'counto
   if (!p || p.eliminated) return
   p.eliminated = true
   p.eliminatedReason = reason
-  log(state, idx, `Eliminated (${reason}).`)
   checkGameOver(state)
 }
 

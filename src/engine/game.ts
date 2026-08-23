@@ -22,10 +22,6 @@ export interface NewGameConfig {
   }>
 }
 
-function log(state: GameState, player: number, text: string) {
-  state.log.push({ turn: state.turnNumber, player, text })
-}
-
 export function newGame(cfg: NewGameConfig): GameState {
   const players: PlayerState[] = cfg.players.map((p, i) => ({
     id: `p${i}`,
@@ -65,7 +61,6 @@ export function newGame(cfg: NewGameConfig): GameState {
     chainSafeIndex: null,
     winner: null,
     winType: null,
-    log: [],
     _prematchActed: [],
     _openingKept: [],
   }
@@ -82,15 +77,13 @@ export function newGame(cfg: NewGameConfig): GameState {
   if (first !== undefined) state.activeIndex = first
 
   // Shuffle each Arsenal and deal the opening hand before the Pre-match.
-  players.forEach((p, idx) => {
+  players.forEach((p) => {
     p.arsenal = shuffled(p.arsenal)
     const ss = getSuperstar(p.superstarId)
     drawCards(p, p.handSize ?? ss.handSize, getCard)
     ensurePlayableOpeningHand(state, p)
-    log(state, idx, `${p.name} barajó su Arsenal y robó su mano inicial (${p.hand.length} cartas).`)
   })
 
-  log(state, state.activeIndex, 'Opening hand selection - choose which cards to keep.')
   return state
 }
 
@@ -145,7 +138,6 @@ export function discardOpeningCards(state: GameState, playerIdx: number, cardIds
   if (kept.length === 0) return null
   p.hand = p.hand.filter((id) => !cardIds.includes(id))
   p.arsenal = shuffled([...p.arsenal, ...cardIds])
-  log(state, playerIdx, `${p.name} devolvió ${cardIds.length} cartas al Arsenal.`)
   return null
 }
 
@@ -161,7 +153,6 @@ export function redrawOpeningCards(state: GameState, playerIdx: number, count: n
   const n = Math.max(1, count)
   const drawn = drawCards(p, n, getCard)
   if (drawn === 0) return 'No hay cartas en el Arsenal para robar.'
-  log(state, playerIdx, `${p.name} tomó ${drawn} carta(s) del Arsenal.`)
   return null
 }
 
@@ -176,7 +167,6 @@ export function keepOpeningHand(state: GameState, playerIdx: number): void {
     return
   }
   state.activeIndex = nextAlive(state, playerIdx)
-  log(state, state.activeIndex, `${state.players[state.activeIndex]?.name ?? ''} elige su mano inicial.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +217,6 @@ export function playPrematchCard(state: GameState, playerIdx: number, cardId: st
   p.backlashPre = p.backlashPre.filter((id) => id !== cardId)
   p.ring.push(cardId)
   p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
-  log(state, playerIdx, `Played Pre-match card "${getCard(cardId).name}".`)
   advancePrematch(state, playerIdx)
   return null
 }
@@ -268,7 +257,6 @@ export function startMatch(state: GameState): void {
   const first = ordered[0]
   if (first !== undefined) state.activeIndex = first
   state.phase = 'start'
-  log(state, state.activeIndex, 'The match begins.')
   startTurn(state)
 }
 
@@ -297,13 +285,11 @@ export function startTurn(state: GameState): void {
     state.chainSafeIndex = null
     state.resolution = null
     state.pendingDecision = null
-    log(state, state.activeIndex, `Start of turn ${state.turnNumber} for ${p.name}.`)
   }
   // Draw Segment: Mankind and Cactus Jack always draw 2, everyone else draws 1.
   if (p) {
     const drawCount = DRAW_TWO_SUPERSTARS.includes(p.superstarId) ? 2 : 1
     drawCards(p, drawCount, getCard)
-    log(state, state.activeIndex, `Drew ${drawCount} card${drawCount === 1 ? '' : 's'} (Draw Segment).`)
   }
   state.phase = 'main'
 }
@@ -616,7 +602,6 @@ export function playReversal(
   }
 
   const rev = getCard(reversalId)
-  const attacked = getCard(res.cardId)
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
@@ -629,16 +614,13 @@ export function playReversal(
     defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
   } else defender.ringside.push(reversalId)
 
-  log(state, defenderIdx, `Played "${rev.name}" against "${attacked.name}".`)
 
   // Reversal effects are never applied automatically — show the text.
   if (rev.effect && rev.effect.length > 0) {
-    log(state, defenderIdx, `"${rev.name}" texto de efecto (ejecutalo a mano): ${rev.text}`)
   }
 
   // Attacker's card goes to Ringside (reversed from hand).
   attacker.ringside.push(res.cardId)
-  log(state, res.attacker, `"${attacked.name}" fue revertido y fue a Ringside.`)
 
   attacker.reversedLastTurn = true
   defender.reversedLastTurn = false
@@ -650,7 +632,6 @@ export function playReversal(
   // often effects to resolve, so the turn continues and the attacker ends it
   // voluntarily with the "Terminar turno" button.
   state.phase = 'main'
-  log(state, res.attacker, `${attacker.name}: ${attacked.name} fue revertido. Podés resolver efectos y terminar tu turno cuando quieras.`)
   return null
 }
 
@@ -681,7 +662,6 @@ function finishReversalCleanup(state: GameState, defenderIdx: number, _rev: Card
   state.pendingEffects = null
   // Same as playReversal: the attacker ends their turn voluntarily.
   state.phase = 'main'
-  log(state, res.attacker, `${attacker.name}: reversión resuelta. Podés resolver efectos y terminar tu turno cuando quieras.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -713,7 +693,6 @@ function beginManualOverturn(state: GameState, defenderIdx: number, purpose: 'da
   // Effects are NEVER applied automatically: print the text so the players
   // execute it manually on the table.
   if (card.effect && card.effect.length > 0) {
-    log(state, res.attacker, `"${card.name}" texto de efecto (ejecutalo a mano): ${card.text}`)
   }
   state.pendingEffects = null
 
@@ -736,15 +715,7 @@ function beginManualOverturn(state: GameState, defenderIdx: number, purpose: 'da
       finishReversalCleanup(state, defenderIdx, card)
       return
     }
-    log(state, res.attacker, `"${card.name}" no imprime daño. ${defender.name} puede voltear cartas al Ringside voluntariamente.`)
   } else {
-    log(
-      state,
-      res.attacker,
-      purpose === 'damage'
-        ? `"${card.name}" imprime ${damageToDeal} de daño. ${defender.name} decide cuánto daño toma volteando cartas una por una.`
-        : `${card.name} imprime ${damageToDeal} de daño a ${attacker.name}. ${attacker.name} decide cuánto daño toma volteando cartas.`,
-    )
   }
   res.damageDealt = 0
   state.pendingDecision = {
@@ -780,10 +751,8 @@ export function flipOverturnCard(state: GameState, playerIdx: number): string | 
   const top = p.arsenal.shift()
   if (!top) return 'No card to overturn.'
   p.ringside.push(top)
-  const c = getCard(top)
   d.overturned += 1
   res.damageDealt = d.overturned
-  log(state, playerIdx, `Volteó "${c.name}" (tomó ${d.overturned} de daño; impreso ${d.damageToDeal}).`)
 
   // Stay in the overturn decision: the player chooses to flip more or stop.
   state.pendingDecision = { ...d }
@@ -806,7 +775,6 @@ export function stopOverturnCard(state: GameState, playerIdx: number): string | 
 
   res.overturning = false
   state.pendingDecision = null
-  log(state, playerIdx, `Dejó de recibir daño con ${d.overturned} carta(s) volteada(s).`)
   if (d.purpose === 'reversal') {
     finishReversalCleanup(state, d.playerIdx, getCard(d.cardId))
     return null
@@ -836,12 +804,10 @@ function succeedCard(
     // Mid-match / Pre-match cards stay in the player's Mid-match zone.
     attacker.midmatchPlayed.push(res.cardId)
     attacker.fortitude = computeFortitude([...attacker.midmatchPlayed, ...attacker.ring], getCard)
-    log(state, attackerIdx, `"${card.name}" quedó en tu zona Mid-match.`)
   } else {
     // The successful card stays in the attacker's Ring and raises Fortitude.
     attacker.ring.push(res.cardId)
     attacker.fortitude = computeFortitude([...attacker.midmatchPlayed, ...attacker.ring], getCard)
-    log(state, attackerIdx, `"${card.name}" is in your Ring area (Fortitude Rating ${attacker.fortitude}).`)
   }
   attacker.lastSuccessfullyPlayed = { cardId: res.cardId, damage: res.damageDealt }
   attacker.playedThisTurn.push(res.cardId)
@@ -850,10 +816,8 @@ function succeedCard(
   if (res.ended && res.overturning) {
     if (card.stun && attacker.arsenal.length > 0) {
       drawCards(attacker, card.stun, getCard)
-      log(state, attackerIdx, `Drew ${card.stun} from Stun Value.`)
     }
     attacker.reversedLastTurn = false
-    log(state, attackerIdx, `${attacker.name}'s turn ends (reversed).`)
     state.resolution = null
     state.pendingDecision = null
     state.pendingEffects = null
@@ -867,7 +831,6 @@ function succeedCard(
   state.pendingEffects = null
   if (keepTurn) {
     state.phase = 'main'
-    log(state, attackerIdx, `${attacker.name} may continue their turn.`)
   } else {
     endTurn(state)
   }
@@ -905,7 +868,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
           p.ringside.push(id)
         }
       }
-      log(state, decision.playerIdx, `Discarded ${selected.length} card${selected.length === 1 ? '' : 's'}.`)
       if (decision.purpose === 'switch') {
         let n = 0
         while (n < selected.length && p.ringside.length > 0) {
@@ -913,7 +875,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
           if (c) p.hand.push(c)
           n++
         }
-        log(state, decision.playerIdx, `Then put ${n} card${n === 1 ? '' : 's'} from Ringside into hand.`)
       }
       state.pendingDecision = null
       resolveNextEffect(state)
@@ -928,7 +889,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
       if (idx < 0) return 'Card not found in hand.'
       p.hand.splice(idx, 1)
       p.ringside.push(cardId)
-      log(state, decision.playerIdx, `Was forced to discard "${getCard(cardId).name}".`)
       state.pendingDecision = null
       resolveNextEffect(state)
       return null
@@ -948,7 +908,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
           p.hand.push(id)
         }
       }
-      log(state, decision.playerIdx, `Put ${selected.length} card${selected.length === 1 ? '' : 's'} from Ringside into hand.`)
       state.pendingDecision = null
       resolveNextEffect(state)
       return null
@@ -970,7 +929,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
         }
       }
       if (moved.length > 0) {
-        log(state, decision.playerIdx, `Searched your Arsenal and drew ${moved.length} card${moved.length === 1 ? '' : 's'}.`)
       }
       state._searchPool = undefined
       state.pendingDecision = null
@@ -992,7 +950,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
       }
       if (!ordered.every((id) => top.includes(id))) return 'Invalid reordering.'
       tp.arsenal = [...ordered, ...tp.arsenal.slice(decision.amount)]
-      log(state, decision.playerIdx, `Reordered the top ${decision.amount} cards of your opponent's Arsenal.`)
       state.pendingDecision = null
       resolveNextEffect(state)
       return null
@@ -1019,7 +976,6 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
         eliminate(state, decision.playerIdx, decision.reason)
       } else {
         state.pendingDecision = null
-        log(state, decision.playerIdx, 'Chose to keep playing despite having no cards.')
         // Count Out was declined: continue the turn flow (the affected player
         // keeps playing manually).
         if (decision.reason === 'countout') {
@@ -1078,7 +1034,6 @@ export function manualMoveCards(
   if (from === 'ring' || to === 'ring' || from === 'midmatch' || to === 'midmatch') {
     p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   }
-  log(state, playerIdx, `Moved ${ids.length} card${ids.length === 1 ? '' : 's'} from ${from} to ${to}.`)
   return null
 }
 
@@ -1097,7 +1052,6 @@ export function manualRingToArsenal(
     if (i >= 0) p.ringside.splice(i, 1)
   }
   p.arsenal.push(...ids)
-  log(state, playerIdx, `Returned ${ids.length} card${ids.length === 1 ? '' : 's'} from Ringside to Arsenal.`)
   return null
 }
 
@@ -1119,7 +1073,6 @@ export function manualZoneToArsenal(
   }
   p.arsenal.push(...ids)
   if (zone === 'ring') p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
-  log(state, playerIdx, `Returned ${ids.length} card${ids.length === 1 ? '' : 's'} from ${zone} to Arsenal.`)
   return null
 }
 
@@ -1134,7 +1087,6 @@ export function manualDrawFromArsenal(state: GameState, playerIdx: number, count
     const c = p.arsenal.shift()
     if (c) p.hand.push(c)
   }
-  log(state, playerIdx, `Drew ${n} card${n === 1 ? '' : 's'} from the Arsenal into hand.`)
   return null
 }
 
@@ -1148,7 +1100,6 @@ export function manualShuffleArsenal(state: GameState, playerIdx: number): void 
     p.arsenal[i] = p.arsenal[j]!
     p.arsenal[j] = tmp
   }
-  log(state, playerIdx, 'Shuffled their Arsenal.')
 }
 
 /** Reorder the player's Arsenal (house-rule): `orderedIds` must be a
@@ -1166,7 +1117,6 @@ export function manualReorderArsenal(
     if (!idSet.has(id)) return 'La carta ordenada no coincide con el Arsenal.'
   }
   p.arsenal = [...orderedIds]
-  log(state, playerIdx, 'Reordered their Arsenal.')
   return null
 }
 
@@ -1178,13 +1128,6 @@ export function manualRevealHand(state: GameState, playerIdx: number, targetIdx:
     return
   }
   p.handRevealedTo = targetIdx
-  log(
-    state,
-    playerIdx,
-    targetIdx === null
-      ? 'Concealed their hand.'
-      : `Showed their hand to ${state.players[targetIdx]?.name ?? 'opponent'}.`,
-  )
 }
 
 /**
@@ -1199,20 +1142,16 @@ export function activateRingCard(state: GameState, playerIdx: number, cardId: st
   if (state.phase !== 'main') return 'You can only activate effects during your Main Segment.'
   if (state.activeIndex !== playerIdx) return 'It is not your turn.'
   let idx = p.ring.indexOf(cardId)
-  let zone = 'Ring Area'
   if (idx < 0) {
     idx = p.midmatchPlayed.indexOf(cardId)
-    zone = 'Mid-match zone'
   }
   if (idx < 0) return 'That card is not in your Ring or Mid-match area.'
   const card = getCard(cardId)
   if (!card.effect || card.effect.length === 0) return `"${card.name}" has no activatable effect.`
 
-  log(state, playerIdx, `Activated the effect of "${card.name}" (stays in your ${zone}).`)
   // Effects are never applied automatically — the players read and execute
   // the card text by hand.
   if (card.effect && card.effect.length > 0) {
-    log(state, playerIdx, `"${card.name}" texto de efecto (ejecutalo a mano): ${card.text}`)
   }
   state.pendingEffects = null
   void idx
@@ -1237,6 +1176,5 @@ export function manualRemoveFromZone(
   }
   p.outOfGame.push(...ids)
   if (zone === 'ring') p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
-  log(state, playerIdx, `Removed ${ids.length} card${ids.length === 1 ? '' : 's'} from ${zone} to Out-Of-Game.`)
   return null
 }

@@ -90,12 +90,6 @@ export interface PendingEffects {
   index: number
 }
 
-export interface LogEntry {
-  turn: number
-  player: number
-  text: string
-}
-
 export interface GameState {
   players: PlayerState[]
   activeIndex: number
@@ -110,7 +104,6 @@ export interface GameState {
   chainSafeIndex: number | null
   winner: number[] | null
   winType: 'pin' | 'countout' | 'draw' | null
-  log: LogEntry[]
   /** Cards offered to the current player by a pending search. */
   _searchPool?: string[]
   /** Players who already acted in the current Pre-match stage. */

@@ -130,8 +130,6 @@ export function GamePage() {
             </div>
           )}
 
-          <GameLog game={displayGame} />
-
           {showHandControls && displayGame.phase === 'main' && (
             <button className="primary btn-turn" onClick={() => useAppStore.getState().endTurnAction()}>
               Terminar turno
@@ -735,22 +733,6 @@ function OverturnBanner({ game }: { game: GameState }) {
           <div key={`${id}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <CardFace id={id} size="xs" />
             <span className="muted" style={{ fontSize: 10, marginTop: 2 }}>#{i + 1}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function GameLog({ game }: { game: GameState }) {
-  return (
-    <div className="card">
-      <div className="big-label" style={{ marginTop: 0 }}>Historial</div>
-      <div className="log">
-        {game.log.slice(-80).map((e, i) => (
-          <div key={i}>
-            <span className="log-turn">T{e.turn}</span>{' '}
-            <b>{game.players[e.player]?.name}:</b> {e.text}
           </div>
         ))}
       </div>
