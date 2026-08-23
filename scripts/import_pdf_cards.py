@@ -481,6 +481,38 @@ OVERRIDES = {
     "AJ Styles/33.jpg": "aj-this-club-is-too-sweet",
     "AJ Styles/37.jpg": "aj-phenomenal-combination",
     "AJ Styles/39.jpg": "aj-aint-nobody-breaking-this-redneck",
+    # Triple H Esp.pdf — Triple H extra cards (vertical portraits). 9.jpg and
+    # 10.jpg already have art imported from HHH.pdf (leaping-knee-to-the-face,
+    # facebuster); map them so re-import reinforces the scanned face.
+    "Triple H Esp/9.jpg": "leaping-knee-to-the-face",
+    "Triple H Esp/10.jpg": "facebuster",
+    "Triple H Esp/11.jpg": "hhh-i-am-the-game",
+    "Triple H Esp/12.jpg": "pedigree",
+    "Triple H Esp/13.jpg": "hhh-shyster-interferes",
+    "Triple H Esp/14.jpg": "hhh-cause-i-am",
+    "Triple H Esp/17.jpg": "hhh-reverse-neckbreaker",
+    "Triple H Esp/18.jpg": "hhh-ive-got-two-words",
+    "Triple H Esp/19.jpg": "hhh-stephanie-interferes",
+    "Triple H Esp/20.jpg": "hhh-time-to-play-the-game",
+    "Triple H Esp/22.jpg": "hhh-suck-it",
+    "Triple H Esp/25.jpg": "hhh-flip-over-corner",
+    "Triple H Esp/26.jpg": "hhh-the-games-keeper",
+    "Triple H Esp/27.jpg": "hhh-lunging-choke-hold",
+    "Triple H Esp/28.jpg": "hhh-you-dont-want-to-play-me",
+    "Triple H Esp/29.jpg": "hhh-its-all-about-control",
+    "Triple H Esp/30.jpg": "hhh-paid-laid-and-made",
+    "Triple H Esp/33.jpg": "hhh-line-in-the-sand",
+    "Triple H Esp/34.jpg": "hhh-you-gotta-pay",
+    "Triple H Esp/35.jpg": "hhh-ric-flair-interferes",
+    "Triple H Esp/36.jpg": "hhh-making-the-game",
+    "Triple H Esp/37.jpg": "hhh-bring-the-hammer-down",
+    "Triple H Esp/38.jpg": "hhh-king-of-kings",
+    # Triple H Mid.pdf — Triple H Mid-match Backlash cards (horizontal 2x4
+    # sheet cropped to 4 cells). These are landscape backlash cards.
+    "Triple H Mid/9.jpg": "hhh-reinforcements-dx",
+    "Triple H Mid/11.jpg": "hhh-screw-the-rules",
+    "Triple H Mid/13.jpg": "hhh-beating-youll-never-forget",
+    "Triple H Mid/15.jpg": "hhh-sledgehammer-shot",
 }
 
 W, H = 300, 420
