@@ -98,8 +98,7 @@ export function LobbyPage() {
   const canStart =
     online.role === 'host' &&
     connectedPlayers.length >= 2 &&
-    allReady &&
-    online.roster.filter((r) => r.connected).length === online.roster.length
+    allReady
 
   return (
     <div className="page">
@@ -283,9 +282,9 @@ export function LobbyPage() {
             </button>
             {!canStart && (
               <span className="muted">
-                {online.roster.filter((r) => r.connected).length < online.roster.length
-                  ? `Faltan conectarse ${online.roster.length - online.roster.filter((r) => r.connected).length} jugador(es). Compartí el código ${online.code} para que ingresen.`
-                  : 'Todos deben elegir Superestrella y mazo.'}
+                {connectedPlayers.length < 2
+                  ? `Se necesitan al menos 2 jugadores conectados. Compartí el código ${online.code} para que ingresen.`
+                  : 'Todos los conectados deben elegir Superestrella y mazo.'}
               </span>
             )}
           </div>
