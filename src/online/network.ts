@@ -258,9 +258,18 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
 }
 
 export function clientSend(msg: ClientMsg): void {
-  hostConn?.send(msg)
+  try {
+    hostConn?.send(msg)
+  } catch {
+    // A degraded/closed PeerJS connection may throw on send. Swallow it: the
+    // caller's retry guard will let the player try again once it recovers.
+  }
 }
 
 export function clientSendIntent(action: IntentName, args: unknown[]): void {
-  hostConn?.send({ type: 'intent', action, args } satisfies ClientMsg)
+  try {
+    hostConn?.send({ type: 'intent', action, args } satisfies ClientMsg)
+  } catch {
+    // Same as clientSend: never let a failed send throw into the UI layer.
+  }
 }

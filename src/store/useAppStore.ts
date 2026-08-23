@@ -618,7 +618,7 @@ function refreshGame(
 }
 
 /** Which player index a given intent action requires (host-side). */
-function actorFor(game: GameState | null, action: IntentName): number | null {
+export function actorFor(game: GameState | null, action: IntentName): number | null {
   if (!game) return null
   switch (action) {
     case 'resolveReversal':
@@ -647,7 +647,7 @@ const MANUAL_INTENTS: IntentName[] = [
 ]
 
 /** Host handles a remote client intent, validating it's that player's move. */
-function applyRemoteIntent(
+export function applyRemoteIntent(
   get: () => AppState,
   idx: number,
   action: IntentName,

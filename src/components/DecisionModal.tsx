@@ -12,15 +12,15 @@ export function DecisionModal() {
   const flipOverturn = useAppStore((s) => s.flipOverturn)
   const stopOverturn = useAppStore((s) => s.stopOverturn)
 
-  const processingRef = useRef(false)
+  const processingRefs = useRef<Record<string, boolean>>({})
 
   const d: PendingDecision | null = game?.pendingDecision ?? null
 
-  // Reset processing flag whenever the game state changes (new broadcast,
-  // turn advance, etc.) so the anti-double-click guard never stays stale
-  // across different decisions or phases.
+  // Reset all processing flags whenever the game state changes (new broadcast,
+  // turn advance, etc.) so the anti-double-click guard never stays stale across
+  // different decisions or phases.
   useEffect(() => {
-    processingRef.current = false
+    processingRefs.current = {}
   }, [game])
 
   if (!d || !game) return null
@@ -29,22 +29,29 @@ export function DecisionModal() {
   const owner = decisionOwner(game)
   if (online.role && online.myIdx !== owner) return null
 
-  const guard = <T extends unknown[]>(fn: (...args: T) => void) =>
-    (...args: T) => {
-      if (processingRef.current) return
-      processingRef.current = true
-      fn(...args)
-      // Safety net: the guard is only reset by the useEffect below when the
-      // game state actually changes. If the host rejects the intent (validation
-      // error) or its response is lost/dropped, the game object never changes
-      // and the guard would stay true forever, freezing the modal so the player
-      // can neither resolve the decision nor end the turn (and the draw segment
-      // never runs). Release it after a short delay so a missing response can
-      // never permanently lock the player out.
-      window.setTimeout(() => {
-        processingRef.current = false
-      }, 2500)
+  // Per-action guard. Each decision sub-action gets its own flag so a stalled
+  // intent (dropped host response, validation rejection, or a thrown network
+  // error) can never block a *different* action in the same modal — e.g. a
+  // stuck "flip" must not prevent the player from clicking "stop" to close the
+  // damage window.
+  //
+  // The 2.5s timeout is scheduled in a `finally` block so it ALWAYS runs, even
+  // if the wrapped call throws (for example clientSendIntent throwing on a
+  // degraded peer connection). Without this, a throw would leave processingRef
+  // stuck true forever and freeze the modal for the rest of the match.
+  const guard = <T extends unknown[]>(key: string, fn: (...args: T) => void) => {
+    return (...args: T) => {
+      if (processingRefs.current[key]) return
+      processingRefs.current[key] = true
+      try {
+        fn(...args)
+      } finally {
+        window.setTimeout(() => {
+          processingRefs.current[key] = false
+        }, 2500)
+      }
     }
+  }
 
   return (
     <div className="modal-backdrop">
@@ -52,35 +59,35 @@ export function DecisionModal() {
         {d.type === 'chooseTarget' && (
           <ChooseTarget
             decision={d}
-            onPick={guard((idx) => resolvePending(idx))}
+            onPick={guard('target', (idx) => resolvePending(idx))}
           />
         )}
         {d.type === 'reversalChoice' && (
-          <ReversalChoice decision={d} onResolve={guard(resolveReversal)} />
+          <ReversalChoice decision={d} onResolve={guard('reversal', resolveReversal)} />
         )}
         {d.type === 'overturnCards' && (
-          <OverturnCards decision={d} onFlip={guard(flipOverturn)} onStop={guard(stopOverturn)} />
+          <OverturnCards decision={d} onFlip={guard('flip', flipOverturn)} onStop={guard('stop', stopOverturn)} />
         )}
         {(d.type === 'chooseCardsFromHand') && (
-          <ChooseFromHand decision={d} onDone={guard((ids) => resolvePending(ids))} />
+          <ChooseFromHand decision={d} onDone={guard('hand', (ids) => resolvePending(ids))} />
         )}
         {d.type === 'chooseOpponentHandCard' && (
           <ChooseOpponentCard
             decision={d}
-            onPick={guard((id) => resolvePending(id))}
+            onPick={guard('oppHand', (id) => resolvePending(id))}
           />
         )}
         {d.type === 'chooseRingsideCards' && (
-          <ChooseRingside decision={d} onDone={guard((ids) => resolvePending(ids))} />
+          <ChooseRingside decision={d} onDone={guard('ringside', (ids) => resolvePending(ids))} />
         )}
         {d.type === 'reorderOpponentArsenal' && (
-          <ReorderArsenal decision={d} onDone={guard((order) => resolvePending(order))} />
+          <ReorderArsenal decision={d} onDone={guard('reorder', (order) => resolvePending(order))} />
         )}
         {d.type === 'searchArsenal' && (
-          <SearchArsenal decision={d} onPick={guard((id) => resolvePending(id))} />
+          <SearchArsenal decision={d} onPick={guard('search', (id) => resolvePending(id))} />
         )}
         {d.type === 'concedeChoice' && (
-          <ConcedeChoice decision={d} onResolve={guard((v) => resolvePending(v))} />
+          <ConcedeChoice decision={d} onResolve={guard('concede', (v) => resolvePending(v))} />
         )}
       </div>
     </div>
