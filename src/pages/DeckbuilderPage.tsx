@@ -219,13 +219,14 @@ export function DeckbuilderPage() {
               const isMySuperstar = c.type === 'Superstar' && c.superstar?.[0] === superstarId
               const limitLabel = limit === Infinity ? '∞' : String(limit)
               return (
-                <div key={c.id} style={{ cursor: atLimit ? 'not-allowed' : 'pointer', position: 'relative' }}>
+                <div key={c.id} style={{ cursor: atLimit ? 'not-allowed' : 'pointer', position: 'relative' }}
+                  onMouseEnter={() => setZoom(c.id)}
+                  onMouseLeave={() => setZoom(null)}
+                >
                   <CardFace
                     id={c.id}
                     size="sm"
                     selected={isMySuperstar}
-                    onMouseEnter={() => setZoom(c.id)}
-                    onMouseLeave={() => setZoom(null)}
                     onClick={() => addToArsenal(c.id)}
                   />
                   <div
