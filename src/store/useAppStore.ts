@@ -114,7 +114,10 @@ interface AppState {
 }
 
 function cloneGame(g: GameState): GameState {
-  return { ...g }
+  // Deep clone (not a shallow { ...g }) so successive online snapshots never
+  // share nested references (players, log, resolution) that could be mutated
+  // independently on the host and a peer, causing desynced views.
+  return JSON.parse(JSON.stringify(g))
 }
 
 const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false }

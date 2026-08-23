@@ -34,6 +34,16 @@ export function DecisionModal() {
       if (processingRef.current) return
       processingRef.current = true
       fn(...args)
+      // Safety net: the guard is only reset by the useEffect below when the
+      // game state actually changes. If the host rejects the intent (validation
+      // error) or its response is lost/dropped, the game object never changes
+      // and the guard would stay true forever, freezing the modal so the player
+      // can neither resolve the decision nor end the turn (and the draw segment
+      // never runs). Release it after a short delay so a missing response can
+      // never permanently lock the player out.
+      window.setTimeout(() => {
+        processingRef.current = false
+      }, 2500)
     }
 
   return (
