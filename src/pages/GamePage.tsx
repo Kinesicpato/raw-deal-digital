@@ -97,7 +97,7 @@ export function GamePage() {
                 toolsOpen={tools?.player === i}
                 toolsEnabled={!isOnline || i === myIdx}
                 canControl={!isOnline || i === myIdx}
-                compact={isOnline ? i !== myIdx : i !== displayGame.activeIndex}
+                compact={isOnline ? false : i !== displayGame.activeIndex}
               />
             ))}
           </div>
