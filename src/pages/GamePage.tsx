@@ -147,7 +147,7 @@ export function GamePage() {
         />
       )}
       <DecisionModal />
-      <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} />
+      <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} game={displayGame} myIdx={myIdx} />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
       <CardZoomPreview id={detail ? null : zoom} />
       {lastError && <Toast message={lastError} onClose={clearError} />}
@@ -651,14 +651,20 @@ function HandZone({
 function PlayConfirmModal({
   confirm,
   onClose,
+  game,
+  myIdx,
 }: {
   confirm: { id: string; zone?: 'hand' | 'midmatch' | 'prematch' } | null
   onClose: () => void
+  game: GameState
+  myIdx: number | null
 }) {
   if (!confirm) return null
   const c = getCardSafe(confirm.id)
   const zoneLabel = confirm.zone === 'hand' ? 'de tu mano' : confirm.zone === 'prematch' ? 'Pre-match (Backlash)' : 'Mid-match (Backlash)'
   const zoneKind: 'hand' | 'midmatch' | 'prematch' = confirm.zone ?? 'hand'
+  const canShow = zoneKind === 'hand' && myIdx !== null && game.players.length > 1
+  const opponentIdx = canShow ? game.players.findIndex((_, i) => i !== myIdx) : -1
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -690,6 +696,17 @@ Fortitude <b>{c.fortitude}F</b>
           </div>
         </div>
         <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
+          {canShow && opponentIdx >= 0 && (
+            <button
+              className="ghost"
+              onClick={() => {
+                onClose()
+                useAppStore.getState().showCardToOpponent(myIdx, confirm.id, opponentIdx)
+              }}
+            >
+              Mostrar a oponente
+            </button>
+          )}
           <button className="ghost" onClick={onClose}>
             Volver
           </button>
