@@ -513,6 +513,16 @@ OVERRIDES = {
     "Triple H Mid/11.jpg": "hhh-screw-the-rules",
     "Triple H Mid/13.jpg": "hhh-beating-youll-never-forget",
     "Triple H Mid/15.jpg": "hhh-sledgehammer-shot",
+    # Set 24-08.pdf — 9 portrait cards (vertical A4).
+    "Set 24-08/9.jpg": "twisted-smile",
+    "Set 24-08/11.jpg": "gettin-beat-like-a-government-mule",
+    "Set 24-08/13.jpg": "j-r-style-action",
+    "Set 24-08/15.jpg": "did-i-just-say-three-minutes",
+    "Set 24-08/17.jpg": "divas-divas-divas",
+    "Set 24-08/19.jpg": "christy-curvy-cutie",
+    "Set 24-08/21.jpg": "arm-stretch",
+    "Set 24-08/23.jpg": "jerichoholics",
+    "Set 24-08/25.jpg": "jericho-s-ensugiri",
 }
 
 W, H = 300, 420
