@@ -515,9 +515,16 @@ export const useAppStore = create<AppState>()(
 
         setOnlineRole: (role) => {
           const st = get()
-          if (st.online.role !== 'client') return
-          clientSend({ type: 'setRole', role })
           const isSpectator = role === 'spectator'
+          if (st.online.role === 'client') {
+            clientSend({ type: 'setRole', role })
+          } else if (st.online.role === 'host' && st.online.myIdx !== null) {
+            const roster = st.online.roster.map((r) =>
+              r.idx === st.online.myIdx ? { ...r, spectator: isSpectator } : r,
+            )
+            set({ online: { ...st.online, roster, isSpectator } })
+            return
+          }
           set({ online: { ...st.online, isSpectator } })
         },
 

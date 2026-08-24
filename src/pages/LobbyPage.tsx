@@ -15,7 +15,6 @@ export function LobbyPage() {
 
   const [name, setName] = useState('')
   const [seats, setSeats] = useState(2)
-  const [guests, setGuests] = useState(0)
   const [code, setCode] = useState('')
 
   if (!online.role) {
@@ -32,21 +31,15 @@ export function LobbyPage() {
               <option key={n} value={n}>{n} jugadores</option>
             ))}
           </select>
-          <label style={{ marginTop: 8 }}>Invitados extra</label>
-          <select value={guests} onChange={(e) => setGuests(Number(e.target.value))}>
-            {[0, 1, 2, 3].map((n) => (
-              <option key={n} value={n}>{n} {n === 1 ? 'invitado' : n === 0 ? 'sin invitados' : 'invitados'}</option>
-            ))}
-          </select>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            {seats + guests} jugadores en total (vos + {seats - 1} + {guests} {guests === 1 ? 'invitado' : 'invitados'})
+            {seats} jugadores en total (vos + {seats - 1} más)
           </div>
           <div className="row" style={{ marginTop: 14, gap: 8, justifyContent: 'flex-end' }}>
             <button className="ghost" onClick={() => store.setView('menu')}>Volver</button>
             <button
               className="primary"
               disabled={!name.trim()}
-              onClick={() => store.createRoom(name.trim(), seats + guests)}
+              onClick={() => store.createRoom(name.trim(), seats)}
             >
               Crear sala
             </button>
