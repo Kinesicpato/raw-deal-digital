@@ -582,7 +582,6 @@ export function playReversal(
   state: GameState,
   defenderIdx: number,
   reversalId: string,
-  zone: 'ring' | 'ringside' | 'midmatch' = 'ringside',
 ): string | null {
   const res = state.resolution
   if (!res) return 'No active card to reverse.'
@@ -605,14 +604,14 @@ export function playReversal(
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
-  // Backlash reversal cards go to Mid-match zone; hand reversals go to Ringside or Ring.
+  // Backlash reversal cards go to Mid-match zone; hand reversals go to Ring Area.
   const cameFromBacklash = backlashIdx >= 0
   if (cameFromBacklash) {
     defender.midmatchPlayed.push(reversalId)
-  } else if (zone === 'ring') {
+  } else {
     defender.ring.push(reversalId)
     defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
-  } else defender.ringside.push(reversalId)
+  }
 
 
   // Reversal effects are never applied automatically — show the text.
@@ -625,12 +624,10 @@ export function playReversal(
   attacker.reversedLastTurn = true
   defender.reversedLastTurn = false
 
-  state.resolution = null
-  state.pendingDecision = null
+  // Show the reversal card to the attacker; they must click "Continuar" before
+  // the turn proceeds. The resolution stays alive so the card info is available.
+  state.pendingDecision = { type: 'reversalPlayed', attackerIdx: res.attacker, reversalCardId: reversalId }
   state.pendingEffects = null
-  // The attacker's turn does NOT end automatically: after a reversal there are
-  // often effects to resolve, so the turn continues and the attacker ends it
-  // voluntarily with the "Terminar turno" button.
   state.phase = 'main'
   return null
 }
@@ -846,10 +843,17 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
       if (payload === null) {
         passReversal(state)
       } else {
-        const p = payload as { cardId: string; zone: 'ring' | 'ringside' | 'midmatch' }
-        const err = playReversal(state, decision.defenderIdx, p.cardId, p.zone ?? 'ringside')
+        const p = payload as { cardId: string; zone?: string }
+        const err = playReversal(state, decision.defenderIdx, p.cardId)
         if (err) return err
       }
+      return null
+    }
+
+    case 'reversalPlayed': {
+      state.resolution = null
+      state.pendingDecision = null
+      state.phase = 'main'
       return null
     }
 

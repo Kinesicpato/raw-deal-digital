@@ -131,6 +131,12 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
           }
           emitRoster(hooks)
         }
+      } else if (msg.type === 'setRole') {
+        const entry = registry.get(idx)
+        if (entry && entry.connected) {
+          entry.spectator = msg.role === 'spectator'
+          emitRoster(hooks)
+        }
       } else if (msg.type === 'pick') {
         const entry = registry.get(idx)
         if (entry && entry.connected && msg.superstarId) {
@@ -204,7 +210,10 @@ export function hostShareDecks(decks: SharedDeck[]): void {
 /** Broadcasts a redacted state snapshot to every connected client. */
 export function broadcastState(game: GameState): void {
   for (const [idx, conn] of hostConns) {
-    if (conn.open) conn.send({ type: 'state', game: buildClientView(game, idx) } satisfies HostMsg)
+    if (!conn.open) continue
+    const entry = registry.get(idx)
+    const viewerIdx = entry?.spectator ? -1 : idx
+    conn.send({ type: 'state', game: buildClientView(game, viewerIdx) } satisfies HostMsg)
   }
 }
 

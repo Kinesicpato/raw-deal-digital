@@ -168,7 +168,7 @@ describe('playing cards and reversal window', () => {
     expect(g.activeIndex).toBe(1)
   })
 
-  it('places the reversal in Ringside when the defender chooses so, keeping the attacker turn active', () => {
+  it('places the reversal in Ring Area (not Ringside), keeping the attacker turn active', () => {
     const g = startGame(Array(10).fill(KICK), Array(10).fill(CLOTHESLINE))
     g.players[0]!.hand = [KICK]
     g.players[1]!.hand = [ELBOW]
@@ -176,10 +176,10 @@ describe('playing cards and reversal window', () => {
     const err = applyDecision(
       g,
       { type: 'reversalChoice', defenderIdx: 1, cardId: KICK },
-      { cardId: ELBOW, zone: 'ringside' },
+      { cardId: ELBOW },
     )
     expect(err).toBeNull()
-    expect(g.players[1]!.ringside).toContain(ELBOW)
+    expect(g.players[1]!.ring).toContain(ELBOW)
     expect(g.players[0]!.ringside).toContain(KICK)
     expect(g.activeIndex).toBe(0)
     expect(g.phase).toBe('main')

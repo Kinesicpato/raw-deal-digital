@@ -66,6 +66,7 @@ export interface Resolution {
 export type PendingDecision =
   | { type: 'chooseTarget'; playerIdx: number; cardId: string }
   | { type: 'reversalChoice'; defenderIdx: number; cardId: string }
+  | { type: 'reversalPlayed'; attackerIdx: number; reversalCardId: string }
   | { type: 'overturnCards'; playerIdx: number; cardId: string; damageToDeal: number; overturned: number; purpose: 'damage' | 'reversal'; voluntary: boolean }
   | { type: 'chooseCardsFromHand'; playerIdx: number; count: number; purpose: 'discard' | 'switch' }
   | { type: 'chooseArsenalCards'; playerIdx: number; count: number }

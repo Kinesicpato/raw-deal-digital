@@ -60,6 +60,7 @@ interface OnlineInfo {
   roster: RosterEntry[]
   sharedDecks: SharedDeck[]
   connected: boolean
+  isSpectator?: boolean
 }
 
 interface AppState {
@@ -84,7 +85,7 @@ interface AppState {
   endTurnAction: () => void
   activateRingAction: (cardId: string) => void
   resolvePending: (payload: unknown) => void
-  resolveReversal: (payload: { cardId: string; zone: 'ring' | 'ringside' | 'midmatch' } | null) => void
+  resolveReversal: (payload: { cardId: string; zone?: string } | null) => void
   flipOverturn: () => void
   stopOverturn: () => void
   newGameAgain: () => void
@@ -107,6 +108,7 @@ interface AppState {
   leaveOnline: () => void
   onlineSetRoster: (roster: RosterEntry[]) => void
   onlineSetMyIdx: (idx: number) => void
+  setOnlineRole: (role: 'player' | 'spectator') => void
   onlinePickSuperstar: (superstarId: string, deck?: { name: string | null; arsenal: string[]; backlashPre: string[]; backlashMid: string[] } | null, handSize?: number | null) => void
   onlineSetHandSize: (handSize: number) => void
   startOnlineGame: () => void
@@ -511,6 +513,14 @@ export const useAppStore = create<AppState>()(
           set({ online: { ...st.online, myIdx: idx } })
         },
 
+        setOnlineRole: (role) => {
+          const st = get()
+          if (st.online.role !== 'client') return
+          clientSend({ type: 'setRole', role })
+          const isSpectator = role === 'spectator'
+          set({ online: { ...st.online, isSpectator } })
+        },
+
         onlinePickSuperstar: (superstarId, deck = null, handSize = null) => {
           const st = get()
           const d = buildDefaultDeck(superstarId)
@@ -558,7 +568,7 @@ export const useAppStore = create<AppState>()(
           const st = get()
           if (st.online.role !== 'host' || !st.online.roster.length) return
           const players = st.online.roster
-            .filter((r) => r.connected && r.superstarId)
+            .filter((r) => r.connected && !r.spectator && r.superstarId)
             .sort((a, b) => a.idx - b.idx)
           if (players.length < 2) {
             set({ lastError: 'Se necesitan al menos 2 jugadores con Superestrella elegida.' })

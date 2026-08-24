@@ -65,6 +65,9 @@ export function DecisionModal() {
         {d.type === 'reversalChoice' && (
           <ReversalChoice decision={d} onResolve={guard('reversal', resolveReversal)} />
         )}
+        {d.type === 'reversalPlayed' && (
+          <ReversalPlayed decision={d} onContinue={guard('reversalContinue', () => resolvePending(null))} />
+        )}
         {d.type === 'overturnCards' && (
           <OverturnCards decision={d} onFlip={guard('flip', flipOverturn)} onStop={guard('stop', stopOverturn)} />
         )}
@@ -115,13 +118,13 @@ function ChooseTarget({ decision, onPick }: { decision: Extract<PendingDecision,
   )
 }
 
-function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardId: string; zone: 'ring' | 'ringside' | 'midmatch' } | null) => void }) {
+function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardId: string; zone?: string } | null) => void }) {
   const game = useAppStore((s) => s.game)
   const defender = game?.players[decision.defenderIdx]
   const attacker = game?.players[game.resolution?.attacker ?? -1]
   const played = game?.resolution ? getCardSafe(game.resolution.cardId) : null
 
-  const pickHand = (id: string) => onResolve({ cardId: id, zone: 'ringside' })
+  const pickHand = (id: string) => onResolve({ cardId: id })
   const pickBacklash = (id: string) => onResolve({ cardId: id, zone: 'midmatch' })
 
   return (
@@ -132,7 +135,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
         <b>{played?.name ?? ''}</b>. Elegí una carta para revertirlo:
       </p>
       <p className="muted" style={{ margin: '4px 0 8px' }}>
-        Carta de <b>mano</b> → va a tu <b>Ringside</b>. Carta de <b>Backlash</b> → va a tu zona <b>Mid-match</b>.
+        Carta de <b>mano</b> → va a tu <b>Ring Area</b>. Carta de <b>Backlash</b> → va a tu zona <b>Mid-match</b>.
       </p>
       {played && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
@@ -167,6 +170,38 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       <div className="row" style={{ marginTop: 12, gap: 8 }}>
         <button className="primary" onClick={() => onResolve(null)} style={{ flex: 1 }}>
           No revertir (tomar el daño)
+        </button>
+      </div>
+    </>
+  )
+}
+
+function ReversalPlayed({ decision, onContinue }: { decision: Extract<PendingDecision, { type: 'reversalPlayed' }>; onContinue: () => void }) {
+  const game = useAppStore((s) => s.game)
+  const attacker = game?.players[decision.attackerIdx]
+  const reversalCard = getCardSafe(decision.reversalCardId)
+
+  return (
+    <>
+      <h3>Reversal aplicado</h3>
+      <p className="muted">
+        <b>{attacker?.name}</b>, tu oponente revirtió tu jugada con{' '}
+        <b>{reversalCard.name}</b>.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
+        <CardFace id={reversalCard.id} size="md" />
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {reversalCard.fortitude > 0 && <span className="stat-chip">Fortitude <b>{reversalCard.fortitude}F</b></span>}
+          {reversalCard.damage > 0 && <span className="stat-chip">Daño <b>{reversalCard.damage}D</b></span>}
+          {reversalCard.traits && reversalCard.traits.length > 0 && (
+            <span className="stat-chip">{reversalCard.traits.join(' · ')}</span>
+          )}
+        </div>
+        <p className="muted" style={{ textAlign: 'center', margin: 0, maxWidth: 420 }}>{reversalCard.text}</p>
+      </div>
+      <div className="row" style={{ marginTop: 12, gap: 8 }}>
+        <button className="primary" onClick={onContinue} style={{ flex: 1 }}>
+          Continuar
         </button>
       </div>
     </>

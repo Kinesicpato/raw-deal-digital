@@ -93,8 +93,9 @@ export function LobbyPage() {
       ? `own:${selectedDeck.name}`
       : `host:${selectedDeck.name}`
     : 'auto'
-  const connectedPlayers = online.roster.filter((r) => r.connected && r.superstarId && r.deck)
-  const allReady = online.roster.filter((r) => r.connected).every((r) => r.superstarId && r.deck)
+  const connectedPlayers = online.roster.filter((r) => r.connected && !r.spectator && r.superstarId && r.deck)
+  const connectedNonSpectators = online.roster.filter((r) => r.connected && !r.spectator)
+  const allReady = connectedNonSpectators.every((r) => r.superstarId && r.deck)
   const canStart =
     online.role === 'host' &&
     connectedPlayers.length >= 2 &&
@@ -149,7 +150,30 @@ export function LobbyPage() {
           )
         })}
 
-        {myIdx !== null && (
+        {myIdx !== null && online.isSpectator === undefined && (
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <div className="big-label">¿Cómo querés entrar?</div>
+            <p className="muted" style={{ marginBottom: 12 }}>
+              Elegí si querés jugar o simplemente observar la partida.
+            </p>
+            <div className="row" style={{ gap: 12, justifyContent: 'center' }}>
+              <button className="primary" style={{ padding: '10px 24px' }} onClick={() => store.setOnlineRole('player')}>
+                Jugador
+              </button>
+              <button className="ghost" style={{ padding: '10px 24px' }} onClick={() => store.setOnlineRole('spectator')}>
+                Espectador
+              </button>
+            </div>
+          </div>
+        )}
+
+        {myIdx !== null && online.isSpectator === true && (
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <p className="muted">Estás observando la partida. Esperá a que el anfitrión comience.</p>
+          </div>
+        )}
+
+        {myIdx !== null && online.isSpectator === false && (
           <div style={{ marginTop: 12 }}>
             <div className="big-label">Elegí tu Superestrella</div>
             <div className="chiprow" style={{ flexWrap: 'wrap' }}>

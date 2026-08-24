@@ -14,6 +14,7 @@ export interface RosterEntry {
   handSize: number | null
   deck: DeckPick | null
   connected: boolean
+  spectator?: boolean
 }
 
 /** Serialized shape of a saved deck, shared by the host so clients can pick it. */
@@ -50,6 +51,7 @@ export type IntentName =
 
 export type ClientMsg =
   | { type: 'hello'; name: string }
+  | { type: 'setRole'; role: 'player' | 'spectator' }
   | { type: 'pick'; superstarId: string; handSize: number | null; deck: DeckPick | null }
   | { type: 'intent'; action: IntentName; args: unknown[] }
 
@@ -65,6 +67,7 @@ export function decisionOwner(game: GameState): number | null {
   const d = game.pendingDecision
   if (!d) return null
   if (d.type === 'reversalChoice') return d.defenderIdx
+  if (d.type === 'reversalPlayed') return d.attackerIdx
   if (d.type === 'chooseOpponentHandCard') return game.pendingEffects?.sourcePlayer ?? d.playerIdx
   return d.playerIdx
 }
@@ -79,8 +82,10 @@ const HIDDEN = '__hidden__'
  * arsenal, look-at-opponent-hand).
  */
 export function buildClientView(game: GameState, viewerIdx: number): GameState {
-  if (viewerIdx < 0) return game
+  if (viewerIdx < -1) return game
   const clone: GameState = JSON.parse(JSON.stringify(game))
+  // Spectators (viewerIdx === -1) see everything.
+  if (viewerIdx === -1) return clone
   const owner = decisionOwner(clone)
   const n = clone.players.length
 
