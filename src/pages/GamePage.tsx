@@ -663,8 +663,8 @@ function PlayConfirmModal({
   const c = getCardSafe(confirm.id)
   const zoneLabel = confirm.zone === 'hand' ? 'de tu mano' : confirm.zone === 'prematch' ? 'Pre-match (Backlash)' : 'Mid-match (Backlash)'
   const zoneKind: 'hand' | 'midmatch' | 'prematch' = confirm.zone ?? 'hand'
-  const canShow = zoneKind === 'hand' && myIdx !== null && game.players.length > 1
-  const opponentIdx = canShow ? game.players.findIndex((_, i) => i !== myIdx) : -1
+  const activePlayerIdx = myIdx ?? game.activeIndex
+  const opponentIdx = game.players.findIndex((_, i) => i !== activePlayerIdx)
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -696,12 +696,12 @@ Fortitude <b>{c.fortitude}F</b>
           </div>
         </div>
         <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
-          {canShow && opponentIdx >= 0 && (
+          {zoneKind === 'hand' && opponentIdx >= 0 && (
             <button
               className="ghost"
               onClick={() => {
                 onClose()
-                useAppStore.getState().showCardToOpponent(myIdx, confirm.id, opponentIdx)
+                useAppStore.getState().showCardToOpponent(activePlayerIdx, confirm.id, opponentIdx)
               }}
             >
               Mostrar a oponente
