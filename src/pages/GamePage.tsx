@@ -104,6 +104,20 @@ export function GamePage() {
 
           <RingZone game={displayGame} onCardClick={setDetail} onCardHover={setZoom} />
 
+          {displayGame._shownCard && (
+            <div className="card shown-card-banner" style={{ textAlign: 'center', border: '2px solid var(--gold)', background: 'var(--bg-2)', padding: 12, marginBottom: 8 }}>
+              <div className="muted" style={{ marginBottom: 6 }}>
+                {displayGame.players[displayGame._shownCard.from]?.name} mostró esta carta a {displayGame.players[displayGame._shownCard.to]?.name}:
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <CardFace id={displayGame._shownCard.cardId} size="sm" />
+              </div>
+              <button className="ghost" style={{ marginTop: 8 }} onClick={() => useAppStore.getState().clearShownCard()}>
+                Ocultar
+              </button>
+            </div>
+          )}
+
           {displayGame.resolution?.overturning && displayGame.pendingDecision?.type === 'overturnCards' && (
             <OverturnBanner game={displayGame} />
           )}
