@@ -665,6 +665,7 @@ function PlayConfirmModal({
   const zoneKind: 'hand' | 'midmatch' | 'prematch' = confirm.zone ?? 'hand'
   const activePlayerIdx = myIdx ?? game.activeIndex
   const opponentIdx = game.players.findIndex((_, i) => i !== activePlayerIdx)
+  const isShown = !!game._shownCard && game._shownCard.cardId === confirm.id && game._shownCard.from === activePlayerIdx
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -698,13 +699,17 @@ Fortitude <b>{c.fortitude}F</b>
         <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
           {zoneKind === 'hand' && opponentIdx >= 0 && (
             <button
-              className="ghost"
+              className={`ghost ${isShown ? 'reveal-target' : ''}`}
               onClick={() => {
-                onClose()
-                useAppStore.getState().showCardToOpponent(activePlayerIdx, confirm.id, opponentIdx)
+                if (isShown) {
+                  useAppStore.getState().clearShownCard()
+                } else {
+                  onClose()
+                  useAppStore.getState().showCardToOpponent(activePlayerIdx, confirm.id, opponentIdx)
+                }
               }}
             >
-              Mostrar a oponente
+              {isShown ? 'Ocultar del oponente' : 'Mostrar a oponente'}
             </button>
           )}
           <button className="ghost" onClick={onClose}>
