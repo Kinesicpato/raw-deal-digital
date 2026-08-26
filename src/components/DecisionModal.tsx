@@ -186,25 +186,30 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
 function ReversalPlayed({ decision, onContinue }: { decision: Extract<PendingDecision, { type: 'reversalPlayed' }>; onContinue: () => void }) {
   const game = useAppStore((s) => s.game)
   const attacker = game?.players[decision.attackerIdx]
-  const reversalCard = getCardSafe(decision.reversalCardId)
+  const cardIds = decision.reversalCardIds
 
   return (
     <>
       <h3>Reversal aplicado</h3>
       <p className="muted">
         <b>{attacker?.name}</b>, tu oponente revirtió tu jugada con{' '}
-        <b>{reversalCard.name}</b>.
+        <b>{cardIds.length === 1 ? getCardSafe(cardIds[0]!).name : `${cardIds.length} cartas`}</b>.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
-        <CardFace id={reversalCard.id} size="md" />
-        <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {reversalCard.fortitude > 0 && <span className="stat-chip">Fortitude <b>{reversalCard.fortitude}F</b></span>}
-          {reversalCard.damage > 0 && <span className="stat-chip">Daño <b>{reversalCard.damage}D</b></span>}
-          {reversalCard.traits && reversalCard.traits.length > 0 && (
-            <span className="stat-chip">{reversalCard.traits.join(' · ')}</span>
-          )}
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {cardIds.map((id) => {
+            const card = getCardSafe(id)
+            return (
+              <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <CardFace id={card.id} size="md" />
+                <div className="row" style={{ gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {card.fortitude > 0 && <span className="stat-chip">F{card.fortitude}</span>}
+                  {card.damage > 0 && <span className="stat-chip">D{card.damage}</span>}
+                </div>
+              </div>
+            )
+          })}
         </div>
-        <p className="muted" style={{ textAlign: 'center', margin: 0, maxWidth: 420 }}>{reversalCard.text}</p>
       </div>
       <div className="row" style={{ marginTop: 12, gap: 8 }}>
         <button className="primary" onClick={onContinue} style={{ flex: 1 }}>

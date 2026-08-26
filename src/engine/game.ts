@@ -581,7 +581,7 @@ export function reversalMatches(reversal: CardDef, attacked: CardDef): boolean {
 export function playReversal(
   state: GameState,
   defenderIdx: number,
-  reversalId: string,
+  reversalIds: string[],
 ): string | null {
   const res = state.resolution
   if (!res) return 'No active card to reverse.'
@@ -590,43 +590,51 @@ export function playReversal(
   if (!res.waitingHandReversal && !res.partialReversal) return 'No reversal window open.'
   if (state.activeIndex === defenderIdx) return 'You cannot reverse your own card.'
 
-  // Check if the card is in hand or in the Mid-match Backlash deck.
-  const handIdx = defender.hand.indexOf(reversalId)
-  const backlashIdx = defender.backlashMid.indexOf(reversalId)
-  if (handIdx < 0 && backlashIdx < 0) return 'Card is not in your hand or Backlash deck.'
-  if (handIdx >= 0) {
-    defender.hand.splice(handIdx, 1)
+  const firstId = reversalIds[0]!
+  const firstHandIdx = defender.hand.indexOf(firstId)
+  const firstBacklashIdx = defender.backlashMid.indexOf(firstId)
+  if (firstHandIdx < 0 && firstBacklashIdx < 0) return 'Card is not in your hand or Backlash deck.'
+  if (firstHandIdx >= 0) {
+    defender.hand.splice(firstHandIdx, 1)
   } else {
-    defender.backlashMid.splice(backlashIdx, 1)
+    defender.backlashMid.splice(firstBacklashIdx, 1)
   }
 
-  const rev = getCard(reversalId)
+  const rev = getCard(firstId)
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
-  // Backlash reversal cards go to Mid-match zone; hand reversals go to Ring Area.
-  const cameFromBacklash = backlashIdx >= 0
+  const cameFromBacklash = firstBacklashIdx >= 0
   if (cameFromBacklash) {
-    defender.midmatchPlayed.push(reversalId)
+    defender.midmatchPlayed.push(firstId)
   } else {
-    defender.ring.push(reversalId)
+    defender.ring.push(firstId)
     defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
   }
 
-
-  // Reversal effects are never applied automatically — show the text.
   if (rev.effect && rev.effect.length > 0) {
   }
 
-  // Attacker's card goes to Ringside (reversed from hand).
+  for (let i = 1; i < reversalIds.length; i++) {
+    const extraId = reversalIds[i]!
+    const hi = defender.hand.indexOf(extraId)
+    const bi = defender.backlashMid.indexOf(extraId)
+    if (hi >= 0) {
+      defender.hand.splice(hi, 1)
+      defender.ring.push(extraId)
+    } else if (bi >= 0) {
+      defender.backlashMid.splice(bi, 1)
+      defender.midmatchPlayed.push(extraId)
+    }
+  }
+  defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
+
   attacker.ringside.push(res.cardId)
 
   attacker.reversedLastTurn = true
   defender.reversedLastTurn = false
 
-  // Show the reversal card to the attacker; they must click "Continuar" before
-  // the turn proceeds. The resolution stays alive so the card info is available.
-  state.pendingDecision = { type: 'reversalPlayed', attackerIdx: res.attacker, reversalCardId: reversalId }
+  state.pendingDecision = { type: 'reversalPlayed', attackerIdx: res.attacker, reversalCardIds: reversalIds }
   state.pendingEffects = null
   state.phase = 'main'
   return null
@@ -846,25 +854,8 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
         const p = payload as { cardIds: string[] }
         const ids = p.cardIds
         if (!Array.isArray(ids) || ids.length === 0) return 'No reversal cards selected.'
-        const firstId = ids[0]!
-        const err = playReversal(state, decision.defenderIdx, firstId)
+        const err = playReversal(state, decision.defenderIdx, ids)
         if (err) return err
-        const defender = state.players[decision.defenderIdx]
-        if (defender) {
-          for (let i = 1; i < ids.length; i++) {
-            const extraId = ids[i]!
-            const hi = defender.hand.indexOf(extraId)
-            const bi = defender.backlashMid.indexOf(extraId)
-            if (hi >= 0) {
-              defender.hand.splice(hi, 1)
-              defender.ring.push(extraId)
-            } else if (bi >= 0) {
-              defender.backlashMid.splice(bi, 1)
-              defender.midmatchPlayed.push(extraId)
-            }
-          }
-          defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
-        }
       }
       return null
     }
