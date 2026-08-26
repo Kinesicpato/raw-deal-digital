@@ -85,7 +85,7 @@ interface AppState {
   endTurnAction: () => void
   activateRingAction: (cardId: string) => void
   resolvePending: (payload: unknown) => void
-  resolveReversal: (payload: { cardId: string; zone?: string } | null) => void
+  resolveReversal: (payload: { cardIds: string[] } | null) => void
   flipOverturn: () => void
   stopOverturn: () => void
   newGameAgain: () => void

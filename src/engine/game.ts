@@ -843,9 +843,28 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
       if (payload === null) {
         passReversal(state)
       } else {
-        const p = payload as { cardId: string; zone?: string }
-        const err = playReversal(state, decision.defenderIdx, p.cardId)
+        const p = payload as { cardIds: string[] }
+        const ids = p.cardIds
+        if (!Array.isArray(ids) || ids.length === 0) return 'No reversal cards selected.'
+        const firstId = ids[0]!
+        const err = playReversal(state, decision.defenderIdx, firstId)
         if (err) return err
+        const defender = state.players[decision.defenderIdx]
+        if (defender) {
+          for (let i = 1; i < ids.length; i++) {
+            const extraId = ids[i]!
+            const hi = defender.hand.indexOf(extraId)
+            const bi = defender.backlashMid.indexOf(extraId)
+            if (hi >= 0) {
+              defender.hand.splice(hi, 1)
+              defender.ring.push(extraId)
+            } else if (bi >= 0) {
+              defender.backlashMid.splice(bi, 1)
+              defender.midmatchPlayed.push(extraId)
+            }
+          }
+          defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
+        }
       }
       return null
     }

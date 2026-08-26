@@ -104,20 +104,6 @@ export function GamePage() {
 
           <RingZone game={displayGame} onCardClick={setDetail} onCardHover={setZoom} />
 
-          {displayGame._shownCard && (
-            <div className="card shown-card-banner" style={{ textAlign: 'center', border: '2px solid var(--gold)', background: 'var(--bg-2)', padding: 12, marginBottom: 8 }}>
-              <div className="muted" style={{ marginBottom: 6 }}>
-                {displayGame.players[displayGame._shownCard.from]?.name} mostró esta carta a {displayGame.players[displayGame._shownCard.to]?.name}:
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <CardFace id={displayGame._shownCard.cardId} size="sm" />
-              </div>
-              <button className="ghost" style={{ marginTop: 8 }} onClick={() => useAppStore.getState().clearShownCard()}>
-                Ocultar
-              </button>
-            </div>
-          )}
-
           {displayGame.resolution?.overturning && displayGame.pendingDecision?.type === 'overturnCards' && (
             <OverturnBanner game={displayGame} />
           )}
@@ -161,7 +147,7 @@ export function GamePage() {
         />
       )}
       <DecisionModal />
-      <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} game={displayGame} myIdx={myIdx} />
+      <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
       <CardZoomPreview id={detail ? null : zoom} />
       {lastError && <Toast message={lastError} onClose={clearError} />}
@@ -665,21 +651,14 @@ function HandZone({
 function PlayConfirmModal({
   confirm,
   onClose,
-  game,
-  myIdx,
 }: {
   confirm: { id: string; zone?: 'hand' | 'midmatch' | 'prematch' } | null
   onClose: () => void
-  game: GameState
-  myIdx: number | null
 }) {
   if (!confirm) return null
   const c = getCardSafe(confirm.id)
   const zoneLabel = confirm.zone === 'hand' ? 'de tu mano' : confirm.zone === 'prematch' ? 'Pre-match (Backlash)' : 'Mid-match (Backlash)'
   const zoneKind: 'hand' | 'midmatch' | 'prematch' = confirm.zone ?? 'hand'
-  const activePlayerIdx = myIdx ?? game.activeIndex
-  const opponentIdx = game.players.findIndex((_, i) => i !== activePlayerIdx)
-  const isShown = !!game._shownCard && game._shownCard.cardId === confirm.id && game._shownCard.from === activePlayerIdx
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -711,21 +690,6 @@ Fortitude <b>{c.fortitude}F</b>
           </div>
         </div>
         <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
-          {zoneKind === 'hand' && opponentIdx >= 0 && (
-            <button
-              className={`ghost ${isShown ? 'reveal-target' : ''}`}
-              onClick={() => {
-                if (isShown) {
-                  useAppStore.getState().clearShownCard()
-                } else {
-                  onClose()
-                  useAppStore.getState().showCardToOpponent(activePlayerIdx, confirm.id, opponentIdx)
-                }
-              }}
-            >
-              {isShown ? 'Ocultar del oponente' : 'Mostrar a oponente'}
-            </button>
-          )}
           <button className="ghost" onClick={onClose}>
             Volver
           </button>

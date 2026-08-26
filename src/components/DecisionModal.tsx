@@ -118,21 +118,25 @@ function ChooseTarget({ decision, onPick }: { decision: Extract<PendingDecision,
   )
 }
 
-function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardId: string; zone?: string } | null) => void }) {
+function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardIds: string[] } | null) => void }) {
   const game = useAppStore((s) => s.game)
   const defender = game?.players[decision.defenderIdx]
   const attacker = game?.players[game.resolution?.attacker ?? -1]
   const played = game?.resolution ? getCardSafe(game.resolution.cardId) : null
+  const [sel, setSel] = useState<string[]>([])
 
-  const pickHand = (id: string) => onResolve({ cardId: id })
-  const pickBacklash = (id: string) => onResolve({ cardId: id, zone: 'midmatch' })
+  const toggle = (id: string) =>
+    setSel((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      return [...prev, id]
+    })
 
   return (
     <>
       <h3>Ventana de Reversal</h3>
       <p className="muted">
         <b>{defender?.name}</b>, tu oponente <b>{attacker?.name}</b> jugó{' '}
-        <b>{played?.name ?? ''}</b>. Elegí una carta para revertirlo:
+        <b>{played?.name ?? ''}</b>. Elegí una o más cartas para revertirlo:
       </p>
       <p className="muted" style={{ margin: '4px 0 8px' }}>
         Carta de <b>mano</b> → va a tu <b>Ring Area</b>. Carta de <b>Backlash</b> → va a tu zona <b>Mid-match</b>.
@@ -153,7 +157,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
       <div className="hand" style={{ maxHeight: 200, overflowY: 'auto', flexWrap: 'wrap' }}>
         {defender?.hand.map((id) => (
-          <CardFace key={id} id={id} size="sm" playable onClick={() => pickHand(id)} />
+          <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
         ))}
         {(!defender || defender.hand.length === 0) && <span className="muted">Sin cartas en mano.</span>}
       </div>
@@ -162,7 +166,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
           <div className="big-label" style={{ marginTop: 8 }}>Backlash (Mid-match)</div>
           <div className="hand" style={{ maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap' }}>
             {defender.backlashMid.map((id) => (
-              <CardFace key={id} id={id} size="sm" playable onClick={() => pickBacklash(id)} />
+              <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
             ))}
           </div>
         </>
@@ -170,6 +174,9 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       <div className="row" style={{ marginTop: 12, gap: 8 }}>
         <button className="primary" onClick={() => onResolve(null)} style={{ flex: 1 }}>
           No revertir (tomar el daño)
+        </button>
+        <button className="primary" disabled={sel.length === 0} onClick={() => onResolve({ cardIds: sel })} style={{ flex: 1 }}>
+          Revertir {sel.length > 0 ? `(${sel.length})` : ''}
         </button>
       </div>
     </>
