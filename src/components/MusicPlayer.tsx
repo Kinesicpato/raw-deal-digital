@@ -1,75 +1,120 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
-const STATIONS = [
-  { name: '80s Metal FM', url: 'http://bigrradio.cdnstream1.com/5186_128' },
-  { name: 'Beyond Ringside', url: 'https://streamer.radio.co/s2e4a3222c/listen' },
-  { name: 'Rock FM', url: 'http://nashe1.hostingradio.ru/rock-128.mp3' },
+const WWE_MIXES = [
+  { id: 'PkzTIL4f8ng', name: 'WWE Themes Mix' },
+  { id: 'U1qjOGVz0QA', name: 'WWE Entrance Themes' },
+  { id: '4f_nOFjJFkY', name: 'WWE Classic Themes' },
 ]
 
-export function MusicPlayer() {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [playing, setPlaying] = useState(false)
-  const [stationIdx, setStationIdx] = useState(0)
-  const [volume, setVolume] = useState(0.3)
+declare global {
+  interface Window {
+    YT?: { Player: new (el: HTMLElement, opts: Record<string, unknown>) => YTPlayer }
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
 
-  useEffect(() => {
-    const audio = new Audio()
-    audio.crossOrigin = 'anonymous'
-    audio.volume = volume
-    audioRef.current = audio
-    return () => { audio.pause(); audio.src = '' }
+interface YTPlayer {
+  playVideo: () => void
+  pauseVideo: () => void
+  setVolume: (v: number) => void
+  getVolume: () => number
+  loadVideoById: (id: string) => void
+  destroy: () => void
+}
+
+export function MusicPlayer() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<YTPlayer | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [mixIdx, setMixIdx] = useState(0)
+  const [volume, setVolume] = useState(30)
+  const [minimized, setMinimized] = useState(false)
+  const [ready, setReady] = useState(false)
+
+  const initPlayer = useCallback(() => {
+    if (playerRef.current || !containerRef.current) return
+    const player = new window.YT!.Player(containerRef.current, {
+      videoId: WWE_MIXES[0]!.id,
+      playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0 },
+      events: {
+        onReady: () => {
+          playerRef.current = player
+          player.setVolume(30)
+          setReady(true)
+        },
+      },
+    })
   }, [])
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume
-  }, [volume])
+    if (window.YT?.Player) {
+      initPlayer()
+      return
+    }
+    const tag = document.createElement('script')
+    tag.src = 'https://www.youtube.com/iframe_api'
+    document.head.appendChild(tag)
+    window.onYouTubeIframeAPIReady = initPlayer
+    return () => { window.onYouTubeIframeAPIReady = undefined }
+  }, [initPlayer])
 
-  const loadStation = (idx: number) => {
-    const audio = audioRef.current
-    if (!audio) return
-    const station = STATIONS[idx]
-    if (!station) return
-    audio.src = station.url
-    audio.load()
-    setStationIdx(idx)
-  }
+  useEffect(() => {
+    return () => { playerRef.current?.destroy() }
+  }, [])
 
   const togglePlay = () => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (playing) {
-      audio.pause()
-      setPlaying(false)
-    } else {
-      if (!audio.src || audio.src === window.location.href) loadStation(stationIdx)
-      audio.play().then(() => setPlaying(true)).catch(() => {})
+    const p = playerRef.current
+    if (!p) return
+    if (playing) { p.pauseVideo(); setPlaying(false) }
+    else { p.playVideo(); setPlaying(true) }
+  }
+
+  const changeMix = () => {
+    const next = (mixIdx + 1) % WWE_MIXES.length
+    setMixIdx(next)
+    const p = playerRef.current
+    if (p) {
+      p.loadVideoById(WWE_MIXES[next]!.id)
+      setPlaying(true)
     }
   }
 
-  const nextStation = () => {
-    const next = (stationIdx + 1) % STATIONS.length
-    loadStation(next)
-    if (playing) audioRef.current?.play().then(() => setPlaying(true)).catch(() => {})
+  const changeVolume = (val: number) => {
+    setVolume(val)
+    playerRef.current?.setVolume(val)
+  }
+
+  const mix = WWE_MIXES[mixIdx]!
+
+  if (minimized) {
+    return (
+      <button className="mp-minimized" onClick={() => setMinimized(false)} title="Abrir reproductor de musica">
+        🎵
+      </button>
+    )
   }
 
   return (
     <div className="music-player">
-      <button className="mp-btn" onClick={togglePlay} title={playing ? 'Pausar musica' : 'Reproducir musica'}>
+      <div ref={containerRef} style={{ display: 'none' }} />
+      <button className="mp-btn" onClick={togglePlay} disabled={!ready} title={playing ? 'Pausar' : 'Reproducir'}>
         {playing ? '⏸' : '▶'}
       </button>
-      <button className="mp-btn" onClick={nextStation} title="Cambiar estacion">
+      <button className="mp-btn" onClick={changeMix} title="Siguiente mix">
         ⏭
       </button>
       <input
         type="range"
         min={0}
         max={100}
-        value={Math.round(volume * 100)}
-        onChange={(e) => setVolume(Number(e.target.value) / 100)}
+        value={volume}
+        onChange={(e) => changeVolume(Number(e.target.value))}
         className="mp-volume"
-        title={`Volumen: ${Math.round(volume * 100)}%`}
       />
-      <span className="mp-label">{STATIONS[stationIdx]?.name ?? ''}</span>
+      <span className="mp-label">{mix.name}</span>
+      <button className="mp-btn mp-minimize-btn" onClick={() => setMinimized(true)} title="Ocultar">
+        ✕
+      </button>
     </div>
   )
 }
