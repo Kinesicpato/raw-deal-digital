@@ -11,11 +11,28 @@ import {
 } from './types'
 
 const ICE_CONFIG: RTCConfiguration = {
+  iceTransportPolicy: 'all',
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
     {
       urls: [
         'turn:eu-0.turn.peerjs.com:3478',
@@ -114,7 +131,7 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  const p = new Peer(peerIdFor(code), { debug: 1, config: ICE_CONFIG })
+  const p = new Peer(peerIdFor(code), { debug: 2, config: ICE_CONFIG })
   peer = p
 
   p.on('open', () => hooks.onOpen())
@@ -248,7 +265,7 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
   role = 'client'
   hostHooksRef = null
 
-  const p = new Peer({ debug: 1, config: ICE_CONFIG })
+  const p = new Peer({ debug: 2, config: ICE_CONFIG })
   peer = p
   let started = false
 
