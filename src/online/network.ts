@@ -116,10 +116,14 @@ export function stopOnline(): void {
 /**
  * Creates the room (free public PeerJS broker). The host is always seat 0.
  */
+let hostRetries = 0
+const MAX_RETRIES = 5
+
 export function startHost(code: string, seatCount: number, hostName: string, hooks: HostHooks): void {
   stopOnline()
   role = 'host'
   hostHooksRef = hooks
+  hostRetries = 0
   registry.clear()
   const n = Math.max(2, Math.min(seatCount, MAX_SEATS))
   for (let i = 0; i < n; i++) {
@@ -138,6 +142,7 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     peer = p
 
     p.on('open', () => {
+      hostRetries = 0
       hooks.onOpen()
     })
 
@@ -148,8 +153,18 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
 
     p.on('error', (err: unknown) => {
       const type = (err as { type?: string }).type
-      if (type === 'unavailable-id') hooks.onError('Ese código ya está en uso. Probá con otra sala.')
-      else hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
+      if (type === 'unavailable-id') {
+        hooks.onError('Ese código ya está en uso. Probá con otra sala.')
+      } else if (hostRetries < MAX_RETRIES) {
+        hostRetries++
+        const delay = Math.min(1000 * Math.pow(2, hostRetries - 1), 16000)
+        hooks.onError(`Reconectando... (intento ${hostRetries}/${MAX_RETRIES})`)
+        setTimeout(() => {
+          if (role === 'host') connect()
+        }, delay)
+      } else {
+        hooks.onError('No se pudo conectar al servidor. Intentá de nuevo más tarde.')
+      }
     })
   }
 
@@ -272,10 +287,13 @@ export function hostSendError(idx: number, message: string): void {
 // CLIENT
 // ---------------------------------------------------------------------------
 
+let clientRetries = 0
+
 export function startClient(code: string, name: string, hooks: ClientHooks): void {
   stopOnline()
   role = 'client'
   hostHooksRef = null
+  clientRetries = 0
 
   let started = false
 
@@ -284,6 +302,7 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
     peer = p
 
     p.on('open', () => {
+      clientRetries = 0
       const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
       hostConn = conn
       conn.on('open', () => {
@@ -313,8 +332,15 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
       const type = (err as { type?: string }).type
       if (type === 'peer-unavailable' || type === 'unavailable-id') {
         hooks.onError('No se encontró la sala con ese código.')
+      } else if (clientRetries < MAX_RETRIES) {
+        clientRetries++
+        const delay = Math.min(1000 * Math.pow(2, clientRetries - 1), 16000)
+        hooks.onError(`Reconectando... (intento ${clientRetries}/${MAX_RETRIES})`)
+        setTimeout(() => {
+          if (role === 'client') connect()
+        }, delay)
       } else {
-        hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
+        hooks.onError('No se pudo conectar. Verificá el código e intentá de nuevo.')
       }
     })
   }
