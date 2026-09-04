@@ -15,13 +15,13 @@
   --ring: #3a2f12;
 
   /* Card dimensions — one knob to inflate for big screens. */
-  --card-w: 162px;
+  --card-w: 148px;
   --card-h: 205px;
-  --card-xs-w: 104px;
+  --card-xs-w: 96px;
   --card-xs-h: 133px;
-  --card-md-w: 228px;
+  --card-md-w: 210px;
   --card-md-h: 291px;
-  --card-lg-w: 360px;
+  --card-lg-w: 344px;
   --card-lg-h: 477px;
 }
 
@@ -1001,13 +1001,13 @@ input:focus {
    ============================================================ */
 @media (min-width: 1500px) {
   :root {
-    --card-w: 184px;
+    --card-w: 168px;
     --card-h: 233px;
-    --card-xs-w: 112px;
+    --card-xs-w: 104px;
     --card-xs-h: 144px;
-    --card-md-w: 260px;
+    --card-md-w: 240px;
     --card-md-h: 333px;
-    --card-lg-w: 400px;
+    --card-lg-w: 380px;
     --card-lg-h: 527px;
   }
   .banner-logo {
@@ -1020,13 +1020,13 @@ input:focus {
 
 @media (max-width: 1180px) {
   :root {
-    --card-w: 140px;
+    --card-w: 128px;
     --card-h: 178px;
-    --card-xs-w: 92px;
+    --card-xs-w: 84px;
     --card-xs-h: 116px;
-    --card-md-w: 204px;
+    --card-md-w: 188px;
     --card-md-h: 261px;
-    --card-lg-w: 276px;
+    --card-lg-w: 260px;
     --card-lg-h: 360px;
   }
   .game-layout {
@@ -1064,13 +1064,13 @@ input:focus {
    ============================================================ */
 @media (max-width: 720px) {
   :root {
-    --card-w: 126px;
+    --card-w: 116px;
     --card-h: 161px;
-    --card-xs-w: 76px;
+    --card-xs-w: 70px;
     --card-xs-h: 97px;
-    --card-md-w: 182px;
+    --card-md-w: 168px;
     --card-md-h: 233px;
-    --card-lg-w: 248px;
+    --card-lg-w: 232px;
     --card-lg-h: 322px;
   }
 
