@@ -1,56 +1,35 @@
 import { useState, useRef } from 'react'
 
-const WWE_MIXES = [
-  { id: 'PkzTIL4f8ng', name: 'WWE Themes Mix' },
-  { id: 'U1qjOGVz0QA', name: 'WWE Entrance Themes' },
-  { id: '4f_nOFjJFkY', name: 'WWE Classic Themes' },
+const WWE_PLAYLISTS = [
+  { id: '1815194939', name: 'WWE 2K26 Themes' },
+  { id: '1865819510', name: 'WWE Theme Songs 2026' },
+  { id: '1758714783', name: 'WWE Entrance Songs' },
 ]
-
-function ytMsg(func: string) {
-  return JSON.stringify({ event: 'command', func, args: [] })
-}
 
 export function MusicPlayer() {
   const frameRef = useRef<HTMLIFrameElement>(null)
   const [playing, setPlaying] = useState(false)
-  const [mixIdx, setMixIdx] = useState(0)
-  const [volume, setVolume] = useState(30)
+  const [idx, setIdx] = useState(0)
   const [minimized, setMinimized] = useState(false)
 
-  const send = (func: string) => {
+  const send = (action: string) => {
     const f = frameRef.current
     if (!f) return
-    f.contentWindow?.postMessage(ytMsg(func), '*')
+    f.contentWindow?.postMessage(JSON.stringify({ method: action }), '*')
   }
 
   const togglePlay = () => {
-    if (playing) { send('pauseVideo'); setPlaying(false) }
-    else { send('playVideo'); setPlaying(true) }
+    if (playing) { send('pause'); setPlaying(false) }
+    else { send('play'); setPlaying(true) }
   }
 
   const changeMix = () => {
-    const next = (mixIdx + 1) % WWE_MIXES.length
-    setMixIdx(next)
-    const f = frameRef.current
-    if (f) {
-      f.src = `https://www.youtube.com/embed/${WWE_MIXES[next]!.id}?enablejsapi=1&origin=${window.location.origin}&autoplay=1&mute=0`
-      setPlaying(true)
-    }
+    const next = (idx + 1) % WWE_PLAYLISTS.length
+    setIdx(next)
+    setPlaying(true)
   }
 
-  const changeVolume = (val: number) => {
-    setVolume(val)
-    const f = frameRef.current
-    if (f) {
-      f.contentWindow?.postMessage(JSON.stringify({
-        event: 'command',
-        func: 'setVolume',
-        args: [val],
-      }), '*')
-    }
-  }
-
-  const mix = WWE_MIXES[mixIdx]!
+  const pl = WWE_PLAYLISTS[idx]!
 
   if (minimized) {
     return (
@@ -64,27 +43,19 @@ export function MusicPlayer() {
     <div className="music-player">
       <iframe
         ref={frameRef}
-        id="wwe-yt-player"
+        key={pl.id}
         className="mp-yt-frame"
-        src={`https://www.youtube.com/embed/${WWE_MIXES[0]!.id}?enablejsapi=1&origin=${window.location.origin}&mute=0`}
-        allow="autoplay; encrypted-media"
+        src={`https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/${pl.id}&auto_play=true&show_artwork=false&show_comments=false&show_user=false&hide_related=true&sharing=false&download=false&buying=false`}
+        allow="autoplay"
         title="WWE Music"
       />
       <button className="mp-btn" onClick={togglePlay} title={playing ? 'Pausar' : 'Reproducir'}>
         {playing ? '⏸' : '▶'}
       </button>
-      <button className="mp-btn" onClick={changeMix} title="Siguiente mix">
+      <button className="mp-btn" onClick={changeMix} title="Siguiente playlist">
         ⏭
       </button>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={volume}
-        onChange={(e) => changeVolume(Number(e.target.value))}
-        className="mp-volume"
-      />
-      <span className="mp-label">{mix.name}</span>
+      <span className="mp-label">{pl.name}</span>
       <button className="mp-btn mp-minimize-btn" onClick={() => setMinimized(true)} title="Ocultar">
         ✕
       </button>
