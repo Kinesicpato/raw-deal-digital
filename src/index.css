@@ -1343,13 +1343,13 @@ input:focus {
 .mp-minimized:hover {
   background: rgba(20, 16, 10, 1);
 }
-.mp-yt-container {
+.mp-yt-frame {
   position: absolute;
   width: 1px;
   height: 1px;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
+  border: none;
+  opacity: 0.01;
   top: 0;
   left: 0;
+  pointer-events: none;
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef } from 'react'
 
 const WWE_MIXES = [
   { id: 'PkzTIL4f8ng', name: 'WWE Themes Mix' },
@@ -6,103 +6,47 @@ const WWE_MIXES = [
   { id: '4f_nOFjJFkY', name: 'WWE Classic Themes' },
 ]
 
-declare global {
-  interface Window {
-    YT?: { Player: new (el: HTMLElement, opts: Record<string, unknown>) => YTPlayer }
-    onYouTubeIframeAPIReady?: () => void
-  }
-}
-
-interface YTPlayer {
-  playVideo: () => void
-  pauseVideo: () => void
-  unMute: () => void
-  isMuted: () => boolean
-  setVolume: (v: number) => void
-  getVolume: () => number
-  loadVideoById: (id: string) => void
-  destroy: () => void
+function ytMsg(func: string) {
+  return JSON.stringify({ event: 'command', func, args: [] })
 }
 
 export function MusicPlayer() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const playerRef = useRef<YTPlayer | null>(null)
+  const frameRef = useRef<HTMLIFrameElement>(null)
   const [playing, setPlaying] = useState(false)
   const [mixIdx, setMixIdx] = useState(0)
   const [volume, setVolume] = useState(30)
   const [minimized, setMinimized] = useState(false)
-  const [ready, setReady] = useState(false)
 
-  const initPlayer = useCallback(() => {
-    if (playerRef.current || !containerRef.current) return
-    const player = new window.YT!.Player(containerRef.current, {
-      videoId: WWE_MIXES[0]!.id,
-      playerVars: {
-        autoplay: 0,
-        controls: 0,
-        modestbranding: 1,
-        rel: 0,
-        iv_load_policy: 3,
-      },
-      events: {
-        onReady: () => {
-          playerRef.current = player
-          player.unMute()
-          player.setVolume(30)
-          setReady(true)
-        },
-      },
-    })
-  }, [])
-
-  useEffect(() => {
-    if (window.YT?.Player) {
-      initPlayer()
-      return
-    }
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    document.head.appendChild(tag)
-    window.onYouTubeIframeAPIReady = initPlayer
-    return () => { window.onYouTubeIframeAPIReady = undefined }
-  }, [initPlayer])
-
-  useEffect(() => {
-    return () => { playerRef.current?.destroy() }
-  }, [])
+  const send = (func: string) => {
+    const f = frameRef.current
+    if (!f) return
+    f.contentWindow?.postMessage(ytMsg(func), '*')
+  }
 
   const togglePlay = () => {
-    const p = playerRef.current
-    if (!p) return
-    if (playing) {
-      p.pauseVideo()
-      setPlaying(false)
-    } else {
-      if (p.isMuted()) p.unMute()
-      p.setVolume(volume)
-      p.playVideo()
-      setPlaying(true)
-    }
+    if (playing) { send('pauseVideo'); setPlaying(false) }
+    else { send('playVideo'); setPlaying(true) }
   }
 
   const changeMix = () => {
     const next = (mixIdx + 1) % WWE_MIXES.length
     setMixIdx(next)
-    const p = playerRef.current
-    if (p) {
-      p.loadVideoById(WWE_MIXES[next]!.id)
-      if (p.isMuted()) p.unMute()
-      p.setVolume(volume)
+    const f = frameRef.current
+    if (f) {
+      f.src = `https://www.youtube.com/embed/${WWE_MIXES[next]!.id}?enablejsapi=1&origin=${window.location.origin}&autoplay=1&mute=0`
       setPlaying(true)
     }
   }
 
   const changeVolume = (val: number) => {
     setVolume(val)
-    const p = playerRef.current
-    if (p) {
-      if (p.isMuted()) p.unMute()
-      p.setVolume(val)
+    const f = frameRef.current
+    if (f) {
+      f.contentWindow?.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'setVolume',
+        args: [val],
+      }), '*')
     }
   }
 
@@ -110,7 +54,7 @@ export function MusicPlayer() {
 
   if (minimized) {
     return (
-      <button className="mp-minimized" onClick={() => setMinimized(false)} title="Abrir reproductor de musica">
+      <button className="mp-minimized" onClick={() => setMinimized(false)} title="Abrir musica">
         🎵
       </button>
     )
@@ -118,8 +62,15 @@ export function MusicPlayer() {
 
   return (
     <div className="music-player">
-      <div ref={containerRef} className="mp-yt-container" />
-      <button className="mp-btn" onClick={togglePlay} disabled={!ready} title={playing ? 'Pausar' : 'Reproducir'}>
+      <iframe
+        ref={frameRef}
+        id="wwe-yt-player"
+        className="mp-yt-frame"
+        src={`https://www.youtube.com/embed/${WWE_MIXES[0]!.id}?enablejsapi=1&origin=${window.location.origin}&mute=0`}
+        allow="autoplay; encrypted-media"
+        title="WWE Music"
+      />
+      <button className="mp-btn" onClick={togglePlay} title={playing ? 'Pausar' : 'Reproducir'}>
         {playing ? '⏸' : '▶'}
       </button>
       <button className="mp-btn" onClick={changeMix} title="Siguiente mix">
