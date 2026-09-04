@@ -83,7 +83,6 @@ let role: 'host' | 'client' | null = null
 let peer: Peer | null = null
 let hostConn: DataConnection | null = null
 const hostConns = new Map<number, DataConnection>()
-let keepAlive: ReturnType<typeof setInterval> | null = null
 
 const registry = new Map<number, RosterEntry>()
 let hostHooksRef: HostHooks | null = null
@@ -103,7 +102,6 @@ export function onlineRole(): 'host' | 'client' | null {
 }
 
 export function stopOnline(): void {
-  if (keepAlive) { clearInterval(keepAlive); keepAlive = null }
   hostConn?.close()
   hostConn = null
   for (const c of hostConns.values()) c.close()
@@ -141,10 +139,6 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
 
     p.on('open', () => {
       hooks.onOpen()
-      if (keepAlive) clearInterval(keepAlive)
-      keepAlive = setInterval(() => {
-        try { p.socket?.send(JSON.stringify({ type: 'pong' })) } catch { /* ignore */ }
-      }, 25000)
     })
 
     p.on('disconnected', () => {
