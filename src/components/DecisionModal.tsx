@@ -273,11 +273,14 @@ function OverturnCards({ decision, onFlip, onStop }: { decision: Extract<Pending
       )}
       <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
         <button
-          className="ghost"
+          className="primary"
           onClick={onStop}
-          style={{ fontSize: 15, padding: '10px 18px' }}
+          style={{ fontSize: 15, padding: '10px 18px', position: 'relative' }}
         >
-          ⏹ Parar (dejar de recibir daño)
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 4, background: '#d02020', color: '#fff', fontWeight: 900, fontSize: 13, lineHeight: 1 }}>⛔</span>
+            Parar (dejar de recibir daño)
+          </span>
         </button>
         <button
           className="primary"
