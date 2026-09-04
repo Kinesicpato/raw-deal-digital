@@ -16,6 +16,8 @@ declare global {
 interface YTPlayer {
   playVideo: () => void
   pauseVideo: () => void
+  unMute: () => void
+  isMuted: () => boolean
   setVolume: (v: number) => void
   getVolume: () => number
   loadVideoById: (id: string) => void
@@ -35,10 +37,17 @@ export function MusicPlayer() {
     if (playerRef.current || !containerRef.current) return
     const player = new window.YT!.Player(containerRef.current, {
       videoId: WWE_MIXES[0]!.id,
-      playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0 },
+      playerVars: {
+        autoplay: 0,
+        controls: 0,
+        modestbranding: 1,
+        rel: 0,
+        iv_load_policy: 3,
+      },
       events: {
         onReady: () => {
           playerRef.current = player
+          player.unMute()
           player.setVolume(30)
           setReady(true)
         },
@@ -65,8 +74,15 @@ export function MusicPlayer() {
   const togglePlay = () => {
     const p = playerRef.current
     if (!p) return
-    if (playing) { p.pauseVideo(); setPlaying(false) }
-    else { p.playVideo(); setPlaying(true) }
+    if (playing) {
+      p.pauseVideo()
+      setPlaying(false)
+    } else {
+      if (p.isMuted()) p.unMute()
+      p.setVolume(volume)
+      p.playVideo()
+      setPlaying(true)
+    }
   }
 
   const changeMix = () => {
@@ -75,13 +91,19 @@ export function MusicPlayer() {
     const p = playerRef.current
     if (p) {
       p.loadVideoById(WWE_MIXES[next]!.id)
+      if (p.isMuted()) p.unMute()
+      p.setVolume(volume)
       setPlaying(true)
     }
   }
 
   const changeVolume = (val: number) => {
     setVolume(val)
-    playerRef.current?.setVolume(val)
+    const p = playerRef.current
+    if (p) {
+      if (p.isMuted()) p.unMute()
+      p.setVolume(val)
+    }
   }
 
   const mix = WWE_MIXES[mixIdx]!
@@ -96,7 +118,7 @@ export function MusicPlayer() {
 
   return (
     <div className="music-player">
-      <div ref={containerRef} style={{ display: 'none' }} />
+      <div ref={containerRef} className="mp-yt-container" />
       <button className="mp-btn" onClick={togglePlay} disabled={!ready} title={playing ? 'Pausar' : 'Reproducir'}>
         {playing ? '⏸' : '▶'}
       </button>

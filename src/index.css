@@ -1283,6 +1283,7 @@ input:focus {
   padding: 6px 10px;
   z-index: 900;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  overflow: visible;
 }
 .mp-btn {
   background: none;
@@ -1341,4 +1342,14 @@ input:focus {
 }
 .mp-minimized:hover {
   background: rgba(20, 16, 10, 1);
+}
+.mp-yt-container {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  top: 0;
+  left: 0;
 }
