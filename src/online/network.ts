@@ -10,44 +10,13 @@ import {
   type SharedDeck,
 } from './types'
 
-const ICE_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: [
-        'turn:eu-0.turn.peerjs.com:3478',
-        'turn:us-0.turn.peerjs.com:3478',
-      ],
-      username: 'peerjs',
-      credential: 'peerjsp',
-    },
-  ],
-}
-
-const PEERJS_OPTS = { debug: 2, config: ICE_CONFIG }
-
-const CODE_ALPHABABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const MAX_SEATS = 8
 
 export function randomCode(length = 5): string {
   let out = ''
   for (let i = 0; i < length; i++) {
-    out += CODE_ALPHABABET[Math.floor(Math.random() * CODE_ALPHABABET.length)]
+    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
   }
   return out
 }
@@ -111,14 +80,10 @@ export function stopOnline(): void {
 /**
  * Creates the room (free public PeerJS broker). The host is always seat 0.
  */
-let hostRetries = 0
-const MAX_RETRIES = 5
-
 export function startHost(code: string, seatCount: number, hostName: string, hooks: HostHooks): void {
   stopOnline()
   role = 'host'
   hostHooksRef = hooks
-  hostRetries = 0
   registry.clear()
   const n = Math.max(2, Math.min(seatCount, MAX_SEATS))
   for (let i = 0; i < n; i++) {
@@ -132,38 +97,15 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  function connect() {
-    const p = new Peer(peerIdFor(code), PEERJS_OPTS)
-    peer = p
+  const p = new Peer(peerIdFor(code), { debug: 1 })
+  peer = p
 
-    p.on('open', () => {
-      hostRetries = 0
-      hooks.onOpen()
-    })
-
-    p.on('disconnected', () => {
-      if (p.destroyed) return
-      try { p.reconnect() } catch { /* ignore */ }
-    })
-
-    p.on('error', (err: unknown) => {
-      const type = (err as { type?: string }).type
-      if (type === 'unavailable-id') {
-        hooks.onError('Ese código ya está en uso. Probá con otra sala.')
-      } else if (hostRetries < MAX_RETRIES) {
-        hostRetries++
-        const delay = Math.min(1000 * Math.pow(2, hostRetries - 1), 16000)
-        hooks.onError(`Reconectando... (intento ${hostRetries}/${MAX_RETRIES})`)
-        setTimeout(() => {
-          if (role === 'host') connect()
-        }, delay)
-      } else {
-        hooks.onError('No se pudo conectar al servidor. Intentá de nuevo más tarde.')
-      }
-    })
-  }
-
-  connect()
+  p.on('open', () => hooks.onOpen())
+  p.on('error', (err: unknown) => {
+    const type = (err as { type?: string }).type
+    if (type === 'unavailable-id') hooks.onError('Ese código ya está en uso. Probá con otra sala.')
+    else hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
+  })
 
   const onConn = (conn: DataConnection) => {
     const idx = nextFreeSeat()
@@ -224,11 +166,9 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  if (peer) {
-    peer.on('connection', (conn) => {
-      conn.on('open', () => onConn(conn))
-    })
-  }
+  p.on('connection', (conn) => {
+    conn.on('open', () => onConn(conn))
+  })
 }
 
 function nextFreeSeat(): number | null {
@@ -240,6 +180,7 @@ function currentRoster(): RosterEntry[] {
   return [...registry.values()].sort((a, b) => a.idx - b.idx)
 }
 
+/** Host picks a superstar for the given seat (usually its own, 0). */
 export function hostSetSuperstar(idx: number, superstarId: string, deck: DeckPick | null = null): void {
   const entry = registry.get(idx)
   if (entry) {
@@ -249,6 +190,7 @@ export function hostSetSuperstar(idx: number, superstarId: string, deck: DeckPic
   }
 }
 
+/** Host changes its chosen opening-hand size for the given seat. */
 export function hostSetHandSize(idx: number, handSize: number): void {
   const entry = registry.get(idx)
   if (entry) {
@@ -257,6 +199,7 @@ export function hostSetHandSize(idx: number, handSize: number): void {
   }
 }
 
+/** Publishes the host's saved decks so every connected client can pick them. */
 export function hostShareDecks(decks: SharedDeck[]): void {
   hostSharedDecks = decks
   for (const [, conn] of hostConns) {
@@ -264,6 +207,7 @@ export function hostShareDecks(decks: SharedDeck[]): void {
   }
 }
 
+/** Broadcasts a redacted state snapshot to every connected client. */
 export function broadcastState(game: GameState): void {
   for (const [idx, conn] of hostConns) {
     if (!conn.open) continue
@@ -282,72 +226,52 @@ export function hostSendError(idx: number, message: string): void {
 // CLIENT
 // ---------------------------------------------------------------------------
 
-let clientRetries = 0
-
 export function startClient(code: string, name: string, hooks: ClientHooks): void {
   stopOnline()
   role = 'client'
   hostHooksRef = null
-  clientRetries = 0
 
+  const p = new Peer({ debug: 1 })
+  peer = p
   let started = false
 
-  function connect() {
-    const p = new Peer(PEERJS_OPTS)
-    peer = p
-
-    p.on('open', () => {
-      clientRetries = 0
-      const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
-      hostConn = conn
-      conn.on('open', () => {
-        conn.send({ type: 'hello', name } satisfies ClientMsg)
-        started = true
-        hooks.onOpen()
-      })
-      conn.on('data', (raw: unknown) => {
-        const msg = raw as HostMsg
-        if (msg.type === 'welcome') hooks.onWelcome(msg.idx, msg.roster)
-        else if (msg.type === 'lobby') hooks.onRoster(msg.roster)
-        else if (msg.type === 'decks') hooks.onDecks(msg.decks)
-        else if (msg.type === 'state') hooks.onState(msg.game)
-        else if (msg.type === 'error') hooks.onError(msg.message)
-      })
-      conn.on('close', () => {
-        if (started) hooks.onClosed()
-      })
+  p.on('open', () => {
+    const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
+    hostConn = conn
+    conn.on('open', () => {
+      conn.send({ type: 'hello', name } satisfies ClientMsg)
+      started = true
+      hooks.onOpen()
     })
-
-    p.on('disconnected', () => {
-      if (p.destroyed) return
-      try { p.reconnect() } catch { /* ignore */ }
+    conn.on('data', (raw: unknown) => {
+      const msg = raw as HostMsg
+      if (msg.type === 'welcome') hooks.onWelcome(msg.idx, msg.roster)
+      else if (msg.type === 'lobby') hooks.onRoster(msg.roster)
+      else if (msg.type === 'decks') hooks.onDecks(msg.decks)
+      else if (msg.type === 'state') hooks.onState(msg.game)
+      else if (msg.type === 'error') hooks.onError(msg.message)
     })
-
-    p.on('error', (err: unknown) => {
-      const type = (err as { type?: string }).type
-      if (type === 'peer-unavailable' || type === 'unavailable-id') {
-        hooks.onError('No se encontró la sala con ese código.')
-      } else if (clientRetries < MAX_RETRIES) {
-        clientRetries++
-        const delay = Math.min(1000 * Math.pow(2, clientRetries - 1), 16000)
-        hooks.onError(`Reconectando... (intento ${clientRetries}/${MAX_RETRIES})`)
-        setTimeout(() => {
-          if (role === 'client') connect()
-        }, delay)
-      } else {
-        hooks.onError('No se pudo conectar. Verificá el código e intentá de nuevo.')
-      }
+    conn.on('close', () => {
+      if (started) hooks.onClosed()
     })
-  }
+  })
 
-  connect()
+  p.on('error', (err: unknown) => {
+    const type = (err as { type?: string }).type
+    if (type === 'peer-unavailable' || type === 'unavailable-id') {
+      hooks.onError('No se encontró la sala con ese código.')
+    } else {
+      hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
+    }
+  })
 }
 
 export function clientSend(msg: ClientMsg): void {
   try {
     hostConn?.send(msg)
   } catch {
-    // swallow
+    // A degraded/closed PeerJS connection may throw on send. Swallow it: the
+    // caller's retry guard will let the player try again once it recovers.
   }
 }
 
@@ -355,6 +279,6 @@ export function clientSendIntent(action: IntentName, args: unknown[]): void {
   try {
     hostConn?.send({ type: 'intent', action, args } satisfies ClientMsg)
   } catch {
-    // swallow
+    // Same as clientSend: never let a failed send throw into the UI layer.
   }
 }
