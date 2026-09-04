@@ -1266,3 +1266,52 @@ input:focus {
   max-height: 160px;
   flex-wrap: wrap;
 }
+
+/* ============================================================
+   MUSIC PLAYER
+   ============================================================ */
+.music-player {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(20, 16, 10, 0.92);
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  padding: 6px 10px;
+  z-index: 900;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.mp-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--gold);
+  font-size: 16px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s;
+}
+.mp-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.mp-volume {
+  width: 80px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.mp-label {
+  color: var(--muted);
+  font-size: 11px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

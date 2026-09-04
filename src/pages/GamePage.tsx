@@ -11,6 +11,7 @@ import { CardTypeTabs, classifyCard, type CardClassFilter } from '../components/
 import { AppBanner } from '../components/Branding'
 import { Toast } from '../components/Toast'
 import { buildClientView } from '../online/types'
+import { MusicPlayer } from '../components/MusicPlayer'
 
 export function GamePage() {
   const game = useAppStore((s) => s.game)
@@ -151,6 +152,7 @@ export function GamePage() {
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
       <CardZoomPreview id={detail ? null : zoom} />
       {lastError && <Toast message={lastError} onClose={clearError} />}
+      <MusicPlayer />
     </div>
   )
 }
