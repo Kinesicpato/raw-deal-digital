@@ -10,6 +10,23 @@ import {
   type SharedDeck,
 } from './types'
 
+const ICE_CONFIG: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    {
+      urls: [
+        'turn:eu-0.turn.peerjs.com:3478',
+        'turn:us-0.turn.peerjs.com:3478',
+      ],
+      username: 'peerjs',
+      credential: 'peerjsp',
+    },
+  ],
+}
+
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const MAX_SEATS = 8
 
@@ -97,7 +114,7 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  const p = new Peer(peerIdFor(code), { debug: 1 })
+  const p = new Peer(peerIdFor(code), { debug: 1, config: ICE_CONFIG })
   peer = p
 
   p.on('open', () => hooks.onOpen())
@@ -231,7 +248,7 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
   role = 'client'
   hostHooksRef = null
 
-  const p = new Peer({ debug: 1 })
+  const p = new Peer({ debug: 1, config: ICE_CONFIG })
   peer = p
   let started = false
 
