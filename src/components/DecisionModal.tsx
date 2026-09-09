@@ -26,8 +26,10 @@ export function DecisionModal() {
   if (!d || !game) return null
 
   // In an online match, only the player responsible for this decision may see it.
+  // Exception: reversalPlayed and multiplayer reversalChoice are shown to all players.
   const owner = decisionOwner(game)
-  if (online.role && online.myIdx !== owner) return null
+  const isMultiReversal = d.type === 'reversalChoice' && 'reversedPlayers' in d && d.reversedPlayers
+  if (online.role && online.myIdx !== owner && d.type !== 'reversalPlayed' && !isMultiReversal) return null
 
   // Per-action guard. Each decision sub-action gets its own flag so a stalled
   // intent (dropped host response, validation rejection, or a thrown network
@@ -120,10 +122,20 @@ function ChooseTarget({ decision, onPick }: { decision: Extract<PendingDecision,
 
 function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardIds: string[] } | null) => void }) {
   const game = useAppStore((s) => s.game)
-  const defender = game?.players[decision.defenderIdx]
+  const myIdx = useAppStore((s) => s.online.myIdx)
+  const online = useAppStore((s) => s.online)
   const attacker = game?.players[game.resolution?.attacker ?? -1]
   const played = game?.resolution ? getCardSafe(game.resolution.cardId) : null
   const [sel, setSel] = useState<string[]>([])
+
+  const isMulti = !!(decision.reversedPlayers && game && game.players.length > 2)
+  const myPlayerIdx = isMulti ? myIdx : decision.defenderIdx
+  const amEligible = isMulti
+    ? online.myIdx !== null
+      ? myPlayerIdx !== null && myPlayerIdx !== game?.resolution?.attacker && !decision.reversedPlayers!.includes(myPlayerIdx)
+      : true
+    : true
+  const defender = game?.players[isMulti ? (myPlayerIdx ?? decision.defenderIdx) : decision.defenderIdx]
 
   const toggle = (id: string) =>
     setSel((prev) => {
@@ -131,12 +143,46 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       return [...prev, id]
     })
 
+  const handleReverse = () => {
+    if (isMulti && myPlayerIdx !== null) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(decision as any).defenderIdx = myPlayerIdx
+    }
+    onResolve({ cardIds: sel })
+  }
+
+  const handlePass = () => {
+    if (isMulti && myPlayerIdx !== null) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(decision as any).defenderIdx = myPlayerIdx
+    }
+    onResolve(null)
+  }
+
   return (
     <>
       <h3>Ventana de Reversal</h3>
+      {isMulti && (
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+          {game?.players.map((pl, i) => {
+            if (i === game.resolution?.attacker) return null
+            const passed = decision.reversedPlayers?.includes(i)
+            const isMe = i === myPlayerIdx
+            return (
+              <span
+                key={i}
+                className={`stat-chip ${isMe && amEligible ? 'badge-fort' : ''}`}
+                style={{ opacity: passed ? 0.4 : 1 }}
+              >
+                {pl.name} {isMe ? '(vos)' : ''} {passed ? '✓' : ''}
+              </span>
+            )
+          })}
+        </div>
+      )}
       <p className="muted">
-        <b>{defender?.name}</b>, tu oponente <b>{attacker?.name}</b> jugó{' '}
-        <b>{played?.name ?? ''}</b>. Elegí una o más cartas para revertirlo:
+        <b>{attacker?.name}</b> jugó <b>{played?.name ?? ''}</b>.
+        {amEligible ? ' Elegí cartas para revertir:' : isMulti ? ' Esperandodecisiones...' : ''}
       </p>
       <p className="muted" style={{ margin: '4px 0 8px' }}>
         Carta de <b>mano</b> → va a tu <b>Ring Area</b>. Carta de <b>Backlash</b> → va a tu zona <b>Mid-match</b>.
@@ -154,31 +200,35 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
           <p className="muted" style={{ textAlign: 'center', margin: 0, maxWidth: 420 }}>{played.text}</p>
         </div>
       )}
-      <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
-      <div className="hand" style={{ maxHeight: 200, overflowY: 'auto', flexWrap: 'wrap' }}>
-        {defender?.hand.map((id) => (
-          <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
-        ))}
-        {(!defender || defender.hand.length === 0) && <span className="muted">Sin cartas en mano.</span>}
-      </div>
-      {defender && defender.backlashMid.length > 0 && (
+      {amEligible && (
         <>
-          <div className="big-label" style={{ marginTop: 8 }}>Backlash (Mid-match)</div>
-          <div className="hand" style={{ maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap' }}>
-            {defender.backlashMid.map((id) => (
+          <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
+          <div className="hand" style={{ maxHeight: 200, overflowY: 'auto', flexWrap: 'wrap' }}>
+            {defender?.hand.map((id) => (
               <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
             ))}
+            {(!defender || defender.hand.length === 0) && <span className="muted">Sin cartas en mano.</span>}
+          </div>
+          {defender && defender.backlashMid.length > 0 && (
+            <>
+              <div className="big-label" style={{ marginTop: 8 }}>Backlash (Mid-match)</div>
+              <div className="hand" style={{ maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap' }}>
+                {defender.backlashMid.map((id) => (
+                  <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
+                ))}
+              </div>
+            </>
+          )}
+          <div className="row" style={{ marginTop: 12, gap: 8 }}>
+            <button className="primary" onClick={handlePass} style={{ flex: 1 }}>
+              No revertir (tomar el daño)
+            </button>
+            <button className="primary" disabled={sel.length === 0} onClick={handleReverse} style={{ flex: 1 }}>
+              Revertir {sel.length > 0 ? `(${sel.length})` : ''}
+            </button>
           </div>
         </>
       )}
-      <div className="row" style={{ marginTop: 12, gap: 8 }}>
-        <button className="primary" onClick={() => onResolve(null)} style={{ flex: 1 }}>
-          No revertir (tomar el daño)
-        </button>
-        <button className="primary" disabled={sel.length === 0} onClick={() => onResolve({ cardIds: sel })} style={{ flex: 1 }}>
-          Revertir {sel.length > 0 ? `(${sel.length})` : ''}
-        </button>
-      </div>
     </>
   )
 }

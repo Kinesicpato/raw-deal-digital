@@ -13,6 +13,28 @@ import {
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const MAX_SEATS = 8
 
+const ICE_CONFIG: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+  ],
+}
+
 export function randomCode(length = 5): string {
   let out = ''
   for (let i = 0; i < length; i++) {
@@ -97,7 +119,7 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  const p = new Peer(peerIdFor(code), { debug: 1 })
+  const p = new Peer(peerIdFor(code), { debug: 0, config: ICE_CONFIG })
   peer = p
 
   p.on('open', () => hooks.onOpen())
@@ -110,10 +132,10 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
   const onConn = (conn: DataConnection) => {
     const idx = nextFreeSeat()
     if (idx === null) {
-      conn.on('open', () => {
-        conn.send({ type: 'error', message: 'Sala llena (máximo 5 jugadores).' } as HostMsg)
-        setTimeout(() => conn.close(), 500)
-      })
+      try {
+        conn.send({ type: 'error', message: 'Sala llena (máximo 8 jugadores).' } as HostMsg)
+      } catch { /* ignore */ }
+      setTimeout(() => { try { conn.close() } catch { /* ignore */ } }, 500)
       return
     }
     hostConns.set(idx, conn)
@@ -231,39 +253,80 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
   role = 'client'
   hostHooksRef = null
 
-  const p = new Peer({ debug: 1 })
-  peer = p
-  let started = false
+  const maxRetries = 8
+  let retries = 0
 
-  p.on('open', () => {
-    const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
-    hostConn = conn
-    conn.on('open', () => {
-      conn.send({ type: 'hello', name } satisfies ClientMsg)
-      started = true
-      hooks.onOpen()
-    })
-    conn.on('data', (raw: unknown) => {
-      const msg = raw as HostMsg
-      if (msg.type === 'welcome') hooks.onWelcome(msg.idx, msg.roster)
-      else if (msg.type === 'lobby') hooks.onRoster(msg.roster)
-      else if (msg.type === 'decks') hooks.onDecks(msg.decks)
-      else if (msg.type === 'state') hooks.onState(msg.game)
-      else if (msg.type === 'error') hooks.onError(msg.message)
-    })
-    conn.on('close', () => {
-      if (started) hooks.onClosed()
-    })
-  })
+  const connect = () => {
+    if (peer) { try { peer.destroy() } catch { /* ignore */ } peer = null }
+    const p = new Peer({ debug: 0, config: ICE_CONFIG })
+    peer = p
+    let started = false
+    let connTimeout: ReturnType<typeof setTimeout> | null = null
 
-  p.on('error', (err: unknown) => {
-    const type = (err as { type?: string }).type
-    if (type === 'peer-unavailable' || type === 'unavailable-id') {
-      hooks.onError('No se encontró la sala con ese código.')
-    } else {
-      hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
+    const cleanup = () => {
+      if (connTimeout) { clearTimeout(connTimeout); connTimeout = null }
     }
-  })
+
+    p.on('open', () => {
+      const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
+      hostConn = conn
+
+      connTimeout = setTimeout(() => {
+        if (!started) {
+          cleanup()
+          try { conn.close() } catch { /* ignore */ }
+          try { p.destroy() } catch { /* ignore */ }
+          peer = null
+          retry('Tiempo de conexión agotado.')
+        }
+      }, 15000)
+
+      conn.on('open', () => {
+        cleanup()
+        conn.send({ type: 'hello', name } satisfies ClientMsg)
+        started = true
+        retries = 0
+        hooks.onOpen()
+      })
+      conn.on('data', (raw: unknown) => {
+        const msg = raw as HostMsg
+        if (msg.type === 'welcome') hooks.onWelcome(msg.idx, msg.roster)
+        else if (msg.type === 'lobby') hooks.onRoster(msg.roster)
+        else if (msg.type === 'decks') hooks.onDecks(msg.decks)
+        else if (msg.type === 'state') hooks.onState(msg.game)
+        else if (msg.type === 'error') hooks.onError(msg.message)
+      })
+      conn.on('close', () => {
+        cleanup()
+        if (started) hooks.onClosed()
+      })
+    })
+
+    const retry = (hint?: string) => {
+      if (retries >= maxRetries) {
+        hooks.onError(hint ?? 'Error de red: no se pudo conectar tras varios intentos.')
+        return
+      }
+      retries++
+      const delay = Math.min(1000 * Math.pow(1.5, retries - 1), 10000)
+      hooks.onError(`Reconectando... (${retries}/${maxRetries})`)
+      setTimeout(() => {
+        if (role === 'client') connect()
+      }, delay)
+    }
+
+    p.on('error', (err: unknown) => {
+      cleanup()
+      const type = (err as { type?: string }).type
+      if (type === 'peer-unavailable' || type === 'unavailable-id') {
+        retry('Sala no encontrada, reintentando...')
+      } else {
+        retry('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
+      }
+    })
+  }
+
+  connect()
 }
 
 export function clientSend(msg: ClientMsg): void {

@@ -1,5 +1,16 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; worker-src 'self' blob:; connect-src 'self' wss://*.peerjs.com https://*.peerjs.com http://openrelay.metered.ca:80 https://openrelay.metered.ca:443 https://stun.l.google.com:19302 https://stun1.l.google.com:19302; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;"
+        }
+      ]
+    }
+  ]
 }

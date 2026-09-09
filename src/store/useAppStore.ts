@@ -273,7 +273,7 @@ export const useAppStore = create<AppState>()(
           if (!d || d.type !== 'reversalChoice') return
           const err = applyDecision(
             s.game,
-            { type: 'reversalChoice', defenderIdx: d.defenderIdx, cardId: d.cardId },
+            d,
             payload,
           )
           if (err) {
@@ -363,7 +363,12 @@ export const useAppStore = create<AppState>()(
           const s = get()
           if (!s.game) return
           if (route('showCardToOpponent', [fromPlayer, cardId, toPlayer])) return
-          s.game._shownCard = { cardId, from: fromPlayer, to: toPlayer }
+          const prev = s.game._shownCard
+          if (prev && prev.from === fromPlayer && prev.to === toPlayer) {
+            s.game._shownCard = { cardIds: [...prev.cardIds, cardId], from: fromPlayer, to: toPlayer }
+          } else {
+            s.game._shownCard = { cardIds: [cardId], from: fromPlayer, to: toPlayer }
+          }
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
         },
@@ -639,7 +644,10 @@ export function actorFor(game: GameState | null, action: IntentName): number | n
   if (!game) return null
   switch (action) {
     case 'resolveReversal':
-      if (game.pendingDecision?.type === 'reversalChoice') return game.pendingDecision.defenderIdx
+      if (game.pendingDecision?.type === 'reversalChoice') {
+        if (game.pendingDecision.reversedPlayers && game.players.length > 2) return null
+        return game.pendingDecision.defenderIdx
+      }
       return null
     case 'resolvePending':
       return decisionOwner(game)
@@ -661,6 +669,7 @@ const MANUAL_INTENTS: IntentName[] = [
   'manualShuffleArsenal',
   'manualReorderArsenal',
   'manualRevealHand',
+  'showCardToOpponent',
 ]
 
 /** Host handles a remote client intent, validating it's that player's move. */
@@ -684,6 +693,12 @@ export function applyRemoteIntent(
         hostSendError(idx, 'Solo podés revelar tu mano o la de un oponente para vos mismo.')
         return
       }
+    } else if (action === 'showCardToOpponent') {
+      const [fromPlayer] = args as [number, string, number]
+      if (fromPlayer !== idx) {
+        hostSendError(idx, 'Solo podés mostrar tus propias cartas.')
+        return
+      }
     } else if (args.length === 0 || args[0] !== idx) {
       hostSendError(idx, 'Solo podés mover tus propias cartas.')
       return
@@ -693,7 +708,10 @@ export function applyRemoteIntent(
     return
   }
   const allowed = actorFor(s.game, action)
-  if (allowed === null || allowed !== idx) {
+  // reversalPlayed is an announcement — any player may dismiss it.
+  const isReversalAnnouncement =
+    action === 'resolvePending' && s.game?.pendingDecision?.type === 'reversalPlayed'
+  if (allowed === null || (allowed !== idx && !isReversalAnnouncement)) {
     hostSendError(idx, 'No es tu turno o la jugada no es válida.')
     return
   }

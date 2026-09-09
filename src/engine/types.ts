@@ -38,6 +38,8 @@ export interface PlayerState {
   /** If set, only this opponent (player index) may see your hand. null = hidden. */
   handRevealedTo: number | null
   hasUsedHeat: boolean
+  /** Index of the player who last attacked this player (for multiplayer win attribution). */
+  lastAttackerIdx: number | null
 }
 
 export interface Resolution {
@@ -65,7 +67,7 @@ export interface Resolution {
 
 export type PendingDecision =
   | { type: 'chooseTarget'; playerIdx: number; cardId: string }
-  | { type: 'reversalChoice'; defenderIdx: number; cardId: string }
+  | { type: 'reversalChoice'; defenderIdx: number; cardId: string; reversedPlayers?: number[]; playerChoices?: Record<number, string[] | null> }
   | { type: 'reversalPlayed'; attackerIdx: number; reversalCardIds: string[] }
   | { type: 'overturnCards'; playerIdx: number; cardId: string; damageToDeal: number; overturned: number; purpose: 'damage' | 'reversal'; voluntary: boolean }
   | { type: 'chooseCardsFromHand'; playerIdx: number; count: number; purpose: 'discard' | 'switch' }
@@ -111,6 +113,6 @@ export interface GameState {
   _prematchActed: number[]
   /** Players who already chose (kept) their opening hand. */
   _openingKept: number[]
-  /** Manual house-rule: a card being shown to a specific opponent. */
-  _shownCard?: { cardId: string; from: number; to: number } | null
+  /** Manual house-rule: card(s) being shown to a specific opponent. */
+  _shownCard?: { cardIds: string[]; from: number; to: number } | null
 }

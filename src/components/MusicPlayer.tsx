@@ -4,6 +4,11 @@ const STATIONS = [
   { name: '80s Metal FM', url: 'http://bigrradio.cdnstream1.com/5186_128' },
   { name: 'Rock FM', url: 'http://nashe1.hostingradio.ru/rock-128.mp3' },
   { name: 'Radio Caroline', url: 'http://78.129.202.200:8040/;' },
+  { name: 'Rock Antenne Heavy Metal', url: 'https://stream.rockantenne.de/heavy-metal/stream/mp3' },
+  { name: 'Rock Antenne Modern Metal', url: 'https://stream.rockantenne.de/modern-metal/stream/mp3' },
+  { name: 'Metalcore laut.fm', url: 'http://metalcore.stream.laut.fm/metalcore' },
+  { name: 'Mycore laut.fm', url: 'http://mycore.stream.laut.fm/mycore' },
+  { name: 'Metal Station laut.fm', url: 'http://metalstation.stream.laut.fm/metalstation' },
 ]
 
 export function MusicPlayer() {

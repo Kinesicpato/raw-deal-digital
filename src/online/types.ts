@@ -66,7 +66,11 @@ export type HostMsg =
 export function decisionOwner(game: GameState): number | null {
   const d = game.pendingDecision
   if (!d) return null
-  if (d.type === 'reversalChoice') return d.defenderIdx
+  if (d.type === 'reversalChoice') {
+    // In multiplayer, all non-attacking players can reverse — return null to show to all.
+    if (d.reversedPlayers) return null
+    return d.defenderIdx
+  }
   if (d.type === 'reversalPlayed') return d.attackerIdx
   if (d.type === 'chooseOpponentHandCard') return game.pendingEffects?.sourcePlayer ?? d.playerIdx
   return d.playerIdx

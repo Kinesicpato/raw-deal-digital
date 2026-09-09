@@ -46,6 +46,7 @@ export function newGame(cfg: NewGameConfig): GameState {
     playedThisTurn: [],
     handRevealedTo: null,
     hasUsedHeat: false,
+    lastAttackerIdx: null,
   }))
 
   const state: GameState = {
@@ -98,12 +99,8 @@ function ensurePlayableOpeningHand(_state: GameState, p: PlayerState): void {
     const c = getCard(id)
     return c.type !== 'Reversal' && c.fortitude === 0
   }).length
-  const f0Pool = p.arsenal.filter((id) => {
-    const c = getCard(id)
-    return c.type !== 'Reversal' && c.fortitude === 0
-  })
   let pi = 0
-  while (playable < needPlayable && pi < p.hand.length && f0Pool.length > 0) {
+  while (playable < needPlayable && pi < p.hand.length) {
     const curId = p.hand[pi]
     if (!curId) break
     const cur = getCard(curId)
@@ -111,8 +108,13 @@ function ensurePlayableOpeningHand(_state: GameState, p: PlayerState): void {
       pi++
       continue
     }
-    const swap = f0Pool.shift()
-    if (!swap) break
+    const swapIdx = p.arsenal.findIndex((id) => {
+      const c = getCard(id)
+      return c.type !== 'Reversal' && c.fortitude === 0
+    })
+    if (swapIdx === -1) break
+    const swap = p.arsenal[swapIdx]!
+    p.arsenal.splice(swapIdx, 1)
     p.hand[pi] = swap
     p.arsenal.push(curId)
     playable++
@@ -286,6 +288,19 @@ export function startTurn(state: GameState): void {
     state.resolution = null
     state.pendingDecision = null
   }
+  // Draw Segment: if the player has no Arsenal, they lose to whoever last attacked them.
+  if (p && p.arsenal.length === 0) {
+    const attackerIdx = p.lastAttackerIdx
+    if (attackerIdx !== null && attackerIdx !== state.activeIndex) {
+      eliminate(state, state.activeIndex, 'countout')
+      // Game continues if other players remain; advance to next alive player.
+      advanceTurn(state)
+    } else {
+      // No known attacker (e.g. first turn) — offer concede choice.
+      openConcedeChoice(state, state.activeIndex, 'countout')
+    }
+    return
+  }
   // Draw Segment: Mankind and Cactus Jack always draw 2, everyone else draws 1.
   if (p) {
     const drawCount = DRAW_TWO_SUPERSTARS.includes(p.superstarId) ? 2 : 1
@@ -303,12 +318,16 @@ export function endTurn(state: GameState): void {
   }
   const active = state.players[state.activeIndex]
   if (active) active.reversedLastTurn = false
-  // Count Out check at end of turn.
+  // Count Out check at end of turn: if arsenal is empty, the last attacker wins.
   if (active && active.arsenal.length === 0) {
-    openConcedeChoice(state, state.activeIndex, 'countout')
-    // Wait for the player to decide (concede or keep playing) before
-    // advancing the turn.  The concedeChoice handler calls advanceTurn
-    // when the player declines.
+    const attackerIdx = active.lastAttackerIdx
+    if (attackerIdx !== null && attackerIdx !== state.activeIndex) {
+      eliminate(state, state.activeIndex, 'countout')
+      // Game continues if other players remain; checkGameOver handles it.
+      advanceTurn(state)
+    } else {
+      openConcedeChoice(state, state.activeIndex, 'countout')
+    }
     return
   }
   advanceTurn(state)
@@ -468,12 +487,14 @@ export function playCard(
       return null
     }
     state.resolution = makeResolution(playerIdx, target, cardId, mode, src)
+    state.players[target]!.lastAttackerIdx = playerIdx
     openReversalWindow(state, target)
     return null
   }
 
   const target = pickDefaultTarget(state, playerIdx) ?? playerIdx
   state.resolution = makeResolution(playerIdx, target, cardId, mode, src)
+  state.players[target]!.lastAttackerIdx = playerIdx
   openReversalWindow(state, target)
   return null
 }
@@ -511,6 +532,7 @@ export function resolveTarget(state: GameState, target: number): string | null {
   if (!attacker) return 'No attacker.'
   state.pendingDecision = null
   res.target = target
+  state.players[target]!.lastAttackerIdx = res.attacker
   openReversalWindow(state, target)
   return null
 }
@@ -524,10 +546,12 @@ function openReversalWindow(state: GameState, defenderIdx: number): void {
   if (!res) return
   res.waitingHandReversal = true
   state.phase = 'reversalWindow'
-  const defender = state.players[defenderIdx]
-  if (!defender) return
-  // The store resolves AI defenders automatically.
-  state.pendingDecision = { type: 'reversalChoice', defenderIdx, cardId: res.cardId }
+  const isMulti = state.players.length > 2
+  if (isMulti) {
+    state.pendingDecision = { type: 'reversalChoice', defenderIdx, cardId: res.cardId, reversedPlayers: [], playerChoices: {} }
+  } else {
+    state.pendingDecision = { type: 'reversalChoice', defenderIdx, cardId: res.cardId }
+  }
 }
 
 export function getPlayableReversals(state: GameState, defenderIdx: number): string[] {
@@ -677,6 +701,22 @@ export function passReversal(state: GameState): void {
   const res = state.resolution
   if (!res) return
   if (!res.waitingHandReversal) return
+  const d = state.pendingDecision
+  const isMulti = state.players.length > 2
+  if (isMulti && d && d.type === 'reversalChoice' && d.reversedPlayers && d.playerChoices) {
+    const actingIdx = d.defenderIdx
+    d.playerChoices[actingIdx] = null
+    d.reversedPlayers.push(actingIdx)
+    const eligible = state.players
+      .map((_, i) => i)
+      .filter((i) => i !== res!.attacker && !state.players[i]!.eliminated)
+    const allDone = eligible.every((i) => d.reversedPlayers!.includes(i))
+    if (allDone) {
+      res.waitingHandReversal = false
+      beginManualOverturn(state, res.target, 'damage')
+    }
+    return
+  }
   res.waitingHandReversal = false
   beginManualOverturn(state, res.target, 'damage')
 }
@@ -785,9 +825,12 @@ export function stopOverturnCard(state: GameState, playerIdx: number): string | 
     return null
   }
   succeedCard(state, res.attacker, playerIdx)
-  // If the defender has no Arsenal left after the overturn, offer the choice
-  // to lose the match (instead of an automatic pin).
-  openConcedeChoice(state, playerIdx, 'pin')
+  // If the defender has no Arsenal left after the overturn, the attacker wins this matchup.
+  const defender = state.players[playerIdx]
+  if (defender && defender.arsenal.length === 0) {
+    eliminate(state, playerIdx, 'pin')
+    // Game continues if other players remain; checkGameOver handles it.
+  }
   return null
 }
 
@@ -848,6 +891,31 @@ function succeedCard(
 export function applyDecision(state: GameState, decision: PendingDecision, payload: unknown): string | null {
   switch (decision.type) {
     case 'reversalChoice': {
+      const isMulti = state.players.length > 2
+      const d = state.pendingDecision
+      const res = state.resolution
+      if (isMulti && d && d.type === 'reversalChoice' && d.reversedPlayers && d.playerChoices && res) {
+        const actingIdx = decision.defenderIdx
+        if (payload === null) {
+          d.playerChoices[actingIdx] = null
+          d.reversedPlayers.push(actingIdx)
+          const eligible = state.players
+            .map((_, i) => i)
+            .filter((i) => i !== res!.attacker && !state.players[i]!.eliminated)
+          const allDone = eligible.every((i) => d.reversedPlayers!.includes(i))
+          if (allDone) {
+            res.waitingHandReversal = false
+            beginManualOverturn(state, res.target, 'damage')
+          }
+          return null
+        }
+        const p = payload as { cardIds: string[] }
+        const ids = p.cardIds
+        if (!Array.isArray(ids) || ids.length === 0) return 'No reversal cards selected.'
+        const err = playReversal(state, actingIdx, ids)
+        if (err) return err
+        return null
+      }
       if (payload === null) {
         passReversal(state)
       } else {
@@ -1006,7 +1074,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
 // MANUAL TABLE ACTIONS (house rules / player convenience)
 // ---------------------------------------------------------------------------
 
-export type ManualZone = 'hand' | 'arsenal' | 'ring' | 'ringside' | 'midmatch' | 'out'
+export type ManualZone = 'hand' | 'arsenal' | 'ring' | 'ringside' | 'midmatch' | 'backlashMid' | 'out'
 
 function zoneList(p: PlayerState, zone: ManualZone): string[] {
   switch (zone) {
@@ -1020,6 +1088,8 @@ function zoneList(p: PlayerState, zone: ManualZone): string[] {
       return p.ringside
     case 'midmatch':
       return p.midmatchPlayed
+    case 'backlashMid':
+      return p.backlashMid
     case 'out':
       return p.outOfGame
   }

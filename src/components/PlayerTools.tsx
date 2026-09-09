@@ -4,13 +4,14 @@ import { CardFace } from './CardView'
 import type { GameState } from '../engine/types'
 import type { ManualZone } from '../engine/game'
 
-const ZONES: ManualZone[] = ['hand', 'arsenal', 'ring', 'ringside', 'midmatch', 'out']
+const ZONES: ManualZone[] = ['hand', 'arsenal', 'ring', 'ringside', 'midmatch', 'backlashMid', 'out']
 const ZONE_LABEL: Record<ManualZone, string> = {
   hand: 'Mano',
   arsenal: 'Arsenal',
   ring: 'Ring Area',
   ringside: 'Ringside',
   midmatch: 'Mid Match',
+  backlashMid: 'Backlash Mid',
   out: 'Fuera del juego',
 }
 
@@ -52,6 +53,8 @@ export function PlayerToolsModal({
         return pl.ringside
       case 'midmatch':
         return pl.midmatchPlayed
+      case 'backlashMid':
+        return pl.backlashMid
       case 'out':
         return pl.outOfGame
     }
@@ -71,6 +74,8 @@ export function PlayerToolsModal({
         return p.ringside.length
       case 'midmatch':
         return p.midmatchPlayed.length
+      case 'backlashMid':
+        return p.backlashMid.length
       case 'out':
         return p.outOfGame.length
     }
@@ -142,9 +147,26 @@ export function PlayerToolsModal({
           {isArsenal && <span> Arrastrá las cartas para reordenar el Arsenal.</span>}
         </div>
 
+        <div className="row" style={{ marginBottom: 6, gap: 6 }}>
+          <button
+            className="ghost"
+            style={{ fontSize: 11, padding: '2px 8px' }}
+            onClick={() => setSelected(new Set(list.map((_, i) => i)))}
+          >
+            Seleccionar todo ({list.length})
+          </button>
+          <button
+            className="ghost"
+            style={{ fontSize: 11, padding: '2px 8px' }}
+            onClick={() => setSelected(new Set())}
+          >
+            Deseleccionar
+          </button>
+        </div>
+
         <div
           className="hand"
-          style={{ width: '100%', maxHeight: 340, overflowY: 'auto', flexWrap: 'wrap' }}
+          style={{ width: '100%', maxHeight: 500, overflowY: 'auto', flexWrap: 'wrap' }}
           onDragOver={isArsenal ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } : undefined}
           onDrop={isArsenal ? (e) => { e.preventDefault(); if (e.target === e.currentTarget) handleDrop(list.length) } : undefined}
         >
@@ -238,27 +260,7 @@ export function PlayerToolsModal({
           </button>
         </div>
 
-        <div className="row" style={{ marginTop: 10, gap: 6, flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: 12 }}>Mostrar tu mano a:</span>
-          {game.players.map((op, i) => {
-            if (i === playerIdx) return null
-            const shown = p.handRevealedTo === i
-            return (
-              <button
-                key={i}
-                className={`ghost ${shown ? 'reveal-target' : ''}`}
-                onClick={() => store.manualRevealHand(playerIdx, shown ? null : i)}
-              >
-                {shown ? '✓ ' : ''}{op.name}
-              </button>
-            )
-          })}
-          <button className="ghost" onClick={() => store.manualRevealHand(playerIdx, null)}>
-            Ocultar mano
-          </button>
-        </div>
-
-        <ShowCardToOpponent game={game} playerIdx={playerIdx} list={list} from={from} selected={selected} />
+        <ShowCardToOpponent game={game} playerIdx={playerIdx} list={list} selected={selected} zone={from} />
 
         <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
           <button className="primary" disabled={selected.size === 0} onClick={doMove}>
@@ -274,112 +276,66 @@ function ShowCardToOpponent({
   game,
   playerIdx,
   list,
-  from,
   selected,
+  zone,
 }: {
   game: GameState
   playerIdx: number
   list: string[]
-  from: ManualZone
   selected: Set<number>
+  zone: ManualZone
 }) {
   const store = useAppStore.getState()
-  const [showPick, setShowPick] = useState(false)
-  const [pickCards, setPickCards] = useState<Set<number>>(new Set())
-  const [pickOpponent, setPickOpponent] = useState<number | null>(null)
   const shown = game._shownCard
 
-  if (shown && shown.from === playerIdx) {
+  const selectedIds = [...selected].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
+
+  if (shown && shown.from === playerIdx && selectedIds.length === 0) {
     return (
       <div className="show-opponent-pick" style={{ marginTop: 10 }}>
         <div className="row" style={{ marginBottom: 6 }}>
           <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
-            Mostrando a {game.players[shown.to]?.name}:
+            Mostrando {shown.cardIds.length} carta(s) a {game.players[shown.to]?.name}:
           </span>
           <button className="ghost" onClick={() => store.clearShownCard()}>Ocultar</button>
         </div>
-        <div className="hand" style={{ flexWrap: 'wrap' }}>
-          <CardFace id={shown.cardId} size="sm" />
+        <div className="hand" style={{ flexWrap: 'wrap', maxHeight: 200, overflowY: 'auto' }}>
+          {shown.cardIds.map((id) => (
+            <CardFace key={id} id={id} size="sm" />
+          ))}
         </div>
       </div>
     )
   }
 
-  // Cards selected in the zone viewer
-  const selectedIds = [...selected].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
-  // Cards picked within this component
-  const pickedIds = [...pickCards].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
-  const cardIds = selectedIds.length > 0 ? selectedIds : pickedIds
+  if (selectedIds.length === 0) return null
 
   return (
     <div className="show-opponent-pick" style={{ marginTop: 10 }}>
-      <div className="row" style={{ marginBottom: 6 }}>
-        <button
-          className="ghost"
-          onClick={() => {
-            setShowPick((v) => !v)
-            setPickCards(new Set())
-          }}
-        >
-          👁 {showPick ? 'Cerrar selector' : 'Mostrar carta(s) a oponente'}
-        </button>
+      <div className="row" style={{ marginBottom: 4 }}>
+        <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
+          Mostrar {ZONE_LABEL[zone]} a:
+        </span>
       </div>
-      {showPick && (
-        <>
-          <p className="muted" style={{ fontSize: 12, margin: '0 0 6px' }}>
-            Seleccioná cartas de <b>{ZONE_LABEL[from]}</b> para mostrar:
-          </p>
-          <div className="show-opponent-pick" style={{ maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap', gap: 4, display: 'flex' }}>
-            {list.length === 0 && <span className="muted">Zona vacía.</span>}
-            {list.map((id, idx) => (
-              <div
-                key={`${id}-${idx}`}
-                onClick={() => {
-                  setPickCards((prev) => {
-                    const next = new Set(prev)
-                    if (next.has(idx)) next.delete(idx)
-                    else next.add(idx)
-                    return next
-                  })
-                }}
-                style={{ cursor: 'pointer', border: pickCards.has(idx) ? '2px solid var(--gold)' : '2px solid transparent', borderRadius: 4 }}
-              >
-                <CardFace id={id} size="xs" />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-      {cardIds.length > 0 && (
-        <>
-          <div className="row" style={{ marginTop: 6, marginBottom: 4 }}>
-            <span className="big-label" style={{ margin: 0, fontSize: 12, flex: 1 }}>
-              Mostrar {cardIds.length === 1 ? 'esta carta' : 'estas cartas'} a:
-            </span>
-          </div>
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-            {game.players.map((op, i) => {
-              if (i === playerIdx) return null
-              return (
-                <button
-                  key={i}
-                  className={`ghost ${pickOpponent === i ? 'reveal-target' : ''}`}
-                  onClick={() => {
-                    for (const cid of cardIds) {
-                      store.showCardToOpponent(playerIdx, cid, i)
-                    }
-                    setPickCards(new Set())
-                    setShowPick(false)
-                    setPickOpponent(null)
-                  }}
-                >
-                  {op.name}
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )}
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        {game.players.map((op, i) => {
+          if (i === playerIdx) return null
+          return (
+            <button
+              key={i}
+              className="ghost"
+              onClick={() => {
+                store.clearShownCard()
+                for (const cid of selectedIds) {
+                  store.showCardToOpponent(playerIdx, cid, i)
+                }
+              }}
+            >
+              {op.name}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
