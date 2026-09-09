@@ -3365,7 +3365,7 @@ export const SET909_CARDS: CardDef[] = [
     type: 'Reversal',
     traits: ['Special', 'Throwback'],
     fortitude: 0,
-    damage: 1,
+    damage: 0,
     text: 'Whenever a card causes you to discard this card, your opponent discards 1 card. When your opponent successfully plays a card that lets him see your hand, you may discard this card and he discards 1 card. When overturned by an Action card or Pre-match card, reverse that card and end your opponent\'s turn. You may put this card into your hand.',
     set: 'Set 9-09',
   }),
