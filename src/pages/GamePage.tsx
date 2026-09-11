@@ -150,7 +150,15 @@ export function GamePage() {
               onCardHover={setZoom}
             />
           )}
-          {displayGame.phase === 'main' && !showHandControls && (
+          {displayGame.phase === 'main' && !showHandControls && isOnline && myIdx != null && displayGame.players[myIdx] && (
+            <HandZone
+              player={displayGame.players[myIdx]}
+              playerIdx={myIdx}
+              onCardClick={() => {}}
+              onCardHover={setZoom}
+            />
+          )}
+          {displayGame.phase === 'main' && !showHandControls && !isOnline && (
             <div className="card" style={{ textAlign: 'center' }}>
               <span className="muted">
                 {isOnline ? `Esperando que juegue ${displayActive?.name ?? 'otro jugador'}…` : 'Turno de la IA…'}

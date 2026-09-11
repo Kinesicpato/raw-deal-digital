@@ -189,7 +189,7 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
       </p>
       {played && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
-          <CardFace id={played.id} size="md" />
+          <CardFace id={played.id} size="lg" />
           <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
             <span className="stat-chip">Fortitude <b>{played.fortitude}F</b></span>
             <span className="stat-chip">Daño <b>{played.damage}D</b></span>
@@ -258,7 +258,7 @@ function ReversalPlayed({ decision, onContinue }: { decision: Extract<PendingDec
             const card = getCardSafe(id)
             return (
               <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <CardFace id={card.id} size="md" />
+                <CardFace id={card.id} size="lg" />
                 <div className="row" style={{ gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                   {card.fortitude > 0 && <span className="stat-chip">F{card.fortitude}</span>}
                   {card.damage > 0 && <span className="stat-chip">D{card.damage}</span>}

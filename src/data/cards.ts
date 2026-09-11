@@ -1103,16 +1103,6 @@ export const JERICHO_CARDS: CardDef[] = [
     set: 'PDF',
   }),
   card({
-    id: 'not-yet',
-    name: 'Not Yet',
-    type: 'Action',
-    fortitude: 0,
-    damage: 0,
-    text: 'Action. Take a card in your hand, shuffle it into your Arsenal, then draw 2 cards.',
-    notes: 'Valores F/D provisionales del OCR; verificar.',
-    set: 'PDF',
-  }),
-  card({
     id: 'y2j',
     name: 'Y2J',
     type: 'Action',
