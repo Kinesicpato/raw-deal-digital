@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAppStore, getCardSafe } from '../store/useAppStore'
 import type { GameState, PlayerState } from '../engine/types'
 import { CardFace, CardDetailModal, cardTypeLabel } from '../components/CardView'
@@ -12,6 +12,32 @@ import { AppBanner } from '../components/Branding'
 import { Toast } from '../components/Toast'
 import { buildClientView } from '../online/types'
 import { MusicPlayer } from '../components/MusicPlayer'
+import { getDrag, setDrag } from '../components/DragState'
+
+function useDropZone(playerIdx: number, zone: ManualZone) {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    ;(e.currentTarget as HTMLElement).classList.add('zone-drop-target')
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    ;(e.currentTarget as HTMLElement).classList.remove('zone-drop-target')
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    ;(e.currentTarget as HTMLElement).classList.remove('zone-drop-target')
+    const info = getDrag()
+    if (!info) return
+    if (info.playerIdx !== playerIdx) return
+    if (info.from === zone) return
+    setDrag(null)
+    useAppStore.getState().manualMove(playerIdx, info.from, zone, [info.cardId])
+  }, [playerIdx, zone])
+
+  return { onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop }
+}
 
 export function GamePage() {
   const game = useAppStore((s) => s.game)
@@ -116,6 +142,7 @@ export function GamePage() {
           {displayActive && !displayActive.isAI && displayGame.phase === 'main' && showHandControls && (
             <HandZone
               player={displayActive}
+              playerIdx={displayGame.activeIndex}
               onCardClick={(id, zone) => {
                 setZoom(null)
                 setPlayConfirm({ id, zone })
@@ -227,9 +254,17 @@ function PlayerPanel({
         >
           {isHandRevealed ? '👁 ' : ''}Mano <b>{p.hand.length}</b>
         </button>
-        <button className="zone-chip zone-arsenal" title="Clic para ver/mover cartas del Arsenal" onClick={() => onTools('arsenal')}>
+        <div
+          className="zone-chip zone-arsenal"
+          title="Arrastrá cartas acá · clic para ver/mover"
+          onClick={() => onTools('arsenal')}
+          data-zone="arsenal"
+          data-player={idx}
+          {...useDropZone(idx, 'arsenal')}
+          style={{ cursor: 'pointer' }}
+        >
           Arsenal <b>{p.arsenal.length}</b>
-        </button>
+        </div>
         <button className="zone-chip zone-ringside" title="Clic para ver/mover cartas del Ringside" onClick={() => onTools('ringside')}>
           Ringside <b>{p.ringside.length}</b>
         </button>
@@ -258,14 +293,20 @@ function PlayerPanel({
         <div className="muted" style={{ fontSize: 12 }}>Eliminado ({p.eliminatedReason})</div>
       ) : (
         <div className="player-zones">
-          <div className={`zone ${isActive ? 'zone-active' : ''}`} title="Cartas de Mid-match / Pre-match jugadas durante el encuentro">
+          <div
+            className={`zone ${isActive ? 'zone-active' : ''}`}
+            title="Cartas de Mid-match / Pre-match jugadas durante el encuentro"
+            data-zone="midmatch"
+            data-player={idx}
+            {...useDropZone(idx, 'midmatch')}
+          >
             <div className="zone-title">
               <span>Mid-match</span>
               <span className="mono">{p.midmatchPlayed.length}</span>
             </div>
             <div className="zone-body">
               <div className="zone-cardrow">
-                {p.midmatchPlayed.slice(-12).map((id) => {
+                {p.midmatchPlayed.map((id) => {
                   const card = getCardSafe(id)
                   const hasEffect = card.effect ? card.effect.length > 0 : false
                   return (
@@ -276,6 +317,9 @@ function PlayerPanel({
                         onClick={() => onCardClick(id)}
                         onMouseEnter={() => onCardHover(id)}
                         onMouseLeave={() => onCardHover(null)}
+                        draggable={canControl}
+                        dragFrom="midmatch"
+                        dragPlayerIdx={idx}
                       />
                       {canControl && isActive && hasEffect && (
                         <button
@@ -300,14 +344,21 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone clickable ${isActive ? 'zone-active' : ''}`} onClick={toolsEnabled ? () => onTools('ring') : undefined} title="Clic para ver/mover cartas del Ring Area">
+          <div
+            className={`zone clickable ${isActive ? 'zone-active' : ''}`}
+            onClick={toolsEnabled ? () => onTools('ring') : undefined}
+            title="Clic para ver/mover cartas del Ring Area"
+            data-zone="ring"
+            data-player={idx}
+            {...useDropZone(idx, 'ring')}
+          >
             <div className="zone-title">
               <span>Ring Area</span>
               <span className="mono">{p.ring.length}</span>
             </div>
             <div className="zone-body">
               <div className="zone-cardrow">
-                {p.ring.slice(-12).map((id) => {
+                {p.ring.map((id) => {
                   const card = getCardSafe(id)
                   const hasEffect = card.effect ? card.effect.length > 0 : false
                   return (
@@ -318,6 +369,9 @@ function PlayerPanel({
                         onClick={() => onCardClick(id)}
                         onMouseEnter={() => onCardHover(id)}
                         onMouseLeave={() => onCardHover(null)}
+                        draggable={canControl}
+                        dragFrom="ring"
+                        dragPlayerIdx={idx}
                       />
                       {canControl && isActive && hasEffect && (
                         <button
@@ -339,14 +393,21 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone clickable ${isTarget ? 'zone-target' : ''}`} onClick={toolsEnabled ? () => onTools('ringside') : undefined} title="Clic para ver/mover cartas del Ringside">
+          <div
+            className={`zone clickable ${isTarget ? 'zone-target' : ''}`}
+            onClick={toolsEnabled ? () => onTools('ringside') : undefined}
+            title="Clic para ver/mover cartas del Ringside"
+            data-zone="ringside"
+            data-player={idx}
+            {...useDropZone(idx, 'ringside')}
+          >
             <div className="zone-title">
               <span>Ringside · descarte/daño</span>
               <span className="mono">{p.ringside.length}</span>
             </div>
             <div className="zone-body">
               <div className="zone-cardrow">
-                {p.ringside.slice(-8).map((id) => (
+                {p.ringside.map((id) => (
                   <div key={id} className="ring-card-cell" onClick={(e) => e.stopPropagation()}>
                     <CardFace
                       id={id}
@@ -354,6 +415,9 @@ function PlayerPanel({
                       onClick={() => onCardClick(id)}
                       onMouseEnter={() => onCardHover(id)}
                       onMouseLeave={() => onCardHover(null)}
+                      draggable={canControl}
+                      dragFrom="ringside"
+                      dragPlayerIdx={idx}
                     />
                   </div>
                 ))}
@@ -365,7 +429,12 @@ function PlayerPanel({
             </div>
           </div>
 
-          <div className={`zone ${isActive ? 'zone-active' : ''}`}>
+          <div
+            className={`zone ${isActive ? 'zone-active' : ''}`}
+            data-zone="backlashMid"
+            data-player={idx}
+            {...useDropZone(idx, 'backlashMid')}
+          >
             <div className="zone-title">
               <span>Backlash</span>
               <span className="mono">
@@ -574,10 +643,12 @@ function OpeningZone({ game, canInteract }: { game: GameState; canInteract: bool
 
 function HandZone({
   player,
+  playerIdx,
   onCardClick,
   onCardHover,
 }: {
   player: PlayerState
+  playerIdx: number
   onCardClick: (id: string, zone?: 'hand' | 'midmatch' | 'prematch') => void
   onCardHover: (id: string | null) => void
 }) {
@@ -589,7 +660,21 @@ function HandZone({
     return filter === 'all' || classifyCard(c) === filter
   })
   return (
-    <div className="hand-fan">
+    <div
+      className="hand-fan"
+      data-zone="hand"
+      data-player={playerIdx}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; (e.currentTarget as HTMLElement).classList.add('zone-drop-target') }}
+      onDragLeave={(e) => { (e.currentTarget as HTMLElement).classList.remove('zone-drop-target') }}
+      onDrop={(e) => {
+        e.preventDefault()
+        ;(e.currentTarget as HTMLElement).classList.remove('zone-drop-target')
+        const info = getDrag()
+        if (!info || info.playerIdx !== playerIdx || info.from === 'hand') return
+        setDrag(null)
+        useAppStore.getState().manualMove(playerIdx, info.from, 'hand', [info.cardId])
+      }}
+    >
       <div className="fan-title">
         <h3 style={{ margin: 0 }}>Tu mano ({player.hand.length})</h3>
         <span className="muted">Toca una carta para jugarla · el resto va manual</span>
@@ -606,6 +691,9 @@ function HandZone({
             onClick={() => onCardClick(id, 'hand')}
             onMouseEnter={() => onCardHover(id)}
             onMouseLeave={() => onCardHover(null)}
+            draggable
+            dragFrom="hand"
+            dragPlayerIdx={playerIdx}
           />
         ))}
         {shown.length === 0 && <span className="muted">No hay cartas en este filtro.</span>}
@@ -623,6 +711,9 @@ function HandZone({
                 onMouseEnter={() => onCardHover(id)}
                 onMouseLeave={() => onCardHover(null)}
                 onClick={() => onCardClick(id, 'midmatch')}
+                draggable
+                dragFrom="backlashMid"
+                dragPlayerIdx={playerIdx}
               />
             ))}
           </div>
@@ -641,6 +732,9 @@ function HandZone({
                 onMouseEnter={() => onCardHover(id)}
                 onMouseLeave={() => onCardHover(null)}
                 onClick={() => onCardClick(id, 'prematch')}
+                draggable
+                dragFrom="backlashMid"
+                dragPlayerIdx={playerIdx}
               />
             ))}
           </div>

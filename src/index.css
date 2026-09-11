@@ -253,6 +253,32 @@ h3 {
 }
 
 /* ============================================================
+   CARD DRAG-AND-DROP (game board)
+   ============================================================ */
+.card-draggable {
+  cursor: grab;
+}
+.card-draggable:active {
+  cursor: grabbing;
+}
+.card-dragging {
+  opacity: 0.35;
+  transform: scale(0.95);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.zone-drop-target {
+  outline: 2px dashed var(--gold);
+  outline-offset: -2px;
+  background: rgba(216, 169, 47, 0.08) !important;
+}
+.hand-fan.zone-drop-target {
+  outline: 2px dashed var(--gold);
+  outline-offset: -2px;
+  background: rgba(216, 169, 47, 0.08);
+  border-radius: 12px;
+}
+
+/* ============================================================
    TABS (classification)
    ============================================================ */
 .tabs {

@@ -665,6 +665,55 @@ export function playReversal(
 }
 
 /**
+ * Undoes a reversal that was just applied via playReversal, returning all cards
+ * to their original positions so the player can re-select. This only works
+ * immediately after playReversal (while the pendingDecision is 'reversalPlayed'
+ * and no further actions have been taken).
+ */
+export function undoReversal(state: GameState, defenderIdx: number, reversalIds: string[]): string | null {
+  const res = state.resolution
+  if (!res) return 'No active resolution to undo.'
+  const defender = state.players[defenderIdx]
+  if (!defender) return 'No defender.'
+  const attacker = state.players[res.attacker]
+  if (!attacker) return 'No attacker.'
+
+  // Restore attacker's played card from ringside back to resolution.
+  const playedIdx = attacker.ringside.indexOf(res.cardId)
+  if (playedIdx >= 0) {
+    attacker.ringside.splice(playedIdx, 1)
+  }
+
+  // Return each reversal card to its original zone.
+  for (const id of reversalIds) {
+    const inRing = defender.ring.indexOf(id)
+    if (inRing >= 0) {
+      defender.ring.splice(inRing, 1)
+      defender.hand.push(id)
+      continue
+    }
+    const inMid = defender.midmatchPlayed.indexOf(id)
+    if (inMid >= 0) {
+      defender.midmatchPlayed.splice(inMid, 1)
+      defender.backlashMid.push(id)
+    }
+  }
+
+  defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
+
+  // Reset to the reversalChoice decision so the player can pick again.
+  const isMulti = state.players.length > 2
+  if (isMulti) {
+    state.pendingDecision = { type: 'reversalChoice', defenderIdx, cardId: res.cardId, reversedPlayers: [], playerChoices: {} }
+  } else {
+    state.pendingDecision = { type: 'reversalChoice', defenderIdx, cardId: res.cardId }
+  }
+  state.pendingEffects = null
+  state.phase = 'main'
+  return null
+}
+
+/**
  * Wraps up a fully successful hand reversal (no damage to pay, or the manual
  * overturn already finished): clears the resolution and ends the attacker's
  * turn.

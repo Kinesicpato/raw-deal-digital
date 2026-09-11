@@ -21,6 +21,7 @@ import {
   discardOpeningCards,
   redrawOpeningCards,
   keepOpeningHand,
+  undoReversal,
   type NewGameConfig,
 } from '../engine/game'
 import type { GameState } from '../engine/types'
@@ -86,6 +87,7 @@ interface AppState {
   activateRingAction: (cardId: string) => void
   resolvePending: (payload: unknown) => void
   resolveReversal: (payload: { cardIds: string[] } | null) => void
+  undoReversalAction: (defenderIdx: number, reversalCardIds: string[]) => void
   flipOverturn: () => void
   stopOverturn: () => void
   newGameAgain: () => void
@@ -276,6 +278,20 @@ export const useAppStore = create<AppState>()(
             d,
             payload,
           )
+          if (err) {
+            set({ lastError: err })
+            return
+          }
+          refreshGame(set, get)
+        },
+
+        undoReversalAction: (defenderIdx, reversalCardIds) => {
+          if (route('undoReversalAction', [defenderIdx, reversalCardIds])) return
+          const s = get()
+          if (!s.game) return
+          const d = s.game.pendingDecision
+          if (!d || d.type !== 'reversalPlayed') return
+          const err = undoReversal(s.game, defenderIdx, reversalCardIds)
           if (err) {
             set({ lastError: err })
             return
@@ -649,6 +665,11 @@ export function actorFor(game: GameState | null, action: IntentName): number | n
         return game.pendingDecision.defenderIdx
       }
       return null
+    case 'undoReversalAction':
+      if (game.pendingDecision?.type === 'reversalPlayed') {
+        return game.resolution?.target ?? null
+      }
+      return null
     case 'resolvePending':
       return decisionOwner(game)
     case 'flipOverturn':
@@ -699,7 +720,7 @@ export function applyRemoteIntent(
         hostSendError(idx, 'Solo podés mostrar tus propias cartas.')
         return
       }
-    } else if (args.length === 0 || args[0] !== idx) {
+    } else if (action !== 'undoReversalAction' && (args.length === 0 || args[0] !== idx)) {
       hostSendError(idx, 'Solo podés mover tus propias cartas.')
       return
     }
@@ -711,7 +732,10 @@ export function applyRemoteIntent(
   // reversalPlayed is an announcement — any player may dismiss it.
   const isReversalAnnouncement =
     action === 'resolvePending' && s.game?.pendingDecision?.type === 'reversalPlayed'
-  if (allowed === null || (allowed !== idx && !isReversalAnnouncement)) {
+  // undoReversalAction is allowed for the defender (the one who chose the reversal).
+  const isUndoReversal =
+    action === 'undoReversalAction' && s.game?.pendingDecision?.type === 'reversalPlayed'
+  if (allowed === null || (allowed !== idx && !isReversalAnnouncement && !isUndoReversal)) {
     hostSendError(idx, 'No es tu turno o la jugada no es válida.')
     return
   }

@@ -235,8 +235,15 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
 
 function ReversalPlayed({ decision, onContinue }: { decision: Extract<PendingDecision, { type: 'reversalPlayed' }>; onContinue: () => void }) {
   const game = useAppStore((s) => s.game)
+  const undoReversalAction = useAppStore((s) => s.undoReversalAction)
   const attacker = game?.players[decision.attackerIdx]
   const cardIds = decision.reversalCardIds
+
+  const defenderIdx = game?.resolution ? game.resolution.target : -1
+
+  const handleUndo = () => {
+    if (defenderIdx >= 0) undoReversalAction(defenderIdx, cardIds)
+  }
 
   return (
     <>
@@ -262,6 +269,9 @@ function ReversalPlayed({ decision, onContinue }: { decision: Extract<PendingDec
         </div>
       </div>
       <div className="row" style={{ marginTop: 12, gap: 8 }}>
+        <button className="ghost" onClick={handleUndo} style={{ flex: 1 }}>
+          Volver (elegir otras cartas)
+        </button>
         <button className="primary" onClick={onContinue} style={{ flex: 1 }}>
           Continuar
         </button>

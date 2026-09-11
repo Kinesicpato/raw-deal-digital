@@ -1,5 +1,7 @@
 import type { CardDef } from '../data/types'
 import { getCardSafe } from '../store/useAppStore'
+import type { ManualZone } from '../engine/game'
+import { setDrag } from './DragState'
 
 export type CardSize = 'lg' | 'md' | 'sm' | 'xs'
 
@@ -29,6 +31,9 @@ export function CardFace({
   playable,
   faceDown,
   selected,
+  draggable,
+  dragFrom,
+  dragPlayerIdx,
 }: {
   id: string
   size?: CardSize
@@ -38,6 +43,9 @@ export function CardFace({
   playable?: boolean
   faceDown?: boolean
   selected?: boolean
+  draggable?: boolean
+  dragFrom?: ManualZone
+  dragPlayerIdx?: number
 }) {
   const c = getCardSafe(id)
   const cls = [
@@ -48,6 +56,7 @@ export function CardFace({
     playable ? 'playable' : '',
     faceDown ? 'cf-back' : '',
     selected ? 'selected' : '',
+    draggable ? 'card-draggable' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -61,6 +70,19 @@ export function CardFace({
       onMouseLeave={onMouseLeave}
       title={`${c.name} — ${cardTypeLabel(c)}`}
       style={selected ? { boxShadow: '0 0 0 3px var(--gold)' } : undefined}
+      draggable={draggable}
+      onDragStart={(e) => {
+        if (dragFrom && dragPlayerIdx != null) {
+          setDrag({ cardId: id, from: dragFrom, playerIdx: dragPlayerIdx })
+          e.dataTransfer.effectAllowed = 'move'
+          e.dataTransfer.setData('text/plain', id)
+          ;(e.target as HTMLElement).classList.add('card-dragging')
+        }
+      }}
+      onDragEnd={(e) => {
+        setDrag(null)
+        ;(e.target as HTMLElement).classList.remove('card-dragging')
+      }}
     >
       <img src={src} alt={`${c.name} — ${cardTypeLabel(c)}`} className="cf-art" draggable={false} />
     </div>

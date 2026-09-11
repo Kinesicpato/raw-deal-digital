@@ -37,6 +37,7 @@ export type IntentName =
   | 'keepHandAction'
   | 'resolvePending'
   | 'resolveReversal'
+  | 'undoReversalAction'
   | 'flipOverturn'
   | 'stopOverturn'
   | 'manualMove'
