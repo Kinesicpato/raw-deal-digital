@@ -182,6 +182,21 @@ export function GamePage() {
           onClose={() => setTools(null)}
         />
       )}
+      {displayGame.pendingDecision && (
+        <div className="modal-chips-bar">
+          {displayGame.players.map((pl, i) => {
+            const rating = computeFortitude([...pl.midmatchPlayed, ...pl.ring], getCardSafe)
+            const isMe = isOnline ? i === myIdx : i === displayGame.activeIndex
+            return (
+              <div key={pl.id} className={`modal-chip-group ${isMe ? 'me' : ''}`}>
+                <span className="modal-chip">{pl.name.split(' ')[0]}</span>
+                <span className="modal-chip mono">F{rating}</span>
+                <span className="modal-chip mono">Mano {pl.hand.length}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
       <DecisionModal />
       <PlayConfirmModal confirm={playConfirm} onClose={() => setPlayConfirm(null)} />
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />

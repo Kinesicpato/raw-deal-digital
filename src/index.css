@@ -370,7 +370,6 @@ h3 {
   border-radius: 14px;
   padding: 10px 12px;
   position: relative;
-  z-index: 60;
 }
 .panel.active {
   border-color: var(--gold);
@@ -825,6 +824,39 @@ h3 {
   color: var(--text-dim);
   font-weight: 800;
   margin: 10px 0 4px;
+}
+
+/* ============================================================
+   FLOATING CHIPS BAR — visible above modals
+   ============================================================ */
+.modal-chips-bar {
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  z-index: 55;
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+.modal-chip-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  opacity: 0.92;
+}
+.modal-chip-group.me {
+  border-color: var(--gold);
+  box-shadow: 0 0 6px rgba(216, 169, 47, 0.25);
+}
+.modal-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
 }
 
 /* ============================================================
