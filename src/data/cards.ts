@@ -4264,7 +4264,6 @@ export const SHELTON_BENJAMIN_CARDS: CardDef[] = [
     superstar: ['Shelton Benjamin'],
     fortitude: 2,
     damage: 0,
-    backlash: 'Mid-match',
     text: 'Reverse any non-unique card if it is not the first card played this turn and end your opponent\'s turn. If the first card played on your next turn is a maneuver, it can only be reversed from his Arsenal.',
     reverses: { maneuverTypes: ['*'] },
     set: 'Shelton Benjamin',
