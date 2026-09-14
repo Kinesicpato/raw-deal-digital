@@ -1147,12 +1147,15 @@ function zoneList(p: PlayerState, zone: ManualZone): string[] {
 }
 
 /** Move any cards between any of a player's zones (house rule). Recomputes Fortitude. */
+export type ArsenalPosition = 'start' | 'end' | 'shuffle'
+
 export function manualMoveCards(
   state: GameState,
   playerIdx: number,
   from: ManualZone,
   to: ManualZone,
   cardIds: string[],
+  position: ArsenalPosition = 'end',
 ): string | null {
   const p = state.players[playerIdx]
   if (!p) return 'No player.'
@@ -1165,7 +1168,23 @@ export function manualMoveCards(
     const i = src.indexOf(id)
     if (i >= 0) src.splice(i, 1)
   }
-  dst.push(...ids)
+  if (to === 'arsenal') {
+    if (position === 'start') {
+      dst.unshift(...ids)
+    } else if (position === 'shuffle') {
+      dst.push(...ids)
+      for (let i = dst.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const tmp = dst[i]!
+        dst[i] = dst[j]!
+        dst[j] = tmp
+      }
+    } else {
+      dst.push(...ids)
+    }
+  } else {
+    dst.push(...ids)
+  }
   if (from === 'ring' || to === 'ring' || from === 'midmatch' || to === 'midmatch') {
     p.fortitude = computeFortitude([...p.midmatchPlayed, ...p.ring], getCard)
   }

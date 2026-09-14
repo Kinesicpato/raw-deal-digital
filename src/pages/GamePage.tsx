@@ -12,6 +12,8 @@ import { AppBanner } from '../components/Branding'
 import { Toast } from '../components/Toast'
 import { buildClientView } from '../online/types'
 import { MusicPlayer } from '../components/MusicPlayer'
+import { ArsenalPositionPicker } from '../components/ArsenalPositionPicker'
+import type { ArsenalPosition } from '../engine/game'
 import { getDrag, setDrag } from '../components/DragState'
 
 function useDropZone(playerIdx: number, zone: ManualZone) {
@@ -33,7 +35,11 @@ function useDropZone(playerIdx: number, zone: ManualZone) {
     if (info.playerIdx !== playerIdx) return
     if (info.from === zone) return
     setDrag(null)
-    useAppStore.getState().manualMove(playerIdx, info.from, zone, [info.cardId])
+    if (zone === 'arsenal') {
+      useAppStore.getState().setPendingArsenalMove({ playerIdx, from: info.from, cardIds: [info.cardId] })
+    } else {
+      useAppStore.getState().manualMove(playerIdx, info.from, zone, [info.cardId])
+    }
   }, [playerIdx, zone])
 
   return { onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop }
@@ -44,6 +50,7 @@ export function GamePage() {
   const lastError = useAppStore((s) => s.lastError)
   const clearError = useAppStore((s) => s.clearError)
   const online = useAppStore((s) => s.online)
+  const pendingArsenalMove = useAppStore((s) => s.pendingArsenalMove)
   const [detail, setDetail] = useState<string | null>(null)
   const [zoom, setZoom] = useState<string | null>(null)
   const [tools, setTools] = useState<{ player: number; zone?: ManualZone } | null>(null)
@@ -178,6 +185,17 @@ export function GamePage() {
           playerIdx={tools.player}
           initialZone={tools.zone}
           onClose={() => setTools(null)}
+        />
+      )}
+      {pendingArsenalMove && (
+        <ArsenalPositionPicker
+          cardCount={pendingArsenalMove.cardIds.length}
+          onPick={(position: ArsenalPosition) => {
+            const { playerIdx, from, cardIds } = pendingArsenalMove
+            useAppStore.getState().manualMove(playerIdx, from, 'arsenal', cardIds, position)
+            useAppStore.getState().setPendingArsenalMove(null)
+          }}
+          onCancel={() => useAppStore.getState().setPendingArsenalMove(null)}
         />
       )}
       {displayGame.pendingDecision && (

@@ -19,6 +19,7 @@ import {
   stopOverturnCard,
   undoReversal,
   type NewGameConfig,
+  type ArsenalPosition,
 } from '../engine/game'
 import type { GameState } from '../engine/types'
 import type { ManualZone } from '../engine/game'
@@ -68,6 +69,9 @@ interface AppState {
   lastError: string | null
   online: OnlineInfo
 
+  pendingArsenalMove: { playerIdx: number; from: ManualZone; cardIds: string[] } | null
+  setPendingArsenalMove: (pending: { playerIdx: number; from: ManualZone; cardIds: string[] } | null) => void
+
   setView: (v: View) => void
   saveDeck: (deck: DeckDraft) => string | null
   deleteDeck: (id: string) => void
@@ -91,7 +95,7 @@ interface AppState {
   manualRemove: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
-  manualMove: (playerIdx: number, from: ManualZone, to: ManualZone, cardIds: string[]) => string | null
+  manualMove: (playerIdx: number, from: ManualZone, to: ManualZone, cardIds: string[], position?: ArsenalPosition) => string | null
   showCardToOpponent: (fromPlayer: number, cardId: string, toPlayer: number) => void
   clearShownCard: () => void
   setLastError: (msg: string | null) => void
@@ -140,6 +144,9 @@ export const useAppStore = create<AppState>()(
         game: null,
         lastError: null,
         online: defaultOnline,
+        pendingArsenalMove: null,
+
+        setPendingArsenalMove: (pending) => set({ pendingArsenalMove: pending }),
 
         setView: (v) => set({ view: v }),
 
@@ -376,11 +383,11 @@ export const useAppStore = create<AppState>()(
           return err
         },
 
-        manualMove: (playerIdx, from, to, cardIds) => {
+        manualMove: (playerIdx, from, to, cardIds, position = 'end') => {
           const s = get()
           if (!s.game) return null
-          if (route('manualMove', [playerIdx, from, to, cardIds])) return null
-          const err = manualMoveCards(s.game, playerIdx, from, to, cardIds)
+          if (route('manualMove', [playerIdx, from, to, cardIds, position])) return null
+          const err = manualMoveCards(s.game, playerIdx, from, to, cardIds, position)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
           return err
