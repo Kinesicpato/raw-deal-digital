@@ -17,7 +17,6 @@ import {
   manualMoveCards,
   flipOverturnCard,
   stopOverturnCard,
-  keepOpeningHand,
   undoReversal,
   type NewGameConfig,
 } from '../engine/game'
