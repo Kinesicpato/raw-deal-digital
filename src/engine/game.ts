@@ -640,7 +640,6 @@ export function playReversal(
   if (!firstZone || firstZone[first.index] !== first.cardId) return 'Card is not in the expected position.'
   firstZone.splice(first.index, 1)
 
-  const rev = getCard(first.cardId)
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
