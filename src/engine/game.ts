@@ -6,6 +6,20 @@ import { eliminate, resolveNextEffect } from './effects'
 
 export const PREMATCH_STAGES = ['Venue', 'Feud', 'Stipulation', 'Manager', 'Event'] as const
 
+/**
+ * Parses a composite card reference key like "hand:0:gen-step-aside" into its
+ * components. Returns null if the key doesn't match the expected format.
+ */
+export function parseCardRef(ref: string): { zone: 'hand' | 'backlashMid'; index: number; cardId: string } | null {
+  const parts = ref.split(':')
+  if (parts.length !== 3) return null
+  const zone = parts[0]
+  const index = parseInt(parts[1]!, 10)
+  const cardId = parts[2]
+  if ((zone !== 'hand' && zone !== 'backlashMid') || isNaN(index) || index < 0 || !cardId) return null
+  return { zone, index, cardId }
+}
+
 /** Superstars whose Draw Segment always draws 2 cards (Mankind / Cactus Jack). */
 export const DRAW_TWO_SUPERSTARS: readonly string[] = ['mankind', 'cactus-jack']
 
@@ -617,41 +631,35 @@ export function playReversal(
   if (!res.waitingHandReversal && !res.partialReversal) return 'No reversal window open.'
   if (state.activeIndex === defenderIdx) return 'You cannot reverse your own card.'
 
-  const firstId = reversalIds[0]!
-  const firstHandIdx = defender.hand.indexOf(firstId)
-  const firstBacklashIdx = defender.backlashMid.indexOf(firstId)
-  if (firstHandIdx < 0 && firstBacklashIdx < 0) return 'Card is not in your hand or Backlash deck.'
-  if (firstHandIdx >= 0) {
-    defender.hand.splice(firstHandIdx, 1)
-  } else {
-    defender.backlashMid.splice(firstBacklashIdx, 1)
-  }
+  const parsed = reversalIds.map(parseCardRef)
+  if (parsed.some((p) => p === null)) return 'Invalid card reference.'
+  const refs = parsed as { zone: 'hand' | 'backlashMid'; index: number; cardId: string }[]
 
-  const rev = getCard(firstId)
+  const first = refs[0]!
+  const firstZone = defender[first.zone]
+  if (!firstZone || firstZone[first.index] !== first.cardId) return 'Card is not in the expected position.'
+  firstZone.splice(first.index, 1)
+
+  const rev = getCard(first.cardId)
   const attacker = state.players[res.attacker]
   if (!attacker) return 'No attacker.'
 
-  const cameFromBacklash = firstBacklashIdx >= 0
-  if (cameFromBacklash) {
-    defender.midmatchPlayed.push(firstId)
+  if (first.zone === 'backlashMid') {
+    defender.midmatchPlayed.push(first.cardId)
   } else {
-    defender.ring.push(firstId)
+    defender.ring.push(first.cardId)
     defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
   }
 
-  if (rev.effect && rev.effect.length > 0) {
-  }
-
-  for (let i = 1; i < reversalIds.length; i++) {
-    const extraId = reversalIds[i]!
-    const hi = defender.hand.indexOf(extraId)
-    const bi = defender.backlashMid.indexOf(extraId)
-    if (hi >= 0) {
-      defender.hand.splice(hi, 1)
-      defender.ring.push(extraId)
-    } else if (bi >= 0) {
-      defender.backlashMid.splice(bi, 1)
-      defender.midmatchPlayed.push(extraId)
+  for (let i = 1; i < refs.length; i++) {
+    const ref = refs[i]!
+    const zone = defender[ref.zone]
+    if (!zone || zone[ref.index] !== ref.cardId) return 'Card is not in the expected position.'
+    zone.splice(ref.index, 1)
+    if (ref.zone === 'backlashMid') {
+      defender.midmatchPlayed.push(ref.cardId)
+    } else {
+      defender.ring.push(ref.cardId)
     }
   }
   defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
@@ -688,17 +696,20 @@ export function undoReversal(state: GameState, defenderIdx: number, reversalIds:
   }
 
   // Return each reversal card to its original zone.
-  for (const id of reversalIds) {
-    const inRing = defender.ring.indexOf(id)
+  // reversalIds are composite keys like "hand:0:gen-step-aside" or plain card IDs.
+  for (const ref of reversalIds) {
+    const parsed = parseCardRef(ref)
+    const cardId = parsed?.cardId ?? ref
+    const inRing = defender.ring.indexOf(cardId)
     if (inRing >= 0) {
       defender.ring.splice(inRing, 1)
-      defender.hand.push(id)
+      defender.hand.push(cardId)
       continue
     }
-    const inMid = defender.midmatchPlayed.indexOf(id)
+    const inMid = defender.midmatchPlayed.indexOf(cardId)
     if (inMid >= 0) {
       defender.midmatchPlayed.splice(inMid, 1)
-      defender.backlashMid.push(id)
+      defender.backlashMid.push(cardId)
     }
   }
 

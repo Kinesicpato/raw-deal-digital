@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getCardSafe, useAppStore } from '../store/useAppStore'
 import type { PendingDecision } from '../engine/types'
+import { parseCardRef } from '../engine/game'
 import { decisionOwner } from '../online/types'
 import { CardFace } from './CardView'
 
@@ -137,10 +138,10 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
     : true
   const defender = game?.players[isMulti ? (myPlayerIdx ?? decision.defenderIdx) : decision.defenderIdx]
 
-  const toggle = (id: string) =>
+  const toggle = (key: string) =>
     setSel((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id)
-      return [...prev, id]
+      if (prev.includes(key)) return prev.filter((x) => x !== key)
+      return [...prev, key]
     })
 
   const handleReverse = () => {
@@ -204,18 +205,24 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
         <>
           <div className="big-label" style={{ marginTop: 8 }}>Tu mano</div>
           <div className="hand" style={{ maxHeight: 200, overflowY: 'auto', flexWrap: 'wrap' }}>
-            {defender?.hand.map((id) => (
-              <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
-            ))}
+            {defender?.hand.map((id, idx) => {
+              const key = `hand:${idx}:${id}`
+              return (
+                <CardFace key={key} id={id} size="sm" playable selected={sel.includes(key)} onClick={() => toggle(key)} />
+              )
+            })}
             {(!defender || defender.hand.length === 0) && <span className="muted">Sin cartas en mano.</span>}
           </div>
           {defender && defender.backlashMid.length > 0 && (
             <>
               <div className="big-label" style={{ marginTop: 8 }}>Backlash (Mid-match)</div>
               <div className="hand" style={{ maxHeight: 160, overflowY: 'auto', flexWrap: 'wrap' }}>
-                {defender.backlashMid.map((id) => (
-                  <CardFace key={id} id={id} size="sm" playable selected={sel.includes(id)} onClick={() => toggle(id)} />
-                ))}
+                {defender.backlashMid.map((id, idx) => {
+                  const key = `backlashMid:${idx}:${id}`
+                  return (
+                    <CardFace key={key} id={id} size="sm" playable selected={sel.includes(key)} onClick={() => toggle(key)} />
+                  )
+                })}
               </div>
             </>
           )}
@@ -245,19 +252,23 @@ function ReversalPlayed({ decision, onContinue }: { decision: Extract<PendingDec
     if (defenderIdx >= 0) undoReversalAction(defenderIdx, cardIds)
   }
 
+  // Extract actual card IDs from composite keys for display.
+  const displayIds = cardIds.map((ref) => parseCardRef(ref)?.cardId ?? ref)
+
   return (
     <>
       <h3>Reversal aplicado</h3>
       <p className="muted">
         <b>{attacker?.name}</b>, tu oponente revirtió tu jugada con{' '}
-        <b>{cardIds.length === 1 ? getCardSafe(cardIds[0]!).name : `${cardIds.length} cartas`}</b>.
+        <b>{displayIds.length === 1 ? getCardSafe(displayIds[0]!).name : `${displayIds.length} cartas`}</b>.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '12px 0' }}>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {cardIds.map((id) => {
-            const card = getCardSafe(id)
+          {cardIds.map((ref, i) => {
+            const cardId = parseCardRef(ref)?.cardId ?? ref
+            const card = getCardSafe(cardId)
             return (
-              <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <CardFace id={card.id} size="lg" />
                 <div className="row" style={{ gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                   {card.fortitude > 0 && <span className="stat-chip">F{card.fortitude}</span>}
