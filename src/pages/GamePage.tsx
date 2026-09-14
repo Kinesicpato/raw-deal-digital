@@ -135,8 +135,6 @@ export function GamePage() {
             <OverturnBanner game={displayGame} />
           )}
 
-          {displayGame.phase === 'opening' && <OpeningZone game={displayGame} canInteract={showHandControls} />}
-
           {displayGame.phase === 'gameover' && <GameOver game={displayGame} />}
 
           {displayActive && !displayActive.isAI && displayGame.phase === 'main' && showHandControls && (
@@ -248,6 +246,13 @@ function PlayerPanel({
   // Fortitude Rating shown live: sum of the "D" (Damage) box of every card in
   // the player's Ring area plus Mid-match/Pre-match cards played.
   const rating = computeFortitude([...p.midmatchPlayed, ...p.ring], getCardSafe)
+  // All useDropZone hooks MUST be called unconditionally to satisfy React's
+  // Rules of Hooks — they cannot live inside conditional branches.
+  const arsenalDrop = useDropZone(idx, 'arsenal')
+  const midmatchDrop = useDropZone(idx, 'midmatch')
+  const ringDrop = useDropZone(idx, 'ring')
+  const ringsideDrop = useDropZone(idx, 'ringside')
+  const backlashMidDrop = useDropZone(idx, 'backlashMid')
   return (
     <div className={`panel ${isActive ? 'active' : ''} ${hit ? 'panel-hit' : ''} ${p.eliminated ? 'eliminated' : ''} ${compact ? 'compact' : ''}`} data-player={idx}>
       <div className="panel-head">
@@ -283,7 +288,7 @@ function PlayerPanel({
           onClick={() => onTools('arsenal')}
           data-zone="arsenal"
           data-player={idx}
-          {...useDropZone(idx, 'arsenal')}
+          {...arsenalDrop}
           style={{ cursor: 'pointer' }}
         >
           Arsenal <b>{p.arsenal.length}</b>
@@ -321,7 +326,7 @@ function PlayerPanel({
             title="Cartas de Mid-match / Pre-match jugadas durante el encuentro"
             data-zone="midmatch"
             data-player={idx}
-            {...useDropZone(idx, 'midmatch')}
+            {...midmatchDrop}
           >
             <div className="zone-title">
               <span>Mid-match</span>
@@ -373,7 +378,7 @@ function PlayerPanel({
             title="Clic para ver/mover cartas del Ring Area"
             data-zone="ring"
             data-player={idx}
-            {...useDropZone(idx, 'ring')}
+            {...ringDrop}
           >
             <div className="zone-title">
               <span>Ring Area</span>
@@ -422,7 +427,7 @@ function PlayerPanel({
             title="Clic para ver/mover cartas del Ringside"
             data-zone="ringside"
             data-player={idx}
-            {...useDropZone(idx, 'ringside')}
+            {...ringsideDrop}
           >
             <div className="zone-title">
               <span>Ringside · descarte/daño</span>
@@ -456,7 +461,7 @@ function PlayerPanel({
             className={`zone ${isActive ? 'zone-active' : ''}`}
             data-zone="backlashMid"
             data-player={idx}
-            {...useDropZone(idx, 'backlashMid')}
+            {...backlashMidDrop}
           >
             <div className="zone-title">
               <span>Backlash</span>
@@ -560,105 +565,6 @@ function RingZone({ game, onCardClick, onCardHover }: { game: GameState; onCardC
             </div>
           )}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function OpeningZone({ game, canInteract }: { game: GameState; canInteract: boolean }) {
-  const active = game.players[game.activeIndex]
-  const [swap, setSwap] = useState<Set<string>>(new Set())
-  const store = useAppStore.getState()
-
-  if (active && active.isAI) {
-    return (
-      <div className="card" style={{ textAlign: 'center' }}>
-        <span className="muted">{active.name} elige su mano inicial…</span>
-      </div>
-    )
-  }
-
-  if (!canInteract) {
-    return (
-      <div className="card" style={{ textAlign: 'center' }}>
-        <span className="muted">{active?.name} está eligiendo su mano inicial…</span>
-      </div>
-    )
-  }
-
-  const hand = active?.hand ?? []
-  const arsenalCount = active?.arsenal.length ?? 0
-
-  return (
-    <div className="card">
-      <h3>Elige tu mano inicial — {active?.name}</h3>
-      <p className="muted">
-        El descarte y la reposición son voluntarios e independientes: tocá las cartas que querés devolver al
-        Arsenal y usá «Devolver seleccionadas» (no se roba de vuelta). Para reponer, robá del Arsenal con
-        «Robar». Cuando quieras quedarte con tu mano, confirmá.
-      </p>
-      <div className="hand" style={{ flexWrap: 'wrap', maxHeight: 280, overflowY: 'auto' }}>
-        {hand.map((id) => {
-          const removing = swap.has(id)
-          return (
-            <div key={id} style={{ position: 'relative' }}>
-              <CardFace
-                id={id}
-                size="sm"
-                playable={removing}
-                selected={!removing}
-                onClick={() =>
-                  setSwap((prev) => {
-                    const next = new Set(prev)
-                    if (next.has(id)) next.delete(id)
-                    else next.add(id)
-                    return next
-                  })
-                }
-              />
-              <div
-                className="stat-chip mono"
-                style={{ position: 'absolute', top: 4, right: 4, background: removing ? 'var(--red-bright)' : 'var(--green)' }}
-              >
-                {removing ? 'Devuelvo' : 'Guardo'}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end', gap: 8 }}>
-        <button className="ghost" onClick={() => setSwap(new Set())}>Desmarcar todo</button>
-        <button
-          className="ghost"
-          disabled={arsenalCount === 0}
-          onClick={() => {
-            store.redrawOpeningAction(1)
-          }}
-        >
-          Robar 1
-        </button>
-        <button
-          className="ghost"
-          disabled={arsenalCount === 0}
-          onClick={() => {
-            store.redrawOpeningAction(3)
-          }}
-        >
-          Robar 3
-        </button>
-        <button
-          className="ghost"
-          disabled={swap.size === 0}
-          onClick={() => {
-            store.discardOpeningAction([...swap])
-            setSwap(new Set())
-          }}
-        >
-          Devolver seleccionadas
-        </button>
-        <button className="primary" onClick={() => store.keepHandAction()}>
-          Confirmar mano
-        </button>
       </div>
     </div>
   )

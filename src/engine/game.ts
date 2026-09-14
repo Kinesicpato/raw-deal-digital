@@ -85,6 +85,9 @@ export function newGame(cfg: NewGameConfig): GameState {
     ensurePlayableOpeningHand(state, p)
   })
 
+  // Skip the opening hand confirmation: start the match immediately.
+  startMatch(state)
+
   return state
 }
 
@@ -893,7 +896,6 @@ function succeedCard(
   const attacker = state.players[attackerIdx]
   const defender = state.players[defenderIdx]
   if (!res || !attacker || !defender) return
-  const card = getCard(res.cardId)
 
   const fromBacklash = res.source === 'midmatch' || res.source === 'prematch'
 
@@ -909,19 +911,9 @@ function succeedCard(
   attacker.lastSuccessfullyPlayed = { cardId: res.cardId, damage: res.damageDealt }
   attacker.playedThisTurn.push(res.cardId)
 
-  // Stun value: attacker draws if reversed while overturning.
-  if (res.ended && res.overturning) {
-    if (card.stun && attacker.arsenal.length > 0) {
-      drawCards(attacker, card.stun, getCard)
-    }
-    attacker.reversedLastTurn = false
-    state.resolution = null
-    state.pendingDecision = null
-    state.pendingEffects = null
-    endTurn(state)
-    return
-  }
-
+  // Clear the resolution and return to the main phase so the attacker can
+  // play more cards or end their turn.  (Reversal-during-overturn is handled
+  // separately by finishReversalCleanup in stopOverturnCard.)
   const keepTurn = opts?.keepTurn ?? true
   state.resolution = null
   state.pendingDecision = null
@@ -1254,15 +1246,6 @@ export function manualReorderArsenal(
 }
 
 /** Show one player's hand to a specific opponent (or hide it with null). */
-export function manualRevealHand(state: GameState, playerIdx: number, targetIdx: number | null): void {
-  const p = state.players[playerIdx]
-  if (!p) return
-  if (targetIdx !== null && (targetIdx === playerIdx || targetIdx < 0 || targetIdx >= state.players.length)) {
-    return
-  }
-  p.handRevealedTo = targetIdx
-}
-
 /**
  * Activate the effect of a card sitting in the active player's Ring area or
  * Mid-match zone (ACE / persistent effects). The card stays where it is and

@@ -11,15 +11,12 @@ import {
   manualRingToArsenal,
   manualShuffleArsenal,
   manualReorderArsenal,
-  manualRevealHand,
   manualRemoveFromZone,
   manualZoneToArsenal,
   manualDrawFromArsenal,
   manualMoveCards,
   flipOverturnCard,
   stopOverturnCard,
-  discardOpeningCards,
-  redrawOpeningCards,
   keepOpeningHand,
   undoReversal,
   type NewGameConfig,
@@ -79,9 +76,6 @@ interface AppState {
   updateDeck: (patch: Partial<DeckDraft>) => void
 
   startGame: (cfg: NewGameConfig) => void
-  discardOpeningAction: (cardIds: string[]) => void
-  redrawOpeningAction: (count: number) => void
-  keepHandAction: () => void
   playCardAction: (cardId: string, source?: 'hand' | 'midmatch' | 'prematch') => void
   endTurnAction: () => void
   activateRingAction: (cardId: string) => void
@@ -95,7 +89,6 @@ interface AppState {
   manualRingToArsenal: (playerIdx: number, cardIds: string[]) => string | null
   manualShuffleArsenal: (playerIdx: number) => void
   manualReorderArsenal: (playerIdx: number, orderedIds: string[]) => string | null
-  manualRevealHand: (playerIdx: number, targetIdx: number | null) => void
   manualRemove: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
@@ -185,40 +178,6 @@ export const useAppStore = create<AppState>()(
           const game = newGame(cfg)
           set({ game, lastError: null })
           if (get().online.role === 'host') broadcastState(game)
-        },
-
-        discardOpeningAction: (cardIds) => {
-          if (route('discardOpeningAction', [cardIds])) return
-          const s = get()
-          if (!s.game) return
-          const err = discardOpeningCards(s.game, s.game.activeIndex, cardIds)
-          if (err) {
-            set({ lastError: err })
-            return
-          }
-          set((st) => ({ game: st.game ? { ...st.game } : null }))
-          if (s.online.role === 'host' && s.game) broadcastState(s.game)
-        },
-
-        redrawOpeningAction: (count) => {
-          if (route('redrawOpeningAction', [count])) return
-          const s = get()
-          if (!s.game) return
-          const err = redrawOpeningCards(s.game, s.game.activeIndex, count)
-          if (err) {
-            set({ lastError: err })
-            return
-          }
-          set((st) => ({ game: st.game ? { ...st.game } : null }))
-          if (s.online.role === 'host' && s.game) broadcastState(s.game)
-        },
-
-        keepHandAction: () => {
-          if (route('keepHandAction', [])) return
-          const s = get()
-          if (!s.game) return
-          keepOpeningHand(s.game, s.game.activeIndex)
-          refreshGame(set, get)
         },
 
         playCardAction: (cardId, source = 'hand') => {
@@ -364,15 +323,6 @@ export const useAppStore = create<AppState>()(
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
           return err
-        },
-
-        manualRevealHand: (playerIdx, targetIdx) => {
-          const s = get()
-          if (!s.game) return
-          if (route('manualRevealHand', [playerIdx, targetIdx])) return
-          manualRevealHand(s.game, playerIdx, targetIdx)
-          set((st) => ({ game: st.game ? { ...st.game } : null }))
-          if (s.online.role === 'host' && s.game) broadcastState(s.game)
         },
 
         showCardToOpponent: (fromPlayer, cardId, toPlayer) => {
@@ -689,7 +639,6 @@ const MANUAL_INTENTS: IntentName[] = [
   'manualDrawFromArsenal',
   'manualShuffleArsenal',
   'manualReorderArsenal',
-  'manualRevealHand',
   'showCardToOpponent',
 ]
 
@@ -701,46 +650,47 @@ export function applyRemoteIntent(
   args: unknown[],
 ): void {
   const s = get()
-  if (MANUAL_INTENTS.includes(action)) {
-    if (action === 'manualRevealHand') {
-      // A player may show their own hand to anyone, or reveal a specific
-      // opponent's hand to themselves (and hide either reveal they made).
-      const [player, target] = args as [number, number | null]
-      const valid =
-        player === idx ||
-        (target !== null && target === idx) ||
-        (target === null && s.game?.players[player]?.handRevealedTo === idx)
-      if (!valid) {
-        hostSendError(idx, 'Solo podés revelar tu mano o la de un oponente para vos mismo.')
+  try {
+    if (MANUAL_INTENTS.includes(action)) {
+      if (action === 'showCardToOpponent') {
+        const [fromPlayer] = args as [number, string, number]
+        if (fromPlayer !== idx) {
+          hostSendError(idx, 'Solo podés mostrar tus propias cartas.')
+          return
+        }
+      } else if (action !== 'undoReversalAction' && (args.length === 0 || args[0] !== idx)) {
+        hostSendError(idx, 'Solo podés mover tus propias cartas.')
         return
       }
-    } else if (action === 'showCardToOpponent') {
-      const [fromPlayer] = args as [number, string, number]
-      if (fromPlayer !== idx) {
-        hostSendError(idx, 'Solo podés mostrar tus propias cartas.')
-        return
-      }
-    } else if (action !== 'undoReversalAction' && (args.length === 0 || args[0] !== idx)) {
-      hostSendError(idx, 'Solo podés mover tus propias cartas.')
+      const fn = (s as unknown as Record<string, (...args: unknown[]) => void>)[action]
+      if (typeof fn === 'function') fn(...args)
+      return
+    }
+    const allowed = actorFor(s.game, action)
+    // reversalPlayed is an announcement — any player may dismiss it.
+    const isReversalAnnouncement =
+      action === 'resolvePending' && s.game?.pendingDecision?.type === 'reversalPlayed'
+    // undoReversalAction is allowed for the defender (the one who chose the reversal).
+    const isUndoReversal =
+      action === 'undoReversalAction' && s.game?.pendingDecision?.type === 'reversalPlayed'
+    if (allowed === null || (allowed !== idx && !isReversalAnnouncement && !isUndoReversal)) {
+      hostSendError(idx, 'No es tu turno o la jugada no es válida.')
       return
     }
     const fn = (s as unknown as Record<string, (...args: unknown[]) => void>)[action]
     if (typeof fn === 'function') fn(...args)
-    return
+  } catch (err) {
+    console.error('[host] Error processing intent', action, 'from player', idx, err)
+    hostSendError(idx, 'Ocurrió un error procesando tu acción. Intentá de nuevo.')
+    // Ensure clients still get the latest (possibly partially mutated) state
+    // even after an error, so the game doesn't freeze on a stale snapshot.
+    try {
+      const st = get()
+      if (st.game) broadcastState(st.game)
+    } catch (_) {
+      // Broadcast best-effort; nothing more we can do.
+    }
   }
-  const allowed = actorFor(s.game, action)
-  // reversalPlayed is an announcement — any player may dismiss it.
-  const isReversalAnnouncement =
-    action === 'resolvePending' && s.game?.pendingDecision?.type === 'reversalPlayed'
-  // undoReversalAction is allowed for the defender (the one who chose the reversal).
-  const isUndoReversal =
-    action === 'undoReversalAction' && s.game?.pendingDecision?.type === 'reversalPlayed'
-  if (allowed === null || (allowed !== idx && !isReversalAnnouncement && !isUndoReversal)) {
-    hostSendError(idx, 'No es tu turno o la jugada no es válida.')
-    return
-  }
-  const fn = (s as unknown as Record<string, (...args: unknown[]) => void>)[action]
-  if (typeof fn === 'function') fn(...args)
 }
 
 export function getCardSafe(id: string): CardDef {

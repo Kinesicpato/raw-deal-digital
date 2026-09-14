@@ -47,7 +47,6 @@ export type IntentName =
   | 'manualDrawFromArsenal'
   | 'manualShuffleArsenal'
   | 'manualReorderArsenal'
-  | 'manualRevealHand'
   | 'showCardToOpponent'
 
 export type ClientMsg =
