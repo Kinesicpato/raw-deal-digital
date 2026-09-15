@@ -80,13 +80,10 @@ export const OCR_CARDS: CardDef[] = [
     name: 'Big Splash in the Corner',
     type: 'Maneuver',
     subtypes: ['High Risk'],
-    superstar: ['rvd'],
-
-    fortitude: 0,
+    fortitude: 8,
     damage: 10,
-    text: 'card. High Risk SURVIVOR SERIES Turnbuckle. Big Splash in the Corner your opponent discards 1 When successfully played titled ThrowInto the Corner Must be played after the card Reversals to this card are +2D.',
-    set: 'PDF',
-    notes: 'OCR automático; verificar.',
+    text: 'Must be played after the card titled Throw Into the Corner Turnbuckle. Reversals to this card are +2D. When successfully played, your opponent discards 1 card.',
+    set: 'Set 15-09',
   }),
   ocrCard({
     id: 'blatant-chokehold',

@@ -133,7 +133,7 @@ abilityText:
     alignment: 'Face',
     gender: 'male',
     abilityText:
-      "Your Starting Hand Size is equal to twice your opponent's total Star Value. If this number is 6 or less, then your Starting Hand Size is 6. At the start of any match you always go first.",
+      "# is equal to twice your opponent's Superstar Value. # cannot be less than 6. You start the game after the Pre-match phase. When you successfully play the card titled Faceplant, you may shuffle up to 4 cards from your Ringside pile into your Arsenal. When you successfully play the card titled You Think You Know Me?, do not discard any cards.",
     backlashLimit: { preMatch: 7, midMatch: 7 },
   },
   {
@@ -4291,16 +4291,6 @@ export const SET1509_CARDS: CardDef[] = [
     fortitude: 15,
     damage: 0,
     text: 'Draw up to 3 cards if you have fewer cards in your hand than your opponent. If you began your turn with this card in your Ring area, you may discard 2 cards and your next card played this turn cannot be reversed.',
-    set: 'Set 15-09',
-  }),
-  card({
-    id: 'big-splash-in-the-corner',
-    name: 'Big Splash in the Corner',
-    type: 'Maneuver',
-    subtypes: ['High Risk'],
-    fortitude: 8,
-    damage: 10,
-    text: 'Must be played after the card titled Throw Into the Corner Turnbuckle. Reversals to this card are +2D. When successfully played, your opponent discards 1 card.',
     set: 'Set 15-09',
   }),
   card({
