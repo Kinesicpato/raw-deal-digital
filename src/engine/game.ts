@@ -751,8 +751,7 @@ function finishReversalCleanup(state: GameState, defenderIdx: number, _rev: Card
   state.resolution = null
   state.pendingDecision = null
   state.pendingEffects = null
-  // Same as playReversal: the attacker ends their turn voluntarily.
-  state.phase = 'main'
+  endTurn(state)
 }
 
 // ---------------------------------------------------------------------------
@@ -982,7 +981,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
     case 'reversalPlayed': {
       state.resolution = null
       state.pendingDecision = null
-      state.phase = 'main'
+      endTurn(state)
       return null
     }
 
