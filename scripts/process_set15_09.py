@@ -99,16 +99,20 @@ def process_landscape_backlash(img, target_w, target_h):
     return canvas
 
 
-# Portrait cards: image2-8 (skip image1 = Edge superstar)
+# Portrait cards: image1-8
 portrait_cards = [
-    ('image2.png', 'your-brush-with-greatness-is-over'),
-    ('image3.png', 'million-dollar-smile'),
-    ('image4.png', 'big-splash-in-the-corner'),
+    ('image1.png', 'your-brush-with-greatness-is-over'),
+    ('image2.png', 'million-dollar-smile'),
+    ('image4.png', 'bash-suplex'),
     ('image5.png', 'bear-hug'),
     ('image6.png', 'cause-i-want-more'),
-    ('image7.png', 'bash-suplex'),
+    ('image7.png', 'big-splash-in-the-corner'),
     ('image8.png', 'backed-by-stephanie-mcmahon'),
 ]
+
+# Edge superstar card (image3) - crop and save separately
+EDGE_SUPERSTAR_SRC = os.path.join(MEDIA, 'image3.png')
+EDGE_SUPERSTAR_DST = os.path.join(OUT, 'superstar-edge.png')
 
 # Landscape backlash cards: image9-11
 backlash_cards = [
@@ -117,7 +121,13 @@ backlash_cards = [
     ('image11.png', 'big-slide-in-the-ring'),
 ]
 
-print("Processing portrait cards...")
+print("Processing Edge superstar card...")
+img = Image.open(EDGE_SUPERSTAR_SRC).convert('RGB')
+result = crop_and_resize(img, TARGET_W, TARGET_H)
+result.save(EDGE_SUPERSTAR_DST)
+print(f'  OK superstar-edge ({result.size[0]}x{result.size[1]})')
+
+print("\nProcessing portrait cards...")
 for filename, slug in portrait_cards:
     src = os.path.join(MEDIA, filename)
     dst = os.path.join(OUT, f'{slug}.png')

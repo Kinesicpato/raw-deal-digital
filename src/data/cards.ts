@@ -4275,7 +4275,7 @@ export const SET1509_CARDS: CardDef[] = [
     id: 'your-brush-with-greatness-is-over',
     name: 'Your Brush with Greatness is Over',
     type: 'Action',
-    traits: ['Unique'],
+    traits: ['Unique', 'Throwback'],
     superstar: ['Edge'],
     fortitude: 0,
     damage: 0,
