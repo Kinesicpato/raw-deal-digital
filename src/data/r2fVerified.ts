@@ -21,6 +21,7 @@ export const R2F_VERIFIED: Record<string, { f: number; d: number; sv: number | n
   "Backslide": { f: 5, d: 1, sv: null, src: "Mania_5.0 #16/150" },
   "Bear Hug": { f: 4, d: 3, sv: null, src: "Premiere_1.0 #53/150 (D:3 corregido por el usuario)" },
   "Between the Ropes": { f: 0, d: 0, sv: null, src: "NoWayOut_19.0 #49/172" },
+  "Big Splash in the Corner": { f: 8, d: 10, sv: 1, src: "Set 15-09" },
   "Blatant Chokehold": { f: 7, d: 13, sv: null, src: "Tournament #32/TK (F) Blatant Chokehold" },
   "Body Lock": { f: 2, d: 7, sv: null, src: "Revolution3 #113/206" },
   "Body Slam": { f: 7, d: 6, sv: 1, src: "Premiere_1.0 #28/150" },
