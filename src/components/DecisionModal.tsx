@@ -121,7 +121,7 @@ function ChooseTarget({ decision, onPick }: { decision: Extract<PendingDecision,
   )
 }
 
-function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardIds: string[] } | null) => void }) {
+function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDecision, { type: 'reversalChoice' }>; onResolve: (payload: { cardIds: string[]; defenderIdx?: number; pass?: boolean } | null) => void }) {
   const game = useAppStore((s) => s.game)
   const myIdx = useAppStore((s) => s.online.myIdx)
   const online = useAppStore((s) => s.online)
@@ -146,18 +146,18 @@ function ReversalChoice({ decision, onResolve }: { decision: Extract<PendingDeci
 
   const handleReverse = () => {
     if (isMulti && myPlayerIdx !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(decision as any).defenderIdx = myPlayerIdx
+      onResolve({ cardIds: sel, defenderIdx: myPlayerIdx })
+    } else {
+      onResolve({ cardIds: sel })
     }
-    onResolve({ cardIds: sel })
   }
 
   const handlePass = () => {
     if (isMulti && myPlayerIdx !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(decision as any).defenderIdx = myPlayerIdx
+      onResolve({ cardIds: [], defenderIdx: myPlayerIdx, pass: true })
+    } else {
+      onResolve(null)
     }
-    onResolve(null)
   }
 
   return (

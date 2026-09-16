@@ -945,8 +945,9 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
       const d = state.pendingDecision
       const res = state.resolution
       if (isMulti && d && d.type === 'reversalChoice' && d.reversedPlayers && d.playerChoices && res) {
-        const actingIdx = decision.defenderIdx
-        if (payload === null) {
+        const pPayload = (payload && typeof payload === 'object' && 'defenderIdx' in payload) ? payload as { defenderIdx?: number; cardIds?: string[]; pass?: boolean } : null
+        const actingIdx = pPayload?.defenderIdx ?? decision.defenderIdx
+        if (payload === null || (pPayload && pPayload.pass)) {
           d.playerChoices[actingIdx] = null
           d.reversedPlayers.push(actingIdx)
           const eligible = state.players
@@ -959,8 +960,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
           }
           return null
         }
-        const p = payload as { cardIds: string[] }
-        const ids = p.cardIds
+        const ids = pPayload?.cardIds ?? (payload as { cardIds: string[] }).cardIds
         if (!Array.isArray(ids) || ids.length === 0) return 'No reversal cards selected.'
         const err = playReversal(state, actingIdx, ids)
         if (err) return err

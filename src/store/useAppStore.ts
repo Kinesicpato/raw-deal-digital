@@ -679,7 +679,24 @@ export function applyRemoteIntent(
     // undoReversalAction is allowed for the defender (the one who chose the reversal).
     const isUndoReversal =
       action === 'undoReversalAction' && s.game?.pendingDecision?.type === 'reversalPlayed'
-    if (allowed === null || (allowed !== idx && !isReversalAnnouncement && !isUndoReversal)) {
+    // In multiplayer, any non-attacker player may reverse (actorFor returns null for this case).
+    const isMultiReversal =
+      action === 'resolveReversal' &&
+      s.game?.pendingDecision?.type === 'reversalChoice' &&
+      s.game?.pendingDecision?.reversedPlayers &&
+      s.game?.players.length > 2
+    if (isMultiReversal) {
+      const attacker = s.game!.resolution?.attacker
+      if (idx === attacker) {
+        hostSendError(idx, 'No es tu turno o la jugada no es válida.')
+        return
+      }
+      const d = s.game!.pendingDecision
+      if (d && d.type === 'reversalChoice' && d.reversedPlayers!.includes(idx)) {
+        hostSendError(idx, 'Ya tomaste una decisión de reversal.')
+        return
+      }
+    } else if (allowed === null || (allowed !== idx && !isReversalAnnouncement && !isUndoReversal)) {
       hostSendError(idx, 'No es tu turno o la jugada no es válida.')
       return
     }
