@@ -4346,6 +4346,17 @@ export const SET1509_CARDS: CardDef[] = [
     set: 'Set 15-09',
   }),
   card({
+    id: 'big-splash-in-the-corner-tb',
+    name: 'Big Splash in the Corner',
+    type: 'Maneuver',
+    subtypes: ['High Risk', 'Chain'],
+    traits: ['Throwback'],
+    fortitude: 6,
+    damage: 10,
+    text: 'This card can be packed by every Male Superstar, regardless of Superstar ability. Can only be played after a successfully played 3D or greater maneuver or the card titled Throw Into the Corner Turnbuckle. When played after the card titled Throw Into the Corner Turnbuckle, this card is +5D and your opponent\'s Reversal cards to this card are +8F.',
+    set: 'Set 15-09',
+  }),
+  card({
     id: 'the-edgeucation-of-adam-copeland',
     name: 'The Edgeucation of Adam Copeland',
     type: 'Action',
