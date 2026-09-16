@@ -4336,16 +4336,6 @@ export const SET1509_CARDS: CardDef[] = [
     set: 'Set 15-09',
   }),
   card({
-    id: 'big-splash-in-the-corner',
-    name: 'Big Splash in the Corner',
-    type: 'Maneuver',
-    subtypes: ['High Risk'],
-    fortitude: 8,
-    damage: 10,
-    text: 'Must be played after the card titled Throw Into the Corner Turnbuckle. Reversals to this card are +2D. When successfully played, your opponent discards 1 card.',
-    set: 'Set 15-09',
-  }),
-  card({
     id: 'the-edgeucation-of-adam-copeland',
     name: 'The Edgeucation of Adam Copeland',
     type: 'Action',
