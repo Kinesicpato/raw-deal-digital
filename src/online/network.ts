@@ -17,6 +17,9 @@ const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
     {
       urls: 'turn:openrelay.metered.ca:80',
       username: 'openrelayproject',
@@ -32,7 +35,14 @@ const ICE_CONFIG: RTCConfiguration = {
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
+  iceTransportPolicy: 'all',
+  iceCandidatePoolSize: 10,
 }
 
 export function randomCode(length = 5): string {
@@ -119,11 +129,16 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  const p = new Peer(peerIdFor(code), { debug: 0, config: ICE_CONFIG })
+  const p = new Peer(peerIdFor(code), { debug: 1, config: ICE_CONFIG })
   peer = p
 
-  p.on('open', () => hooks.onOpen())
+  p.on('open', () => {
+    console.log('[PeerJS] Host connected with ID:', p.id)
+    hooks.onOpen()
+  })
+  p.on('disconnected', () => console.warn('[PeerJS] Host disconnected from signaling server'))
   p.on('error', (err: unknown) => {
+    console.error('[PeerJS] Host error:', err)
     const type = (err as { type?: string }).type
     if (type === 'unavailable-id') hooks.onError('Ese código ya está en uso. Probá con otra sala.')
     else hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
@@ -258,7 +273,7 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
 
   const connect = () => {
     if (peer) { try { peer.destroy() } catch { /* ignore */ } peer = null }
-    const p = new Peer({ debug: 0, config: ICE_CONFIG })
+    const p = new Peer({ debug: 1, config: ICE_CONFIG })
     peer = p
     let started = false
     let connTimeout: ReturnType<typeof setTimeout> | null = null
@@ -267,9 +282,11 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
       if (connTimeout) { clearTimeout(connTimeout); connTimeout = null }
     }
 
-    p.on('open', () => {
+    p.on('open', (id) => {
+      console.log('[PeerJS] Client connected with ID:', id)
       const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
       hostConn = conn
+      console.log('[PeerJS] Client attempting to connect to room:', peerIdFor(code))
 
       connTimeout = setTimeout(() => {
         if (!started) {
@@ -283,6 +300,7 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
 
       conn.on('open', () => {
         cleanup()
+        console.log('[PeerJS] Client connected to host!')
         conn.send({ type: 'hello', name } satisfies ClientMsg)
         started = true
         retries = 0
@@ -315,8 +333,10 @@ export function startClient(code: string, name: string, hooks: ClientHooks): voi
       }, delay)
     }
 
+    p.on('disconnected', () => console.warn('[PeerJS] Client disconnected from signaling server'))
     p.on('error', (err: unknown) => {
       cleanup()
+      console.error('[PeerJS] Client error:', err)
       const type = (err as { type?: string }).type
       if (type === 'peer-unavailable' || type === 'unavailable-id') {
         retry('Sala no encontrada, reintentando...')
