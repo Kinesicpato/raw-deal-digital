@@ -394,98 +394,111 @@ export function StatsPage() {
             {/* ─── TAB: SUPERESTRELLAS ─── */}
             {tab === 'superstars' && (
               <>
-                {starStats.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center' }}>
-                    <p className="muted">Todavía no hay estadísticas por superestrella.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 16 }}>
-                      {starStats.map((agg) => {
-                        const star = SUPERSTARS.find((s) => s.id === agg.superstar_id)
-                        const isSelected = selectedStar === agg.superstar_id
-                        return (
-                          <div
-                            key={agg.superstar_id}
-                            onClick={() => setSelectedStar(isSelected ? null : agg.superstar_id)}
-                            style={{
-                              cursor: 'pointer',
-                              borderRadius: 8,
-                              border: isSelected ? '2px solid var(--gold, #ffd700)' : '2px solid transparent',
-                              background: isSelected ? 'var(--accent-bg, rgba(255,215,0,0.08))' : 'var(--card-bg, rgba(255,255,255,0.04))',
-                              padding: 8,
-                              textAlign: 'center',
-                              width: 90,
-                              transition: 'border-color 0.15s',
-                            }}
-                          >
-                            <CardFace id={`superstar-${agg.superstar_id}`} size="xs" />
-                            <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600, lineHeight: 1.2 }}>
-                              {star?.name ?? agg.superstar_id}
-                            </div>
-                            <div className="muted" style={{ fontSize: 10 }}>
-                              {agg.wins}G / {agg.losses}P
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {selectedAgg && (
-                      <div className="card" style={{ padding: '14px 16px' }}>
-                        <div className="row" style={{ alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                          <CardFace id={`superstar-${selectedAgg.superstar_id}`} size="sm" />
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 16 }}>{superstarsName(selectedAgg.superstar_id)}</div>
-                            <div className="muted" style={{ fontSize: 12 }}>
-                              {selectedAgg.matches_played} partidas · {selectedAgg.wins} victorias / {selectedAgg.losses} derrotas
-                            </div>
-                          </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 16 }}>
+                  {SUPERSTARS.map((star) => {
+                    const agg = starStats.find((s) => s.superstar_id === star.id) ?? null
+                    const isSelected = selectedStar === star.id
+                    return (
+                      <div
+                        key={star.id}
+                        onClick={() => setSelectedStar(isSelected ? null : star.id)}
+                        style={{
+                          cursor: 'pointer',
+                          borderRadius: 8,
+                          border: isSelected ? '2px solid var(--gold, #ffd700)' : '2px solid transparent',
+                          background: isSelected ? 'var(--accent-bg, rgba(255,215,0,0.08))' : 'var(--card-bg, rgba(255,255,255,0.04))',
+                          padding: 8,
+                          textAlign: 'center',
+                          width: 90,
+                          transition: 'border-color 0.15s',
+                        }}
+                      >
+                        <CardFace id={`superstar-${star.id}`} size="xs" />
+                        <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600, lineHeight: 1.2 }}>
+                          {star.name}
                         </div>
-
-                        {Object.keys(selectedAgg.by_mode).length > 0 && (
-                          <div style={{ marginBottom: 12 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Por modalidad</div>
-                            {Object.entries(selectedAgg.by_mode).map(([mode, m]) => (
-                              <StatRow
-                                key={mode}
-                                label={mode === 'rumble' ? 'Rumble' : 'Winner Takes All'}
-                                value={`${m.played} partidas (${m.wins}G / ${m.losses}P)`}
-                              />
-                            ))}
-                          </div>
-                        )}
-
-                        {Object.keys(selectedAgg.record_vs).length > 0 && (
-                          <div style={{ marginBottom: 12 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Récord contra</div>
-                            {Object.entries(selectedAgg.record_vs)
-                              .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
-                              .map(([oppId, rv]) => (
-                                <StatRow
-                                  key={oppId}
-                                  label={superstarsName(oppId)}
-                                  value={`${rv.wins}G / ${rv.losses}P`}
-                                  color={rv.wins > rv.losses ? 'var(--green-bright, #4caf50)' : rv.wins < rv.losses ? 'var(--red-bright, #f44336)' : undefined}
-                                />
-                              ))}
-                          </div>
-                        )}
-
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Promedio por duelo</div>
-                          <StatRow label="Reversals" value={selectedAgg.avg_reversals} />
-                          <StatRow label="Strikes" value={selectedAgg.avg_strikes} />
-                          <StatRow label="Grapples" value={selectedAgg.avg_grapples} />
-                          <StatRow label="Submissions" value={selectedAgg.avg_submissions} />
-                          <StatRow label="High Risk" value={selectedAgg.avg_high_risk} />
-                          <StatRow label="Actions" value={selectedAgg.avg_actions} />
-                          <StatRow label="Mid-match" value={selectedAgg.avg_midmatch} />
+                        <div className="muted" style={{ fontSize: 10 }}>
+                          {agg ? `${agg.wins}G / ${agg.losses}P` : '0 partidas'}
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
+                    )
+                  })}
+                </div>
+
+                {selectedStar && (() => {
+                  const agg = starStats.find((s) => s.superstar_id === selectedStar) ?? null
+                  const star = SUPERSTARS.find((s) => s.id === selectedStar)
+                  if (!star) return null
+
+                  if (!agg) {
+                    return (
+                      <div className="card" style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <div className="row" style={{ alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 8 }}>
+                          <CardFace id={`superstar-${star.id}`} size="sm" />
+                          <div style={{ fontWeight: 700, fontSize: 16 }}>{star.name}</div>
+                        </div>
+                        <p className="muted">Todavía no hay estadísticas para esta superestrella.</p>
+                        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          Jugará partidas online para que aparezcan sus datos aquí.
+                        </p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="card" style={{ padding: '14px 16px' }}>
+                      <div className="row" style={{ alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <CardFace id={`superstar-${agg.superstar_id}`} size="sm" />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 16 }}>{star.name}</div>
+                          <div className="muted" style={{ fontSize: 12 }}>
+                            {agg.matches_played} partidas · {agg.wins} victorias / {agg.losses} derrotas
+                          </div>
+                        </div>
+                      </div>
+
+                      {Object.keys(agg.by_mode).length > 0 && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Por modalidad</div>
+                          {Object.entries(agg.by_mode).map(([mode, m]) => (
+                            <StatRow
+                              key={mode}
+                              label={mode === 'rumble' ? 'Rumble' : 'Winner Takes All'}
+                              value={`${m.played} partidas (${m.wins}G / ${m.losses}P)`}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {Object.keys(agg.record_vs).length > 0 && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Récord contra</div>
+                          {Object.entries(agg.record_vs)
+                            .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
+                            .map(([oppId, rv]) => (
+                              <StatRow
+                                key={oppId}
+                                label={superstarsName(oppId)}
+                                value={`${rv.wins}G / ${rv.losses}P`}
+                                color={rv.wins > rv.losses ? 'var(--green-bright, #4caf50)' : rv.wins < rv.losses ? 'var(--red-bright, #f44336)' : undefined}
+                              />
+                            ))}
+                        </div>
+                      )}
+
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Promedio por duelo</div>
+                        <StatRow label="Reversals" value={agg.avg_reversals} />
+                        <StatRow label="Strikes" value={agg.avg_strikes} />
+                        <StatRow label="Grapples" value={agg.avg_grapples} />
+                        <StatRow label="Submissions" value={agg.avg_submissions} />
+                        <StatRow label="High Risk" value={agg.avg_high_risk} />
+                        <StatRow label="Actions" value={agg.avg_actions} />
+                        <StatRow label="Mid-match" value={agg.avg_midmatch} />
+                      </div>
+                    </div>
+                  )
+                })()}
               </>
             )}
           </>
