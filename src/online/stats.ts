@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSupabase } from './supabase'
 import type { GameState } from '../engine/types'
 import { BELTS } from '../data/cards'
 
@@ -19,6 +19,7 @@ export interface GameResult {
 }
 
 export async function saveGameResult(game: GameState): Promise<void> {
+  const supabase = await getSupabase()
   const winners = game.winner ?? []
   const winnerIdx = winners.length === 1 ? winners[0] : null
   const winnerName = winnerIdx != null ? game.players[winnerIdx]?.name ?? null : null
@@ -44,6 +45,7 @@ export async function saveGameResult(game: GameState): Promise<void> {
 }
 
 export async function getRecentResults(limit = 50): Promise<GameResult[]> {
+  const supabase = await getSupabase()
   const { data } = await supabase
     .from('game_results')
     .select('*')
@@ -63,6 +65,7 @@ export interface PlayerStats {
 }
 
 export async function getPlayerStats(): Promise<PlayerStats[]> {
+  const supabase = await getSupabase()
   const { data } = await supabase
     .from('game_results')
     .select('*')
