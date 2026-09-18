@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { SUPERSTARS } from '../data/cards'
+import { SUPERSTARS, BELTS } from '../data/cards'
 import { buildDefaultDeck } from '../data/defaultDeck'
 import { AppBanner } from '../components/Branding'
 import { CardFace } from '../components/CardView'
@@ -337,6 +337,32 @@ export function LobbyPage() {
               {online.gameMode === 'rumble'
                 ? 'Se van eliminando jugadores hasta que quede uno solo.'
                 : 'Termina cuando el primero se queda sin cartas. Gana quien hizo el último golpe.'}
+            </div>
+          </div>
+        )}
+
+        {online.role === 'host' && (
+          <div style={{ marginTop: 16 }}>
+            <div className="big-label">Cinturón (opcional)</div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+              Elegí un cinturón para el campeón. No es obligatorio.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <div
+                style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 6, border: !online.beltId ? '2px solid var(--accent)' : '2px solid transparent', background: !online.beltId ? 'var(--accent-bg, rgba(255,255,255,0.08))' : 'transparent' }}
+                onClick={() => store.setBeltId(null)}
+              >
+                <span className="muted" style={{ fontSize: 13 }}>Ninguno</span>
+              </div>
+              {BELTS.map((b) => (
+                <div
+                  key={b.id}
+                  style={{ cursor: 'pointer', padding: 4, borderRadius: 6, border: online.beltId === b.id ? '2px solid var(--accent)' : '2px solid transparent' }}
+                  onClick={() => store.setBeltId(b.id)}
+                >
+                  <img src={b.image} alt={b.name} style={{ height: 40, objectFit: 'contain' }} />
+                </div>
+              ))}
             </div>
           </div>
         )}

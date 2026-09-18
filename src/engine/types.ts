@@ -108,6 +108,7 @@ export interface GameState {
   winner: number[] | null
   winType: 'pin' | 'countout' | 'draw' | null
   gameMode: 'rumble' | 'winner-takes-all'
+  beltId: string | null
   /** Cards offered to the current player by a pending search. */
   _searchPool?: string[]
   /** Players who already acted in the current Pre-match stage. */

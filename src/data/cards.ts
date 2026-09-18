@@ -4424,3 +4424,21 @@ export function getSuperstar(id: string): SuperstarDef {
   if (!s) throw new Error(`Superstar not found: ${id}`)
   return s
 }
+
+export interface BeltDef {
+  id: string
+  name: string
+  image: string
+}
+
+export const BELTS: BeltDef[] = [
+  { id: 'intercontinental', name: 'Intercontinental Championship', image: '/belts/belt-0.png' },
+  { id: 'us-modern', name: 'United States Championship', image: '/belts/belt-1.png' },
+  { id: 'us-classic', name: 'United States Champion', image: '/belts/belt-2.png' },
+  { id: 'world-heavyweight', name: 'World Heavyweight Championship', image: '/belts/belt-3.png' },
+  { id: 'hardcore', name: 'Hardcore Championship', image: '/belts/belt-4.png' },
+  { id: 'ecw', name: 'ECW World Heavyweight Championship', image: '/belts/belt-5.png' },
+  { id: 'wwf-winged-eagle', name: 'WWF Winged Eagle Championship', image: '/belts/belt-6.png' },
+  { id: 'wwe-world', name: 'WWE World Heavyweight Championship', image: '/belts/belt-7.png' },
+  { id: 'intercontinental-classic', name: 'Intercontinental Classic', image: '/belts/belt-8.png' },
+]

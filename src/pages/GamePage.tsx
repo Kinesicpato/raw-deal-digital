@@ -15,6 +15,7 @@ import { MusicPlayer } from '../components/MusicPlayer'
 import { ArsenalPositionPicker } from '../components/ArsenalPositionPicker'
 import type { ArsenalPosition } from '../engine/game'
 import { getDrag, setDrag } from '../components/DragState'
+import { BELTS } from '../data/cards'
 
 function useDropZone(playerIdx: number, zone: ManualZone) {
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -103,6 +104,10 @@ export function GamePage() {
         subtitle={isOnline && online.role === 'host' ? 'Partida en línea · anfitrión' : isOnline ? 'Partida en línea' : 'Partida en curso'}
         right={
           <>
+            {displayGame.beltId && (() => {
+              const belt = BELTS.find((b) => b.id === displayGame.beltId)
+              return belt ? <img src={belt.image} alt={belt.name} style={{ height: 32, objectFit: 'contain', marginRight: 4 }} /> : null
+            })()}
             {displayGame.gameMode === 'winner-takes-all' && (
               <span className="stat-chip">Winner Takes All</span>
             )}
@@ -789,13 +794,28 @@ function OverturnBanner({ game }: { game: GameState }) {
 function GameOver({ game }: { game: GameState }) {
   const winners = game.winner ?? []
   const winner = winners[0]
+  const belt = game.beltId ? BELTS.find((b) => b.id === game.beltId) : null
   return (
     <div className="card" style={{ textAlign: 'center', borderColor: 'var(--gold)' }}>
+      {belt && winners.length === 1 && (
+        <div style={{ marginBottom: 16 }}>
+          <img
+            src={belt.image}
+            alt={belt.name}
+            style={{ maxWidth: 320, width: '100%', objectFit: 'contain', filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.6))' }}
+          />
+        </div>
+      )}
       <h2>
         {winners.length === 1 && winner !== undefined
           ? `¡${game.players[winner]?.name} gana la partida!`
           : '¡Partida terminada!'}
       </h2>
+      {belt && winners.length === 1 && (
+        <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--gold)', margin: '8px 0' }}>
+          🏆 NUEVO CAMPEÓN 🏆
+        </p>
+      )}
       <p className="muted">
         {game.winType === 'pin' && 'Victoria por Pinfall'}
         {game.winType === 'countout' && 'Victoria por Count Out'}

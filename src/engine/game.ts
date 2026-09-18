@@ -35,6 +35,7 @@ export interface NewGameConfig {
     backlashMid: string[]
   }>
   gameMode?: 'rumble' | 'winner-takes-all'
+  beltId?: string | null
 }
 
 export function newGame(cfg: NewGameConfig): GameState {
@@ -78,6 +79,7 @@ export function newGame(cfg: NewGameConfig): GameState {
     winner: null,
     winType: null,
     gameMode: cfg.gameMode ?? 'rumble',
+    beltId: cfg.beltId ?? null,
     _prematchActed: [],
     _openingKept: [],
   }

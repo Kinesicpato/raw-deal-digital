@@ -18,6 +18,7 @@ export interface RosterEntry {
   connected: boolean
   spectator?: boolean
   gameMode?: GameMode
+  beltId?: string | null
 }
 
 /** Serialized shape of a saved deck, shared by the host so clients can pick it. */

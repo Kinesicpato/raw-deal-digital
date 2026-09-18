@@ -111,6 +111,7 @@ interface AppState {
   onlinePickSuperstar: (superstarId: string, deck?: { name: string | null; arsenal: string[]; backlashPre: string[]; backlashMid: string[] } | null, handSize?: number | null) => void
   onlineSetHandSize: (handSize: number) => void
   setGameMode: (mode: GameMode) => void
+  setBeltId: (beltId: string | null) => void
   startOnlineGame: () => void
   applyRemoteState: (game: GameState) => void
 }
@@ -122,7 +123,7 @@ function cloneGame(g: GameState): GameState {
   return JSON.parse(JSON.stringify(g))
 }
 
-const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble' }
+const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null }
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -445,7 +446,7 @@ export const useAppStore = create<AppState>()(
         joinRoom: (code, name) => {
           stopOnline()
           set({
-            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble' },
+            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null },
             view: 'lobby',
             lastError: null,
           })
@@ -556,6 +557,11 @@ export const useAppStore = create<AppState>()(
           set({ online: { ...st.online, gameMode: mode } })
         },
 
+        setBeltId: (beltId) => {
+          const st = get()
+          set({ online: { ...st.online, beltId } })
+        },
+
         startOnlineGame: () => {
           const st = get()
           if (st.online.role !== 'host' || !st.online.roster.length) return
@@ -582,6 +588,7 @@ export const useAppStore = create<AppState>()(
               }
             }),
             gameMode: st.online.gameMode,
+            beltId: st.online.beltId ?? null,
           }
           const game = newGame(cfg)
           set({ game, lastError: null, view: 'game' })
