@@ -32,6 +32,9 @@ export function MenuPage() {
         <button style={{ padding: '18px', fontSize: 18 }} onClick={newDeck}>
           Deckbuilder
         </button>
+        <button style={{ padding: '18px', fontSize: 18 }} onClick={() => setView('stats')}>
+          Estadísticas
+        </button>
         {game && game.phase !== 'gameover' && (
           <button style={{ padding: '18px', fontSize: 18 }} onClick={() => setView('game')}>
             Continuar partida

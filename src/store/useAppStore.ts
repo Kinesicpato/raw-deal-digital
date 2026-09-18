@@ -40,6 +40,7 @@ import {
   isOnline,
 } from '../online/network'
 import { decisionOwner, type IntentName, type RosterEntry, type SharedDeck, type GameMode } from '../online/types'
+import { saveGameResult } from '../online/stats'
 
 export interface DeckDraft {
   name: string
@@ -49,7 +50,7 @@ export interface DeckDraft {
   backlashMid: string[]
 }
 
-export type View = 'menu' | 'setup' | 'deck' | 'game' | 'lobby'
+export type View = 'menu' | 'setup' | 'deck' | 'game' | 'lobby' | 'stats'
 
 interface OnlineInfo {
   role: 'host' | 'client' | null
@@ -608,7 +609,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         decks: s.decks,
         activeDeckId: s.activeDeckId,
-        view: s.view === 'game' ? 'menu' : s.view === 'lobby' ? 'menu' : s.view,
+        view: s.view === 'game' ? 'menu' : s.view === 'lobby' ? 'menu' : s.view === 'stats' ? 'menu' : s.view,
         game: s.game,
       }),
       version: 1,
@@ -620,6 +621,8 @@ export const useAppStore = create<AppState>()(
  * After any engine mutation, re-render the game state. There is no AI
  * anymore: every player is controlled by a human.
  */
+let statsSavedForGame = false
+
 function refreshGame(
   set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
   get: () => AppState,
@@ -627,6 +630,14 @@ function refreshGame(
   set((s) => ({ game: s.game ? cloneGame(s.game) : null }))
   const st = get()
   if (st.online.role === 'host' && st.game) broadcastState(st.game)
+
+  if (st.online.role === 'host' && st.game && st.game.phase === 'gameover' && !statsSavedForGame) {
+    statsSavedForGame = true
+    saveGameResult(st.game).catch(() => {})
+  }
+  if (st.game && st.game.phase !== 'gameover') {
+    statsSavedForGame = false
+  }
 }
 
 /** Which player index a given intent action requires (host-side). */

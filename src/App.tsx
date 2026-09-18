@@ -4,6 +4,7 @@ import { SetupPage } from './pages/SetupPage'
 import { DeckbuilderPage } from './pages/DeckbuilderPage'
 import { GamePage } from './pages/GamePage'
 import { LobbyPage } from './pages/LobbyPage'
+import { StatsPage } from './pages/StatsPage'
 
 export default function App() {
   const view = useAppStore((s) => s.view)
@@ -17,6 +18,8 @@ export default function App() {
       return <GamePage />
     case 'lobby':
       return <LobbyPage />
+    case 'stats':
+      return <StatsPage />
     default:
       return <MenuPage />
   }
