@@ -257,3 +257,86 @@ export async function getSuperstarStats(): Promise<SuperstarAggregate[]> {
 
   return [...map.values()].sort((a, b) => b.wins - a.wins)
 }
+
+// ---------------------------------------------------------------------------
+// ADMIN: DELETE / UPDATE / MANUAL INSERT
+// ---------------------------------------------------------------------------
+
+export async function deleteGameResult(id: string): Promise<void> {
+  const supabase = await getSupabase()
+  await supabase.from('superstar_match_stats').delete().eq('game_result_id', id)
+  await supabase.from('game_results').delete().eq('id', id)
+}
+
+export async function updateGameResult(id: string, patch: Partial<{
+  winner_name: string | null
+  winner_superstar: string | null
+  loser_names: string[]
+  win_type: string
+  turns: number
+  player_count: number
+  game_mode: string
+  belt_won: boolean
+  belt_name: string | null
+  player_names: string[]
+  player_superstars: string[]
+}>): Promise<void> {
+  const supabase = await getSupabase()
+  await supabase.from('game_results').update(patch).eq('id', id)
+}
+
+export async function insertGameResultManual(data: {
+  winner_name: string | null
+  winner_superstar: string | null
+  loser_names: string[]
+  win_type: string
+  turns: number
+  player_count: number
+  game_mode: string
+  belt_won: boolean
+  belt_name: string | null
+  player_names: string[]
+  player_superstars: string[]
+  superstar_stats?: Array<{
+    player_name: string
+    superstar_id: string
+    won: boolean
+    opponent_superstar: string | null
+    reversals_played: number
+    strikes_played: number
+    grapples_played: number
+    submissions_played: number
+    high_risk_played: number
+    actions_played: number
+    midmatch_played: number
+  }>
+}): Promise<void> {
+  const supabase = await getSupabase()
+  const { data: inserted } = await supabase.from('game_results').insert({
+    winner_name: data.winner_name,
+    winner_superstar: data.winner_superstar,
+    loser_names: data.loser_names,
+    win_type: data.win_type,
+    turns: data.turns,
+    player_count: data.player_count,
+    game_mode: data.game_mode,
+    belt_won: data.belt_won,
+    belt_name: data.belt_name,
+    player_names: data.player_names,
+    player_superstars: data.player_superstars,
+  }).select('id').single()
+
+  if (inserted?.id && data.superstar_stats) {
+    const rows = data.superstar_stats.map((s) => ({
+      game_result_id: inserted.id,
+      ...s,
+    }))
+    await supabase.from('superstar_match_stats').insert(rows)
+  }
+}
+
+export async function deleteAllStats(): Promise<void> {
+  const supabase = await getSupabase()
+  await supabase.from('superstar_match_stats').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('game_results').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+}

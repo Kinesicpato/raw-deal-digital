@@ -24,6 +24,14 @@ create policy "Anyone can insert game results"
   on game_results for insert
   with check (true);
 
+create policy "Anyone can update game results"
+  on game_results for update
+  using (true);
+
+create policy "Anyone can delete game results"
+  on game_results for delete
+  using (true);
+
 -- Per-superstar match statistics: one row per player per game.
 create table if not exists superstar_match_stats (
   id uuid default gen_random_uuid() primary key,
@@ -52,3 +60,7 @@ create policy "Anyone can read superstar match stats"
 create policy "Anyone can insert superstar match stats"
   on superstar_match_stats for insert
   with check (true);
+
+create policy "Anyone can delete superstar match stats"
+  on superstar_match_stats for delete
+  using (true);
