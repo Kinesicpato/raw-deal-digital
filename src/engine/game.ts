@@ -652,6 +652,9 @@ export function playReversal(
   }
   defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
 
+  const attacker = state.players[res.attacker]
+  if (!attacker) return 'No attacker.'
+
   attacker.ringside.push(res.cardId)
 
   attacker.reversedLastTurn = true
