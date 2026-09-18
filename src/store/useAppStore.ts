@@ -60,6 +60,7 @@ interface OnlineInfo {
   connected: boolean
   isSpectator?: boolean
   gameMode: GameMode
+  beltId: string | null
 }
 
 interface AppState {
@@ -412,6 +413,7 @@ export const useAppStore = create<AppState>()(
           stopOnline()
           const code = randomCode()
           const prevMode = get().online.gameMode
+          const prevBelt = get().online.beltId
           const roster: RosterEntry[] = Array.from({ length: Math.max(2, seats) }, (_, i) => ({
             idx: i,
             name: i === 0 ? name : '',
@@ -421,7 +423,7 @@ export const useAppStore = create<AppState>()(
             connected: i === 0,
           }))
           set({
-            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode },
+            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode, beltId: prevBelt },
             view: 'lobby',
             lastError: null,
           })
