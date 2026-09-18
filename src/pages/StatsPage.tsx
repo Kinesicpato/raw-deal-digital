@@ -79,8 +79,6 @@ export function StatsPage() {
 
   useEffect(() => { reload() }, [reload])
 
-  const selectedAgg = selectedStar ? starStats.find((s) => s.superstar_id === selectedStar) ?? null : null
-
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar este resultado? Se recalcularán las estadísticas.')) return
     await deleteGameResult(id)
