@@ -286,7 +286,21 @@ export function eliminate(state: GameState, idx: number, reason: 'pin' | 'counto
   if (!p || p.eliminated) return
   p.eliminated = true
   p.eliminatedReason = reason
-  checkGameOver(state)
+  if (state.gameMode === 'winner-takes-all') {
+    // Winner Takes All: game ends immediately when any player is eliminated.
+    state.phase = 'gameover'
+    const attackerIdx = _by ?? p.lastAttackerIdx
+    if (attackerIdx !== null && attackerIdx !== undefined && attackerIdx !== idx) {
+      state.winner = [attackerIdx]
+    } else {
+      // No known attacker — last alive player wins.
+      const alive = state.players.filter((pl) => !pl.eliminated)
+      state.winner = alive.length > 0 ? [state.players.indexOf(alive[0]!)] : []
+    }
+    state.winType = reason
+  } else {
+    checkGameOver(state)
+  }
 }
 
 export function checkGameOver(state: GameState): void {

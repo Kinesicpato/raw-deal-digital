@@ -103,6 +103,9 @@ export function GamePage() {
         subtitle={isOnline && online.role === 'host' ? 'Partida en línea · anfitrión' : isOnline ? 'Partida en línea' : 'Partida en curso'}
         right={
           <>
+            {displayGame.gameMode === 'winner-takes-all' && (
+              <span className="stat-chip">Winner Takes All</span>
+            )}
             <span className="stat-chip">Turno {displayGame.turnNumber}</span>
             <span className="stat-chip">{phaseLabel[displayGame.phase] ?? displayGame.phase}</span>
             {displayGame.phase !== 'gameover' && displayActive && (

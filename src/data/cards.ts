@@ -4394,6 +4394,17 @@ export const SET1509_CARDS: CardDef[] = [
     text: 'This card counts as either a Pre-match Event or a Mid-match Action in your Backlash deck for the purposes of deck construction. Your Starting Hand Size is +2. By the end of the Pre-match phase, put this card into your Ringside pile. As an action, can only be played after the card titled Roll Out of the Ring. Draw up to 4 cards.',
     set: 'Set 15-09',
   }),
+  card({
+    id: 'immune-to-pain',
+    name: 'Immune to Pain',
+    type: 'Action',
+    traits: ['Active'],
+    fortitude: 0,
+    damage: 0,
+    backlash: 'Mid-match',
+    text: 'When played by Mankind or Cactus Jack, this card is not Active. When this card is in your Ring area, your opponent\'s maneuvers are -1D.',
+    set: 'Backlash',
+  }),
 ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...AJ_STYLES_FANSET_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS].map((c) => applyVerifiedStats(c))

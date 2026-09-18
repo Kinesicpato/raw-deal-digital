@@ -1,5 +1,7 @@
 import type { GameState } from '../engine/types'
 
+export type GameMode = 'rumble' | 'winner-takes-all'
+
 export interface DeckPick {
   name: string | null
   arsenal: string[]
@@ -15,6 +17,7 @@ export interface RosterEntry {
   deck: DeckPick | null
   connected: boolean
   spectator?: boolean
+  gameMode?: GameMode
 }
 
 /** Serialized shape of a saved deck, shared by the host so clients can pick it. */

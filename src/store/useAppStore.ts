@@ -39,7 +39,7 @@ import {
   onlineRole,
   isOnline,
 } from '../online/network'
-import { decisionOwner, type IntentName, type RosterEntry, type SharedDeck } from '../online/types'
+import { decisionOwner, type IntentName, type RosterEntry, type SharedDeck, type GameMode } from '../online/types'
 
 export interface DeckDraft {
   name: string
@@ -59,6 +59,7 @@ interface OnlineInfo {
   sharedDecks: SharedDeck[]
   connected: boolean
   isSpectator?: boolean
+  gameMode: GameMode
 }
 
 interface AppState {
@@ -109,6 +110,7 @@ interface AppState {
   setOnlineRole: (role: 'player' | 'spectator') => void
   onlinePickSuperstar: (superstarId: string, deck?: { name: string | null; arsenal: string[]; backlashPre: string[]; backlashMid: string[] } | null, handSize?: number | null) => void
   onlineSetHandSize: (handSize: number) => void
+  setGameMode: (mode: GameMode) => void
   startOnlineGame: () => void
   applyRemoteState: (game: GameState) => void
 }
@@ -120,7 +122,7 @@ function cloneGame(g: GameState): GameState {
   return JSON.parse(JSON.stringify(g))
 }
 
-const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false }
+const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble' }
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -408,6 +410,7 @@ export const useAppStore = create<AppState>()(
         createRoom: (name, seats) => {
           stopOnline()
           const code = randomCode()
+          const prevMode = get().online.gameMode
           const roster: RosterEntry[] = Array.from({ length: Math.max(2, seats) }, (_, i) => ({
             idx: i,
             name: i === 0 ? name : '',
@@ -417,7 +420,7 @@ export const useAppStore = create<AppState>()(
             connected: i === 0,
           }))
           set({
-            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false },
+            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode },
             view: 'lobby',
             lastError: null,
           })
@@ -442,7 +445,7 @@ export const useAppStore = create<AppState>()(
         joinRoom: (code, name) => {
           stopOnline()
           set({
-            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false },
+            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble' },
             view: 'lobby',
             lastError: null,
           })
@@ -548,6 +551,11 @@ export const useAppStore = create<AppState>()(
           }
         },
 
+        setGameMode: (mode) => {
+          const st = get()
+          set({ online: { ...st.online, gameMode: mode } })
+        },
+
         startOnlineGame: () => {
           const st = get()
           if (st.online.role !== 'host' || !st.online.roster.length) return
@@ -573,6 +581,7 @@ export const useAppStore = create<AppState>()(
                 backlashMid: r.deck ? r.deck.backlashMid : dd.mid,
               }
             }),
+            gameMode: st.online.gameMode,
           }
           const game = newGame(cfg)
           set({ game, lastError: null, view: 'game' })

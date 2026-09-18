@@ -34,6 +34,7 @@ export interface NewGameConfig {
     backlashPre: string[]
     backlashMid: string[]
   }>
+  gameMode?: 'rumble' | 'winner-takes-all'
 }
 
 export function newGame(cfg: NewGameConfig): GameState {
@@ -76,6 +77,7 @@ export function newGame(cfg: NewGameConfig): GameState {
     chainSafeIndex: null,
     winner: null,
     winType: null,
+    gameMode: cfg.gameMode ?? 'rumble',
     _prematchActed: [],
     _openingKept: [],
   }
@@ -309,7 +311,7 @@ export function startTurn(state: GameState): void {
   if (p && p.arsenal.length === 0) {
     const attackerIdx = p.lastAttackerIdx
     if (attackerIdx !== null && attackerIdx !== state.activeIndex) {
-      eliminate(state, state.activeIndex, 'countout')
+      eliminate(state, state.activeIndex, 'countout', attackerIdx)
       // Game continues if other players remain; advance to next alive player.
       advanceTurn(state)
     } else {
@@ -339,7 +341,7 @@ export function endTurn(state: GameState): void {
   if (active && active.arsenal.length === 0) {
     const attackerIdx = active.lastAttackerIdx
     if (attackerIdx !== null && attackerIdx !== state.activeIndex) {
-      eliminate(state, state.activeIndex, 'countout')
+      eliminate(state, state.activeIndex, 'countout', attackerIdx)
       // Game continues if other players remain; checkGameOver handles it.
       advanceTurn(state)
     } else {
@@ -889,7 +891,7 @@ export function stopOverturnCard(state: GameState, playerIdx: number): string | 
   // If the defender has no Arsenal left after the overturn, the attacker wins this matchup.
   const defender = state.players[playerIdx]
   if (defender && defender.arsenal.length === 0) {
-    eliminate(state, playerIdx, 'pin')
+    eliminate(state, playerIdx, 'pin', res.attacker)
     // Game continues if other players remain; checkGameOver handles it.
   }
   return null

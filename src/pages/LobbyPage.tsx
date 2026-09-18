@@ -5,6 +5,7 @@ import { buildDefaultDeck } from '../data/defaultDeck'
 import { AppBanner } from '../components/Branding'
 import { CardFace } from '../components/CardView'
 import { Toast } from '../components/Toast'
+import type { GameMode } from '../online/types'
 
 export function LobbyPage() {
   const store = useAppStore.getState()
@@ -16,6 +17,7 @@ export function LobbyPage() {
   const [name, setName] = useState('')
   const [seats, setSeats] = useState(2)
   const [code, setCode] = useState('')
+  const [gameMode, setGameMode] = useState<GameMode>('rumble')
 
   if (!online.role) {
     return (
@@ -34,12 +36,39 @@ export function LobbyPage() {
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             {seats} jugadores en total (vos + {seats - 1} más)
           </div>
+          {seats > 2 && (
+            <>
+              <label style={{ marginTop: 10 }}>Modo de juego</label>
+              <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                <button
+                  className={gameMode === 'rumble' ? 'primary' : 'ghost'}
+                  onClick={() => setGameMode('rumble')}
+                >
+                  Rumble
+                </button>
+                <button
+                  className={gameMode === 'winner-takes-all' ? 'primary' : 'ghost'}
+                  onClick={() => setGameMode('winner-takes-all')}
+                >
+                  Winner Takes All
+                </button>
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {gameMode === 'rumble'
+                  ? 'Se van eliminando jugadores hasta que quede uno solo.'
+                  : 'Termina cuando el primero se queda sin cartas. Gana quien hizo el último golpe.'}
+              </div>
+            </>
+          )}
           <div className="row" style={{ marginTop: 14, gap: 8, justifyContent: 'flex-end' }}>
             <button className="ghost" onClick={() => store.setView('menu')}>Volver</button>
             <button
               className="primary"
               disabled={!name.trim()}
-              onClick={() => store.createRoom(name.trim(), seats)}
+              onClick={() => {
+                store.setGameMode(gameMode)
+                store.createRoom(name.trim(), seats)
+              }}
             >
               Crear sala
             </button>
@@ -283,6 +312,31 @@ export function LobbyPage() {
                   Cuántas cartas recibís al empezar.
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {online.role === 'host' && online.roster.length > 2 && (
+          <div style={{ marginTop: 16 }}>
+            <div className="big-label">Modo de juego</div>
+            <div className="row" style={{ gap: 8, marginTop: 4 }}>
+              <button
+                className={online.gameMode === 'rumble' ? 'primary' : 'ghost'}
+                onClick={() => store.setGameMode('rumble')}
+              >
+                Rumble
+              </button>
+              <button
+                className={online.gameMode === 'winner-takes-all' ? 'primary' : 'ghost'}
+                onClick={() => store.setGameMode('winner-takes-all')}
+              >
+                Winner Takes All
+              </button>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              {online.gameMode === 'rumble'
+                ? 'Se van eliminando jugadores hasta que quede uno solo.'
+                : 'Termina cuando el primero se queda sin cartas. Gana quien hizo el último golpe.'}
             </div>
           </div>
         )}
