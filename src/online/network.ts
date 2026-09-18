@@ -1,5 +1,6 @@
-import Peer, { type DataConnection } from 'peerjs'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { GameState } from '../engine/types'
+import { getSupabase } from './supabase'
 import {
   buildClientView,
   type ClientMsg,
@@ -13,38 +14,6 @@ import {
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const MAX_SEATS = 8
 
-const ICE_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-  ],
-  iceTransportPolicy: 'all',
-  iceCandidatePoolSize: 10,
-}
-
 export function randomCode(length = 5): string {
   let out = ''
   for (let i = 0; i < length; i++) {
@@ -53,8 +22,8 @@ export function randomCode(length = 5): string {
   return out
 }
 
-export function peerIdFor(code: string): string {
-  return `rawdeal-${code}`
+function roomName(code: string): string {
+  return `room:${code}`
 }
 
 export interface HostHooks {
@@ -76,9 +45,9 @@ export interface ClientHooks {
 }
 
 let role: 'host' | 'client' | null = null
-let peer: Peer | null = null
-let hostConn: DataConnection | null = null
-const hostConns = new Map<number, DataConnection>()
+let channel: RealtimeChannel | null = null
+let clientId: string | null = null
+const connectedClients = new Map<number, string>()
 
 const registry = new Map<number, RosterEntry>()
 let hostHooksRef: HostHooks | null = null
@@ -98,21 +67,32 @@ export function onlineRole(): 'host' | 'client' | null {
 }
 
 export function stopOnline(): void {
-  hostConn?.close()
-  hostConn = null
-  for (const c of hostConns.values()) c.close()
-  hostConns.clear()
-  peer?.destroy()
-  peer = null
+  if (channel) {
+    channel.unsubscribe()
+    channel = null
+  }
+  clientId = null
+  connectedClients.clear()
   role = null
   registry.clear()
   hostHooksRef = null
+  hostSharedDecks = []
 }
 
-/**
- * Creates the room (free public PeerJS broker). The host is always seat 0.
- */
-export function startHost(code: string, seatCount: number, hostName: string, hooks: HostHooks): void {
+function sendToAll(payload: Record<string, unknown>): void {
+  if (!channel) return
+  channel.send({ type: 'broadcast', event: 'msg', payload })
+}
+
+function sendToClient(targetIdx: number, payload: HostMsg): void {
+  sendToAll({ target: targetIdx, msg: payload })
+}
+
+// ---------------------------------------------------------------------------
+// HOST
+// ---------------------------------------------------------------------------
+
+export async function startHost(code: string, seatCount: number, hostName: string, hooks: HostHooks): Promise<void> {
   stopOnline()
   role = 'host'
   hostHooksRef = hooks
@@ -129,83 +109,113 @@ export function startHost(code: string, seatCount: number, hostName: string, hoo
     })
   }
 
-  const p = new Peer(peerIdFor(code), { debug: 1, config: ICE_CONFIG })
-  peer = p
+  const supabase = await getSupabase()
+  const ch = supabase.channel(roomName(code), { config: { broadcast: { self: false } } })
+  channel = ch
 
-  p.on('open', () => {
-    console.log('[PeerJS] Host connected with ID:', p.id)
-    hooks.onOpen()
-  })
-  p.on('disconnected', () => console.warn('[PeerJS] Host disconnected from signaling server'))
-  p.on('error', (err: unknown) => {
-    console.error('[PeerJS] Host error:', err)
-    const type = (err as { type?: string }).type
-    if (type === 'unavailable-id') hooks.onError('Ese código ya está en uso. Probá con otra sala.')
-    else hooks.onError('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
-  })
+  ch.on('broadcast', { event: 'msg' }, ({ payload }: { payload: Record<string, unknown> }) => {
+    const senderId = payload.sender as string
+    const msg = payload.msg as ClientMsg
 
-  const onConn = (conn: DataConnection) => {
-    const idx = nextFreeSeat()
-    if (idx === null) {
-      try {
-        conn.send({ type: 'error', message: 'Sala llena (máximo 8 jugadores).' } as HostMsg)
-      } catch { /* ignore */ }
-      setTimeout(() => { try { conn.close() } catch { /* ignore */ } }, 500)
-      return
-    }
-    hostConns.set(idx, conn)
-
-    conn.on('data', (raw: unknown) => {
-      const msg = raw as ClientMsg
-      if (msg.type === 'hello') {
-        const entry = registry.get(idx)
-        if (entry) {
-          entry.name = msg.name
-          entry.connected = true
-          conn.send({ type: 'welcome', idx, roster: currentRoster() } satisfies HostMsg)
-          if (hostSharedDecks.length > 0) {
-            conn.send({ type: 'decks', decks: hostSharedDecks } satisfies HostMsg)
-          }
-          emitRoster(hooks)
-        }
-      } else if (msg.type === 'setRole') {
-        const entry = registry.get(idx)
-        if (entry && entry.connected) {
-          entry.spectator = msg.role === 'spectator'
-          emitRoster(hooks)
-        }
-      } else if (msg.type === 'pick') {
-        const entry = registry.get(idx)
-        if (entry && entry.connected && msg.superstarId) {
-          entry.superstarId = msg.superstarId
-          entry.handSize = msg.handSize
-          entry.deck = msg.deck ?? null
-          emitRoster(hooks)
-        } else if (entry && entry.connected && msg.handSize !== null && entry.superstarId) {
-          entry.handSize = msg.handSize
-          emitRoster(hooks)
-        }
-      } else if (msg.type === 'intent') {
-        if (registry.get(idx)?.connected) hooks.onIntent(idx, msg.action, msg.args)
+    if (msg.type === 'hello') {
+      const idx = nextFreeSeat()
+      if (idx === null) {
+        sendToAll({ target: -1, senderHint: senderId, msg: { type: 'error', message: 'Sala llena (máximo 8 jugadores).' } satisfies HostMsg })
+        return
       }
-    })
-
-    conn.on('close', () => {
-      hostConns.delete(idx)
+      connectedClients.set(idx, senderId)
       const entry = registry.get(idx)
       if (entry) {
-        entry.connected = false
-        entry.name = ''
-        entry.superstarId = null
+        entry.name = msg.name
+        entry.connected = true
+        sendToClient(idx, { type: 'welcome', idx, roster: currentRoster() })
+        if (hostSharedDecks.length > 0) {
+          sendToClient(idx, { type: 'decks', decks: hostSharedDecks })
+        }
+        emitRoster(hooks)
       }
-      emitRoster(hooks)
-      hooks.onPeerClosed(idx)
-    })
-  }
-
-  p.on('connection', (conn) => {
-    conn.on('open', () => onConn(conn))
+    } else if (msg.type === 'setRole') {
+      const idx = clientIdx(senderId)
+      if (idx === null) return
+      const entry = registry.get(idx)
+      if (entry && entry.connected) {
+        entry.spectator = msg.role === 'spectator'
+        emitRoster(hooks)
+      }
+    } else if (msg.type === 'pick') {
+      const idx = clientIdx(senderId)
+      if (idx === null) return
+      const entry = registry.get(idx)
+      if (entry && entry.connected && msg.superstarId) {
+        entry.superstarId = msg.superstarId
+        entry.handSize = msg.handSize
+        entry.deck = msg.deck ?? null
+        emitRoster(hooks)
+      } else if (entry && entry.connected && msg.handSize !== null && entry.superstarId) {
+        entry.handSize = msg.handSize
+        emitRoster(hooks)
+      }
+    } else if (msg.type === 'intent') {
+      const idx = clientIdx(senderId)
+      if (idx !== null && registry.get(idx)?.connected) hooks.onIntent(idx, msg.action, msg.args)
+    }
   })
+
+  ch.on('broadcast', { event: 'leave' }, ({ payload }: { payload: Record<string, unknown> }) => {
+    const senderId = payload.sender as string
+    const idx = clientIdx(senderId)
+    if (idx === null) return
+    connectedClients.delete(idx)
+    const entry = registry.get(idx)
+    if (entry) {
+      entry.connected = false
+      entry.name = ''
+      entry.superstarId = null
+    }
+    emitRoster(hooks)
+    hooks.onPeerClosed(idx)
+  })
+
+  ch.on('presence', { event: 'sync' }, () => {
+    const state = ch.presenceState()
+    const onlineIds = new Set<string>()
+    for (const [, presences] of Object.entries(state)) {
+      for (const p of presences as { client_id?: string }[]) {
+        if (p.client_id) onlineIds.add(p.client_id)
+      }
+    }
+    for (const [idx, cid] of connectedClients) {
+      if (!onlineIds.has(cid)) {
+        connectedClients.delete(idx)
+        const entry = registry.get(idx)
+        if (entry) {
+          entry.connected = false
+          entry.name = ''
+          entry.superstarId = null
+        }
+        emitRoster(hooks)
+        hooks.onPeerClosed(idx)
+      }
+    }
+  })
+
+  ch.subscribe(async (status: string) => {
+    if (status === 'SUBSCRIBED') {
+      clientId = 'host'
+      await ch.track({ client_id: 'host', role: 'host' })
+      console.log('[Supabase] Host joined room:', code)
+      hooks.onOpen()
+    } else if (status === 'CHANNEL_ERROR') {
+      hooks.onError('Error al crear la sala. Intentá de nuevo.')
+    }
+  })
+}
+
+function clientIdx(senderId: string): number | null {
+  for (const [idx, cid] of connectedClients) {
+    if (cid === senderId) return idx
+  }
+  return null
 }
 
 function nextFreeSeat(): number | null {
@@ -239,129 +249,93 @@ export function hostSetHandSize(idx: number, handSize: number): void {
 /** Publishes the host's saved decks so every connected client can pick them. */
 export function hostShareDecks(decks: SharedDeck[]): void {
   hostSharedDecks = decks
-  for (const [, conn] of hostConns) {
-    if (conn.open) conn.send({ type: 'decks', decks } satisfies HostMsg)
+  for (const [idx] of connectedClients) {
+    sendToClient(idx, { type: 'decks', decks })
   }
 }
 
 /** Broadcasts a redacted state snapshot to every connected client. */
 export function broadcastState(game: GameState): void {
-  for (const [idx, conn] of hostConns) {
-    if (!conn.open) continue
+  for (const [idx] of connectedClients) {
     const entry = registry.get(idx)
     const viewerIdx = entry?.spectator ? -1 : idx
-    conn.send({ type: 'state', game: buildClientView(game, viewerIdx) } satisfies HostMsg)
+    sendToClient(idx, { type: 'state', game: buildClientView(game, viewerIdx) })
   }
 }
 
 export function hostSendError(idx: number, message: string): void {
-  const conn = hostConns.get(idx)
-  if (conn?.open) conn.send({ type: 'error', message } satisfies HostMsg)
+  sendToClient(idx, { type: 'error', message })
 }
 
 // ---------------------------------------------------------------------------
 // CLIENT
 // ---------------------------------------------------------------------------
 
-export function startClient(code: string, name: string, hooks: ClientHooks): void {
+export async function startClient(code: string, name: string, hooks: ClientHooks): Promise<void> {
   stopOnline()
   role = 'client'
   hostHooksRef = null
 
-  const maxRetries = 8
-  let retries = 0
+  const supabase = await getSupabase()
+  const ch = supabase.channel(roomName(code), { config: { broadcast: { self: false } } })
+  channel = ch
 
-  const connect = () => {
-    if (peer) { try { peer.destroy() } catch { /* ignore */ } peer = null }
-    const p = new Peer({ debug: 1, config: ICE_CONFIG })
-    peer = p
-    let started = false
-    let connTimeout: ReturnType<typeof setTimeout> | null = null
+  clientId = crypto.randomUUID()
 
-    const cleanup = () => {
-      if (connTimeout) { clearTimeout(connTimeout); connTimeout = null }
+  ch.on('broadcast', { event: 'msg' }, ({ payload }: { payload: Record<string, unknown> }) => {
+    const msg = payload.msg as HostMsg
+    const target = payload.target as number | undefined
+    if (target !== undefined && target !== -1) {
+      const myIdx = mySeatIdx
+      if (myIdx !== null && target !== myIdx) return
     }
 
-    p.on('open', (id) => {
-      console.log('[PeerJS] Client connected with ID:', id)
-      const conn = p.connect(peerIdFor(code), { serialization: 'json', reliable: true })
-      hostConn = conn
-      console.log('[PeerJS] Client attempting to connect to room:', peerIdFor(code))
-
-      connTimeout = setTimeout(() => {
-        if (!started) {
-          cleanup()
-          try { conn.close() } catch { /* ignore */ }
-          try { p.destroy() } catch { /* ignore */ }
-          peer = null
-          retry('Tiempo de conexión agotado.')
-        }
-      }, 15000)
-
-      conn.on('open', () => {
-        cleanup()
-        console.log('[PeerJS] Client connected to host!')
-        conn.send({ type: 'hello', name } satisfies ClientMsg)
-        started = true
-        retries = 0
-        hooks.onOpen()
-      })
-      conn.on('data', (raw: unknown) => {
-        const msg = raw as HostMsg
-        if (msg.type === 'welcome') hooks.onWelcome(msg.idx, msg.roster)
-        else if (msg.type === 'lobby') hooks.onRoster(msg.roster)
-        else if (msg.type === 'decks') hooks.onDecks(msg.decks)
-        else if (msg.type === 'state') hooks.onState(msg.game)
-        else if (msg.type === 'error') hooks.onError(msg.message)
-      })
-      conn.on('close', () => {
-        cleanup()
-        if (started) hooks.onClosed()
-      })
-    })
-
-    const retry = (hint?: string) => {
-      if (retries >= maxRetries) {
-        hooks.onError(hint ?? 'Error de red: no se pudo conectar tras varios intentos.')
-        return
-      }
-      retries++
-      const delay = Math.min(1000 * Math.pow(1.5, retries - 1), 10000)
-      hooks.onError(`Reconectando... (${retries}/${maxRetries})`)
-      setTimeout(() => {
-        if (role === 'client') connect()
-      }, delay)
+    if (msg.type === 'welcome') {
+      mySeatIdx = msg.idx
+      hooks.onWelcome(msg.idx, msg.roster)
+    } else if (msg.type === 'lobby') {
+      hooks.onRoster(msg.roster)
+    } else if (msg.type === 'decks') {
+      hooks.onDecks(msg.decks)
+    } else if (msg.type === 'state') {
+      hooks.onState(msg.game)
+    } else if (msg.type === 'error') {
+      hooks.onError(msg.message)
     }
+  })
 
-    p.on('disconnected', () => console.warn('[PeerJS] Client disconnected from signaling server'))
-    p.on('error', (err: unknown) => {
-      cleanup()
-      console.error('[PeerJS] Client error:', err)
-      const type = (err as { type?: string }).type
-      if (type === 'peer-unavailable' || type === 'unavailable-id') {
-        retry('Sala no encontrada, reintentando...')
-      } else {
-        retry('Error de red: ' + ((err as { message?: string }).message ?? String(err)))
-      }
-    })
-  }
+  ch.on('presence', { event: 'sync' }, () => {
+    const state = ch.presenceState()
+    const hostPresent = Object.values(state).some(
+      (presences) => (presences as { client_id?: string }[]).some((p) => p.client_id === 'host'),
+    )
+    if (!hostPresent && connected) {
+      connected = false
+      hooks.onClosed()
+    }
+  })
 
-  connect()
+  let connected = false
+  let mySeatIdx: number | null = null
+
+  ch.subscribe(async (status: string) => {
+    if (status === 'SUBSCRIBED') {
+      await ch.track({ client_id: clientId, role: 'client' })
+      console.log('[Supabase] Client joined room:', code, 'with ID:', clientId)
+      ch.send({ type: 'broadcast', event: 'msg', payload: { sender: clientId, msg: { type: 'hello', name } satisfies ClientMsg } })
+      connected = true
+      hooks.onOpen()
+    } else if (status === 'CHANNEL_ERROR') {
+      hooks.onError('Error al conectar con la sala. Intentá de nuevo.')
+    }
+  })
 }
 
 export function clientSend(msg: ClientMsg): void {
-  try {
-    hostConn?.send(msg)
-  } catch {
-    // A degraded/closed PeerJS connection may throw on send. Swallow it: the
-    // caller's retry guard will let the player try again once it recovers.
-  }
+  if (!channel || !clientId) return
+  channel.send({ type: 'broadcast', event: 'msg', payload: { sender: clientId, msg } })
 }
 
 export function clientSendIntent(action: IntentName, args: unknown[]): void {
-  try {
-    hostConn?.send({ type: 'intent', action, args } satisfies ClientMsg)
-  } catch {
-    // Same as clientSend: never let a failed send throw into the UI layer.
-  }
+  clientSend({ type: 'intent', action, args })
 }

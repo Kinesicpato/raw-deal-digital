@@ -5,9 +5,18 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let _client: SupabaseClient | null = null
 
-export async function getSupabase(): Promise<SupabaseClient> {
-  if (_client) return _client
-  const { createClient } = await import('@supabase/supabase-js')
-  _client = createClient(SUPABASE_URL, SUPABASE_ANON)
-  return _client
+let _initPromise: Promise<SupabaseClient> | null = null
+
+function ensureClient(): Promise<SupabaseClient> {
+  if (_client) return Promise.resolve(_client)
+  if (_initPromise) return _initPromise
+  _initPromise = import('@supabase/supabase-js').then(({ createClient }) => {
+    _client = createClient(SUPABASE_URL, SUPABASE_ANON)
+    return _client
+  })
+  return _initPromise
+}
+
+export function getSupabase(): Promise<SupabaseClient> {
+  return ensureClient()
 }

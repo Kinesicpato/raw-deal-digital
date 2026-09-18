@@ -4,6 +4,27 @@ import type { GameState, PlayerState, PendingDecision, Resolution } from './type
 import { computeFortitude, drawCards, shuffled } from './rules'
 import { eliminate, resolveNextEffect } from './effects'
 
+type CardPlayKey = 'reversals' | 'strikes' | 'grapples' | 'submissions' | 'highRisk' | 'actions' | 'midmatch'
+
+function classifyCardPlay(card: CardDef): CardPlayKey {
+  if (card.backlash === 'Mid-match' || card.backlash === 'Pre-match') return 'midmatch'
+  if (card.type === 'Action') return 'actions'
+  if (card.type === 'Reversal' || card.extraTypes?.includes('Reversal')) return 'reversals'
+  if (card.subtypes?.includes('Strike')) return 'strikes'
+  if (card.subtypes?.includes('Grapple')) return 'grapples'
+  if (card.subtypes?.includes('Submission')) return 'submissions'
+  if (card.subtypes?.includes('High Risk')) return 'highRisk'
+  return 'actions'
+}
+
+function trackCardPlay(player: PlayerState, cardId: string): void {
+  try {
+    const card = getCard(cardId)
+    const key = classifyCardPlay(card)
+    player.cardPlays[key]++
+  } catch { /* unknown card — ignore */ }
+}
+
 export const PREMATCH_STAGES = ['Venue', 'Feud', 'Stipulation', 'Manager', 'Event'] as const
 
 /**
@@ -63,6 +84,7 @@ export function newGame(cfg: NewGameConfig): GameState {
     handRevealedTo: null,
     hasUsedHeat: false,
     lastAttackerIdx: null,
+    cardPlays: { reversals: 0, strikes: 0, grapples: 0, submissions: 0, highRisk: 0, actions: 0, midmatch: 0 },
   }))
 
   const state: GameState = {
@@ -651,6 +673,7 @@ export function playReversal(
     } else {
       defender.ring.push(ref.cardId)
     }
+    trackCardPlay(defender, ref.cardId)
   }
   defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
 
@@ -913,6 +936,7 @@ function succeedCard(
   }
   attacker.lastSuccessfullyPlayed = { cardId: res.cardId, damage: res.damageDealt }
   attacker.playedThisTurn.push(res.cardId)
+  trackCardPlay(attacker, res.cardId)
 
   // Clear the resolution and return to the main phase so the attacker can
   // play more cards or end their turn.  (Reversal-during-overturn is handled

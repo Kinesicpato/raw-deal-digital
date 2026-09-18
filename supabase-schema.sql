@@ -23,3 +23,32 @@ create policy "Anyone can read game results"
 create policy "Anyone can insert game results"
   on game_results for insert
   with check (true);
+
+-- Per-superstar match statistics: one row per player per game.
+create table if not exists superstar_match_stats (
+  id uuid default gen_random_uuid() primary key,
+  game_result_id uuid references game_results(id) on delete cascade,
+  created_at timestamp with time zone default now() not null,
+  player_name text not null,
+  superstar_id text not null,
+  game_mode text not null,
+  won boolean not null,
+  opponent_superstar text,
+  reversals_played integer default 0,
+  strikes_played integer default 0,
+  grapples_played integer default 0,
+  submissions_played integer default 0,
+  high_risk_played integer default 0,
+  actions_played integer default 0,
+  midmatch_played integer default 0
+);
+
+alter table superstar_match_stats enable row level security;
+
+create policy "Anyone can read superstar match stats"
+  on superstar_match_stats for select
+  using (true);
+
+create policy "Anyone can insert superstar match stats"
+  on superstar_match_stats for insert
+  with check (true);

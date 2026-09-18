@@ -40,6 +40,16 @@ export interface PlayerState {
   hasUsedHeat: boolean
   /** Index of the player who last attacked this player (for multiplayer win attribution). */
   lastAttackerIdx: number | null
+  /** Per-type card play counters, tracked across all turns for end-of-game stats. */
+  cardPlays: {
+    reversals: number
+    strikes: number
+    grapples: number
+    submissions: number
+    highRisk: number
+    actions: number
+    midmatch: number
+  }
 }
 
 export interface Resolution {
