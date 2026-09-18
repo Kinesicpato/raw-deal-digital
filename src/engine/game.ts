@@ -637,23 +637,10 @@ export function playReversal(
   if (parsed.some((p) => p === null)) return 'Invalid card reference.'
   const refs = parsed as { zone: 'hand' | 'backlashMid'; index: number; cardId: string }[]
 
-  const first = refs[0]!
-  const firstZone = defender[first.zone]
-  if (!firstZone || firstZone[first.index] !== first.cardId) return 'Card is not in the expected position.'
-  firstZone.splice(first.index, 1)
+  // Process highest indices first so splicing doesn't shift lower indices.
+  refs.sort((a, b) => b.index - a.index || (a.zone === 'backlashMid' && b.zone !== 'backlashMid' ? 1 : a.zone !== 'backlashMid' && b.zone === 'backlashMid' ? -1 : 0))
 
-  const attacker = state.players[res.attacker]
-  if (!attacker) return 'No attacker.'
-
-  if (first.zone === 'backlashMid') {
-    defender.midmatchPlayed.push(first.cardId)
-  } else {
-    defender.ring.push(first.cardId)
-    defender.fortitude = computeFortitude([...defender.midmatchPlayed, ...defender.ring], getCard)
-  }
-
-  for (let i = 1; i < refs.length; i++) {
-    const ref = refs[i]!
+  for (const ref of refs) {
     const zone = defender[ref.zone]
     if (!zone || zone[ref.index] !== ref.cardId) return 'Card is not in the expected position.'
     zone.splice(ref.index, 1)
