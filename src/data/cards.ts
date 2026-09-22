@@ -4395,6 +4395,16 @@ export const SET1509_CARDS: CardDef[] = [
     set: 'Set 15-09',
   }),
   card({
+    id: 'candice-internet-icon',
+    name: 'Candice: Internet Icon',
+    type: 'Action',
+    traits: ['Run-in'],
+    fortitude: 10,
+    damage: 0,
+    text: 'Put up to 12 cards from your Ringside pile on the bottom of your Arsenal.',
+    set: 'Set 15-09',
+  }),
+  card({
     id: 'divine-intervention',
     name: 'Divine Intervention',
     type: 'Reversal',
