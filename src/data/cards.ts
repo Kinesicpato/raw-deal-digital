@@ -4395,6 +4395,17 @@ export const SET1509_CARDS: CardDef[] = [
     set: 'Set 15-09',
   }),
   card({
+    id: 'divine-intervention',
+    name: 'Divine Intervention',
+    type: 'Reversal',
+    traits: ['Special', 'Unique'],
+    superstar: ['Edge'],
+    fortitude: 0,
+    damage: 0,
+    text: 'When overturned, completely reverse any card (even if it cannot be reversed) or any card effect and end your opponent\'s turn. This card is removed from the game. When this card is in your Ringside pile, if your opponent successfully plays an Action card, you may put this card on the bottom of your Arsenal.',
+    set: 'Set 15-09',
+  }),
+  card({
     id: 'immune-to-pain',
     name: 'Immune to Pain',
     type: 'Action',
