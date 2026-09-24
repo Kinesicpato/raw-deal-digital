@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Re-crop the Extras card art that was re-exported as raw 610x610 squares.
+"""Normalize card art: strip the black/transparent frame and fit 300x420.
 
-The last import copied the untouched docx images back into public/cards, so
-those cards rendered narrow (the card only occupies ~71% of the frame, the
-rest being transparent/black padding). This script strips the background,
-then resizes each card to the standard 300x420 so it fills the full width.
+Some imports copied the raw docx scans back into public/cards (610x610
+squares with transparent padding, or unsized scans). Those cards render
+narrow because the padding eats the frame. This script crops the background
+away and re-renders every card that is not already 300x420 at the standard
+size, using as much of the frame as the card's aspect ratio allows
+(landscape cards keep the usual letterbox, like the other Backlash cards).
 """
 
 import os
@@ -15,35 +17,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 CARDS_DIR = os.path.join(ROOT, "public", "cards")
 TARGET_W, TARGET_H = 300, 420
-
-EXTRAS_IDS = [
-    "bash-punch",
-    "rolling-neck-breaker",
-    "stretch-opponent",
-    "shoot-lock-up",
-    "fujiwara-arm-bar",
-    "precision-suplex",
-    "quick-snap-suplex",
-    "bash-headlock",
-    "the-power-is-back",
-    "listen-loud-and-clear",
-    "headlock-takedown",
-    "no-pain-no-chain",
-    "precision-figure-four",
-    "fisticuffs",
-    "give-and-take",
-    "kidney-punch",
-    "knee-breaker",
-    "back-fist",
-    "wrist-breaker",
-    "standing-drop-kick",
-    "stagger",
-    "running-spinebuster",
-    "not-yet",
-    "360-degree-clothesline",
-    "great-technical-knowledge",
-    "dont-cross-the-boss",
-]
 
 
 def content_bbox(img):
@@ -61,17 +34,8 @@ def content_bbox(img):
     return diff.point(lambda v: 255 if v > 12 else 0).getbbox()
 
 
-def process(card_id):
-    path = os.path.join(CARDS_DIR, f"{card_id}.png")
-    if not os.path.exists(path):
-        print(f"  SKIP {card_id}: not found")
-        return
-
-    img = Image.open(path)
-    if img.size == (TARGET_W, TARGET_H):
-        print(f"  OK   {card_id}: already {img.size}")
-        return
-
+def process(path, img):
+    name = os.path.basename(path)
     src_size = img.size
     bbox = content_bbox(img)
     img = img.convert("RGB")
@@ -79,7 +43,7 @@ def process(card_id):
         img = img.crop(bbox)
 
     iw, ih = img.size
-    # Fit the whole card inside the frame, maximizing the used width.
+    # Fit the whole card inside the frame, maximizing the used area.
     scale = min(TARGET_W / iw, TARGET_H / ih)
     new_w = min(TARGET_W, int(round(iw * scale)))
     new_h = min(TARGET_H, int(round(ih * scale)))
@@ -89,12 +53,30 @@ def process(card_id):
     canvas.paste(img, ((TARGET_W - new_w) // 2, (TARGET_H - new_h) // 2))
     canvas.save(path)
     print(
-        f"  FIXED {card_id}: {src_size} -> bbox {bbox} -> "
+        f"  FIXED {name}: {src_size} -> bbox {bbox} -> "
         f"{new_w}x{new_h} on {TARGET_W}x{TARGET_H}"
     )
 
 
-print("=== Extras cards (strip background, widen to 300x420) ===")
-for cid in EXTRAS_IDS:
-    process(cid)
-print("\nDone!")
+def main():
+    print("=== Cards not yet 300x420 (strip background, normalize) ===")
+    fixed = skipped = 0
+    for name in sorted(os.listdir(CARDS_DIR)):
+        if not name.lower().endswith(".png"):
+            continue
+        path = os.path.join(CARDS_DIR, name)
+        try:
+            img = Image.open(path)
+        except Exception as exc:  # noqa: BLE001 - report and keep going
+            print(f"  SKIP {name}: unreadable ({exc})")
+            skipped += 1
+            continue
+        if img.size == (TARGET_W, TARGET_H):
+            continue
+        process(path, img)
+        fixed += 1
+    print(f"\nDone! {fixed} fixed, {skipped} skipped.")
+
+
+if __name__ == "__main__":
+    main()
