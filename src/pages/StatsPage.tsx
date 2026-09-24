@@ -7,12 +7,14 @@ import {
   getRecentResults,
   getPlayerStats,
   getSuperstarStats,
+  getSuperstarMatchDetails,
   deleteGameResult,
   insertGameResultManual,
   deleteAllStats,
   type GameResult,
   type PlayerStats,
   type SuperstarAggregate,
+  type SuperstarMatchDetail,
 } from '../online/stats'
 
 function superstarsName(id: string | null): string {
@@ -61,6 +63,7 @@ export function StatsPage() {
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [starStats, setStarStats] = useState<SuperstarAggregate[]>([])
   const [selectedStar, setSelectedStar] = useState<string | null>(null)
+  const [matchDetails, setMatchDetails] = useState<SuperstarMatchDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [admin, setAdmin] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -78,6 +81,14 @@ export function StatsPage() {
   }, [])
 
   useEffect(() => { reload() }, [reload])
+
+  useEffect(() => {
+    if (selectedStar) {
+      getSuperstarMatchDetails(selectedStar).then(setMatchDetails)
+    } else {
+      setMatchDetails([])
+    }
+  }, [selectedStar])
 
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar este resultado? Se recalcularán las estadísticas.')) return
@@ -484,16 +495,49 @@ export function StatsPage() {
                         </div>
                       )}
 
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Promedio por duelo</div>
-                        <StatRow label="Reversals" value={agg.avg_reversals} />
-                        <StatRow label="Strikes" value={agg.avg_strikes} />
-                        <StatRow label="Grapples" value={agg.avg_grapples} />
-                        <StatRow label="Submissions" value={agg.avg_submissions} />
-                        <StatRow label="High Risk" value={agg.avg_high_risk} />
-                        <StatRow label="Actions" value={agg.avg_actions} />
-                        <StatRow label="Mid-match" value={agg.avg_midmatch} />
-                      </div>
+                      {matchDetails.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Estadísticas por duelo</div>
+                          <div className="card" style={{ overflowX: 'auto', padding: 8 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border, #333)' }}>
+                                  <th style={{ textAlign: 'left', padding: '4px 6px' }}>Fecha</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Modalidad</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>vs</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Resultado</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Rev</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Str</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Grp</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Sub</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>HR</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Act</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 6px' }}>Mid</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {matchDetails.map((m) => (
+                                  <tr key={m.game_result_id} style={{ borderBottom: '1px solid var(--border, #222)' }}>
+                                    <td style={{ textAlign: 'left', padding: '4px 6px' }}>{formatDate(m.created_at)}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.game_mode === 'rumble' ? 'Rumble' : 'WTA'}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{superstarsName(m.opponent_superstar)}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px', color: m.won ? 'var(--green-bright, #4caf50)' : 'var(--red-bright, #f44336)' }}>
+                                      {m.won ? 'G' : 'P'}
+                                    </td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.reversals_played}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.strikes_played}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.grapples_played}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.submissions_played}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.high_risk_played}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.actions_played}</td>
+                                    <td style={{ textAlign: 'center', padding: '4px 6px' }}>{m.midmatch_played}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

@@ -179,6 +179,32 @@ export interface SuperstarAggregate {
   avg_midmatch: number
 }
 
+export interface SuperstarMatchDetail {
+  game_result_id: string
+  created_at: string
+  game_mode: string
+  won: boolean
+  opponent_superstar: string | null
+  reversals_played: number
+  strikes_played: number
+  grapples_played: number
+  submissions_played: number
+  high_risk_played: number
+  actions_played: number
+  midmatch_played: number
+}
+
+export async function getSuperstarMatchDetails(superstarId: string): Promise<SuperstarMatchDetail[]> {
+  const supabase = await getSupabase()
+  const { data } = await supabase
+    .from('superstar_match_stats')
+    .select('*')
+    .eq('superstar_id', superstarId)
+    .order('created_at', { ascending: false })
+
+  return (data as SuperstarMatchDetail[]) ?? []
+}
+
 export async function getSuperstarStats(): Promise<SuperstarAggregate[]> {
   const supabase = await getSupabase()
   const { data } = await supabase
