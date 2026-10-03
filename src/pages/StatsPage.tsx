@@ -8,6 +8,7 @@ import {
   getPlayerStats,
   getSuperstarStats,
   getSuperstarMatchDetails,
+  getBeltDefenseStats,
   deleteGameResult,
   insertGameResultManual,
   deleteAllStats,
@@ -15,6 +16,7 @@ import {
   type PlayerStats,
   type SuperstarAggregate,
   type SuperstarMatchDetail,
+  type BeltDefenseStat,
 } from '../online/stats'
 
 function superstarsName(id: string | null): string {
@@ -62,6 +64,7 @@ export function StatsPage() {
   const [results, setResults] = useState<GameResult[]>([])
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [starStats, setStarStats] = useState<SuperstarAggregate[]>([])
+  const [beltDefenses, setBeltDefenses] = useState<Record<string, BeltDefenseStat>>({})
   const [selectedStar, setSelectedStar] = useState<string | null>(null)
   const [matchDetails, setMatchDetails] = useState<SuperstarMatchDetail[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,10 +75,11 @@ export function StatsPage() {
 
   const reload = useCallback(() => {
     setLoading(true)
-    Promise.all([getRecentResults(), getPlayerStats(), getSuperstarStats()]).then(([r, p, s]) => {
+    Promise.all([getRecentResults(), getPlayerStats(), getSuperstarStats(), getBeltDefenseStats()]).then(([r, p, s, d]) => {
       setResults(r)
       setPlayers(p)
       setStarStats(s)
+      setBeltDefenses(d)
       setLoading(false)
     })
   }, [])
@@ -337,7 +341,7 @@ export function StatsPage() {
                           <div className="muted" style={{ fontSize: 11 }}>
                             {r.turns} turnos · {r.player_count}J
                             {r.player_count > 2 && ` · ${r.game_mode === 'rumble' ? 'Rumble' : 'Winner Takes All'}`}
-                            {r.belt_won && ` · 🏆 ${r.belt_name}`}
+                            {r.belt_won && ` · 🏆 ${r.belt_name}${r.belt_defending ? ' · 🛡 defensa' : ''}`}
                           </div>
                         </div>
                       </div>
@@ -465,6 +469,21 @@ export function StatsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {(() => {
+                        const def = beltDefenses[agg.superstar_id]
+                        if (!def) return null
+                        return (
+                          <div style={{ marginTop: 12 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Cinturones</div>
+                            <StatRow
+                              label="Defensas de cinturón"
+                              value={`${def.held} retenidas / ${def.defenses} disputadas`}
+                              color={def.held === def.defenses ? 'var(--gold, #ffd700)' : undefined}
+                            />
+                          </div>
+                        )
+                      })()}
 
                       {Object.keys(agg.by_mode).length > 0 && (
                         <div style={{ marginBottom: 12 }}>

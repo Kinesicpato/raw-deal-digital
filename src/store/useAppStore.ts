@@ -31,6 +31,7 @@ import {
   hostSendError,
   hostSetSuperstar,
   hostSetHandSize,
+  hostSetBelt,
   hostShareDecks,
   randomCode,
   startClient,
@@ -62,6 +63,8 @@ interface OnlineInfo {
   isSpectator?: boolean
   gameMode: GameMode
   beltId: string | null
+  /** Champion's answer for the belt in play: null = still unanswered. */
+  beltDefending: boolean | null
 }
 
 interface AppState {
@@ -71,6 +74,8 @@ interface AppState {
   game: GameState | null
   lastError: string | null
   online: OnlineInfo
+  /** superstar id of each belt's current holder (loaded from stats). */
+  beltOwners: Record<string, string>
 
   pendingArsenalMove: { playerIdx: number; from: ManualZone; cardIds: string[] } | null
   setPendingArsenalMove: (pending: { playerIdx: number; from: ManualZone; cardIds: string[] } | null) => void
@@ -114,6 +119,8 @@ interface AppState {
   onlineSetHandSize: (handSize: number) => void
   setGameMode: (mode: GameMode) => void
   setBeltId: (beltId: string | null) => void
+  setBeltOwners: (owners: Record<string, string>) => void
+  answerBeltDefense: (defending: boolean) => void
   startOnlineGame: () => void
   applyRemoteState: (game: GameState) => void
 }
@@ -125,7 +132,19 @@ function cloneGame(g: GameState): GameState {
   return JSON.parse(JSON.stringify(g))
 }
 
-const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null }
+const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null, beltDefending: null }
+
+/** Which superstar holds the belt in play and which seat (if any) plays it. */
+function beltContext(
+  o: OnlineInfo,
+  owners: Record<string, string>,
+): { owner: string | null; championIdx: number | null } {
+  if (!o.beltId) return { owner: null, championIdx: null }
+  const owner = owners[o.beltId]
+  if (!owner) return { owner: null, championIdx: null }
+  const seat = o.roster.find((r) => r.connected && !r.spectator && r.superstarId === owner)
+  return { owner, championIdx: seat ? seat.idx : null }
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -149,6 +168,7 @@ export const useAppStore = create<AppState>()(
         game: null,
         lastError: null,
         online: defaultOnline,
+        beltOwners: {},
         pendingArsenalMove: null,
 
         setPendingArsenalMove: (pending) => set({ pendingArsenalMove: pending }),
@@ -424,11 +444,10 @@ export const useAppStore = create<AppState>()(
             connected: i === 0,
           }))
           set({
-            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode, beltId: prevBelt },
+            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode, beltId: prevBelt, beltDefending: null },
             view: 'lobby',
             lastError: null,
           })
-          hostShareDecks(get().decks.map((d) => ({ ...d })))
           startHost(code, seats, name, {
             onOpen: () => {
               const st = get()
@@ -436,20 +455,39 @@ export const useAppStore = create<AppState>()(
             },
             onRoster: (r) => {
               const st = get()
-              set({ online: { ...st.online, roster: r } })
+              let online = { ...st.online, roster: r }
+              // The belt can only be played while its champion is in the room.
+              const { championIdx } = beltContext(online, st.beltOwners)
+              if (online.beltId && st.beltOwners[online.beltId] && championIdx === null) {
+                online = { ...online, beltId: null, beltDefending: null }
+                hostSetBelt(null, null)
+              }
+              set({ online })
             },
             onIntent: (idx, action, args) => applyRemoteIntent(get, idx, action, args),
             onPeerClosed: () => {
               /* roster already updated via onRoster */
             },
+            onBeltDefense: (idx, defending) => {
+              const st = get()
+              const o = st.online
+              const { owner, championIdx } = beltContext(o, st.beltOwners)
+              if (o.role !== 'host' || !owner || championIdx !== idx) return
+              set({ online: { ...o, beltDefending: defending } })
+              hostSetBelt(o.beltId, defending)
+            },
             onError: (message) => set({ lastError: message }),
           })
+          // startHost() clears the module-level room state first, so the belt
+          // and the shared decks have to be announced after that call.
+          hostSetBelt(prevBelt, null)
+          hostShareDecks(get().decks.map((d) => ({ ...d })))
         },
 
         joinRoom: (code, name) => {
           stopOnline()
           set({
-            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null },
+            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null, beltDefending: null },
             view: 'lobby',
             lastError: null,
           })
@@ -469,6 +507,10 @@ export const useAppStore = create<AppState>()(
             onDecks: (decks) => {
               const st = get()
               set({ online: { ...st.online, sharedDecks: decks } })
+            },
+            onBelt: (beltId, defending) => {
+              const st = get()
+              set({ online: { ...st.online, beltId, beltDefending: defending } })
             },
             onState: (game) => {
               const st = get()
@@ -562,7 +604,33 @@ export const useAppStore = create<AppState>()(
 
         setBeltId: (beltId) => {
           const st = get()
-          set({ online: { ...st.online, beltId } })
+          set({ online: { ...st.online, beltId, beltDefending: null } })
+          if (st.online.role === 'host') hostSetBelt(beltId, null)
+        },
+
+        setBeltOwners: (owners) => {
+          const st = get()
+          set({ beltOwners: owners })
+          const o = st.online
+          if (o.role !== 'host' || !o.beltId || !owners[o.beltId]) return
+          if (beltContext(o, owners).championIdx === null) {
+            set({ online: { ...o, beltId: null, beltDefending: null } })
+            hostSetBelt(null, null)
+          }
+        },
+
+        answerBeltDefense: (defending) => {
+          const st = get()
+          const o = st.online
+          const { owner, championIdx } = beltContext(o, st.beltOwners)
+          if (!owner || championIdx === null || championIdx !== o.myIdx) return
+          if (o.role === 'host') {
+            set({ online: { ...o, beltDefending: defending } })
+            hostSetBelt(o.beltId, defending)
+          } else if (o.role === 'client') {
+            set({ online: { ...o, beltDefending: defending } })
+            clientSend({ type: 'beltDefense', defending })
+          }
         },
 
         startOnlineGame: () => {
@@ -573,6 +641,15 @@ export const useAppStore = create<AppState>()(
             .sort((a, b) => a.idx - b.idx)
           if (players.length < 2) {
             set({ lastError: 'Se necesitan al menos 2 jugadores con Superestrella elegida.' })
+            return
+          }
+          const { owner, championIdx } = beltContext(st.online, st.beltOwners)
+          if (st.online.beltId && owner && championIdx === null) {
+            set({ lastError: 'El campeón del cinturón no está en la sala. Sacá el cinturón o esperá a que entre.' })
+            return
+          }
+          if (championIdx !== null && st.online.beltDefending === null) {
+            set({ lastError: 'El campeón tiene que responder si defiende el cinturón.' })
             return
           }
           const cfg: NewGameConfig = {
@@ -592,6 +669,8 @@ export const useAppStore = create<AppState>()(
             }),
             gameMode: st.online.gameMode,
             beltId: st.online.beltId ?? null,
+            beltChampionId: owner,
+            beltDefending: owner ? st.online.beltDefending : null,
           }
           const game = newGame(cfg)
           set({ game, lastError: null, view: 'game' })
@@ -739,7 +818,7 @@ export function applyRemoteIntent(
     try {
       const st = get()
       if (st.game) broadcastState(st.game)
-    } catch (_) {
+    } catch {
       // Broadcast best-effort; nothing more we can do.
     }
   }

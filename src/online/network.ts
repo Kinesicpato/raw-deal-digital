@@ -32,6 +32,8 @@ export interface HostHooks {
   onIntent: (idx: number, action: IntentName, args: unknown[]) => void
   onPeerClosed: (idx: number) => void
   onError: (message: string) => void
+  /** A client answered whether it defends the belt (only the champion's seat may). */
+  onBeltDefense?: (idx: number, defending: boolean) => void
 }
 
 export interface ClientHooks {
@@ -42,6 +44,8 @@ export interface ClientHooks {
   onState: (game: GameState) => void
   onError: (message: string) => void
   onClosed: () => void
+  /** Host announced (or re-announced) the belt in play for the room. */
+  onBelt?: (beltId: string | null, defending: boolean | null) => void
 }
 
 let role: 'host' | 'client' | null = null
@@ -52,6 +56,8 @@ const connectedClients = new Map<number, string>()
 const registry = new Map<number, RosterEntry>()
 let hostHooksRef: HostHooks | null = null
 let hostSharedDecks: SharedDeck[] = []
+/** Belt chosen for the room, kept on the host so late joiners receive it. */
+let hostBelt: { beltId: string | null; defending: boolean | null } = { beltId: null, defending: null }
 
 function emitRoster(hooks: HostHooks | null) {
   if (!hooks) return
@@ -77,6 +83,7 @@ export function stopOnline(): void {
   registry.clear()
   hostHooksRef = null
   hostSharedDecks = []
+  hostBelt = { beltId: null, defending: null }
 }
 
 function sendToAll(payload: Record<string, unknown>): void {
@@ -129,6 +136,7 @@ export async function startHost(code: string, seatCount: number, hostName: strin
         entry.name = msg.name
         entry.connected = true
         sendToClient(idx, { type: 'welcome', idx, roster: currentRoster() })
+        sendToClient(idx, { type: 'belt', beltId: hostBelt.beltId, defending: hostBelt.defending })
         if (hostSharedDecks.length > 0) {
           sendToClient(idx, { type: 'decks', decks: hostSharedDecks })
         }
@@ -155,6 +163,9 @@ export async function startHost(code: string, seatCount: number, hostName: strin
         entry.handSize = msg.handSize
         emitRoster(hooks)
       }
+    } else if (msg.type === 'beltDefense') {
+      const idx = clientIdx(senderId)
+      if (idx !== null && registry.get(idx)?.connected) hooks.onBeltDefense?.(idx, msg.defending === true)
     } else if (msg.type === 'intent') {
       const idx = clientIdx(senderId)
       if (idx !== null && registry.get(idx)?.connected) hooks.onIntent(idx, msg.action, msg.args)
@@ -254,6 +265,12 @@ export function hostShareDecks(decks: SharedDeck[]): void {
   }
 }
 
+/** Announces the belt (and the champion's defense answer) to every client. */
+export function hostSetBelt(beltId: string | null, defending: boolean | null): void {
+  hostBelt = { beltId, defending }
+  sendToAll({ msg: { type: 'belt', beltId, defending } satisfies HostMsg })
+}
+
 /** Broadcasts a redacted state snapshot to every connected client. */
 export function broadcastState(game: GameState): void {
   for (const [idx] of connectedClients) {
@@ -297,6 +314,8 @@ export async function startClient(code: string, name: string, hooks: ClientHooks
       hooks.onRoster(msg.roster)
     } else if (msg.type === 'decks') {
       hooks.onDecks(msg.decks)
+    } else if (msg.type === 'belt') {
+      hooks.onBelt?.(msg.beltId, msg.defending)
     } else if (msg.type === 'state') {
       hooks.onState(msg.game)
     } else if (msg.type === 'error') {

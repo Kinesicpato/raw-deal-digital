@@ -1,11 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { SUPERSTARS, BELTS } from '../data/cards'
 import { buildDefaultDeck } from '../data/defaultDeck'
+import { getBeltOwners } from '../online/stats'
 import { AppBanner } from '../components/Branding'
 import { CardFace } from '../components/CardView'
 import { Toast } from '../components/Toast'
 import type { GameMode } from '../online/types'
+
+function starName(id: string): string {
+  return SUPERSTARS.find((s) => s.id === id)?.name ?? id
+}
 
 export function LobbyPage() {
   const store = useAppStore.getState()
@@ -13,11 +18,23 @@ export function LobbyPage() {
   const ownDecks = useAppStore((s) => s.decks)
   const lastError = useAppStore((s) => s.lastError)
   const clearError = useAppStore((s) => s.clearError)
+  const beltOwners = useAppStore((s) => s.beltOwners)
+  const setBeltOwners = useAppStore((s) => s.setBeltOwners)
 
   const [name, setName] = useState('')
   const [seats, setSeats] = useState(2)
   const [code, setCode] = useState('')
   const [gameMode, setGameMode] = useState<GameMode>('rumble')
+  const [ownersLoaded, setOwnersLoaded] = useState(false)
+
+  useEffect(() => {
+    getBeltOwners()
+      .then((owners) => {
+        setBeltOwners(owners)
+        setOwnersLoaded(true)
+      })
+      .catch(() => setOwnersLoaded(true))
+  }, [setBeltOwners])
 
   if (!online.role) {
     return (
@@ -118,10 +135,19 @@ export function LobbyPage() {
   const connectedPlayers = online.roster.filter((r) => r.connected && !r.spectator && r.superstarId && r.deck)
   const connectedNonSpectators = online.roster.filter((r) => r.connected && !r.spectator)
   const allReady = connectedNonSpectators.every((r) => r.superstarId && r.deck)
+  const belt = online.beltId ? BELTS.find((b) => b.id === online.beltId) ?? null : null
+  const beltOwner = online.beltId ? beltOwners[online.beltId] ?? null : null
+  const championSeat = beltOwner
+    ? online.roster.find((r) => r.connected && !r.spectator && r.superstarId === beltOwner) ?? null
+    : null
+  const iAmChampion = championSeat !== null && championSeat.idx === online.myIdx
+  const defensePending = belt !== null && beltOwner !== null && championSeat !== null && online.beltDefending === null
   const canStart =
     online.role === 'host' &&
     connectedPlayers.length >= 2 &&
-    allReady
+    allReady &&
+    ownersLoaded &&
+    !defensePending
 
   return (
     <div className="page">
@@ -163,6 +189,7 @@ export function LobbyPage() {
                   <CardFace id={`superstar-${r.superstarId}`} size="xs" />
                   <span className="muted" style={{ fontSize: 12 }}>
                     {SUPERSTARS.find((s) => s.id === r.superstarId)?.name}
+                    {beltOwner === r.superstarId ? ' 🏆' : ''}
                   </span>
                 </div>
               ) : (
@@ -345,7 +372,7 @@ export function LobbyPage() {
           <div style={{ marginTop: 16 }}>
             <div className="big-label">Cinturón (opcional)</div>
             <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-              Elegí un cinturón para el campeón. No es obligatorio.
+              Elegí un cinturón para el campeón. No es obligatorio. Si el campeón no está en la sala, ese cinturón queda bloqueado.
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <div
@@ -354,16 +381,84 @@ export function LobbyPage() {
               >
                 <span className="muted" style={{ fontSize: 13 }}>Ninguno</span>
               </div>
-              {BELTS.map((b) => (
-                <div
-                  key={b.id}
-                  style={{ cursor: 'pointer', padding: 4, borderRadius: 6, border: online.beltId === b.id ? '2px solid var(--accent)' : '2px solid transparent' }}
-                  onClick={() => store.setBeltId(b.id)}
-                >
-                  <img src={b.image} alt={b.name} style={{ height: 40, objectFit: 'contain' }} />
-                </div>
-              ))}
+              {BELTS.map((b) => {
+                const owner = beltOwners[b.id] ?? null
+                const ownerSeat = owner
+                  ? online.roster.find((r) => r.connected && !r.spectator && r.superstarId === owner) ?? null
+                  : null
+                const locked = owner !== null && ownerSeat === null
+                const selected = online.beltId === b.id
+                return (
+                  <div
+                    key={b.id}
+                    title={owner ? `Campeón: ${starName(owner)}${locked ? ' · no está en la sala' : ''}` : 'Sin campeón'}
+                    style={{
+                      cursor: locked ? 'not-allowed' : 'pointer',
+                      padding: 4,
+                      borderRadius: 6,
+                      border: selected ? '2px solid var(--accent)' : '2px solid transparent',
+                      opacity: locked ? 0.45 : 1,
+                      width: 88,
+                      textAlign: 'center',
+                    }}
+                    onClick={() => {
+                      if (locked) {
+                        store.setLastError(`El campeón (${starName(owner ?? '')}) no está en la sala, así que ese cinturón no puede jugarse.`)
+                        return
+                      }
+                      store.setBeltId(selected ? null : b.id)
+                    }}
+                  >
+                    <img src={b.image} alt={b.name} style={{ height: 40, objectFit: 'contain', width: '100%' }} />
+                    <div style={{ fontSize: 10, marginTop: 2, lineHeight: 1.2 }}>
+                      {owner ? `${locked ? '🔒' : '🏆'} ${starName(owner)}` : 'Sin campeón'}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
+          </div>
+        )}
+
+        {online.role !== 'host' && belt && (
+          <div style={{ marginTop: 16 }}>
+            <div className="big-label">Cinturón en juego</div>
+            <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 4 }}>
+              <img src={belt.image} alt={belt.name} style={{ height: 44, objectFit: 'contain' }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{belt.name}</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {beltOwner ? `Campeón: ${starName(beltOwner)}` : 'Sin campeón todavía'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {belt && beltOwner && championSeat && (
+          <div style={{ marginTop: 14, padding: 10, borderRadius: 6, border: '1px solid var(--gold, #ffd700)', background: 'rgba(255,215,0,0.06)' }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>
+              🏆 {starName(beltOwner)} es campeón/a de {belt.name}
+            </div>
+            {iAmChampion && online.beltDefending === null ? (
+              <>
+                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                  ¿Defendés el cinturón en esta partida?
+                </div>
+                <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                  <button className="primary" onClick={() => store.answerBeltDefense(true)}>Sí, lo defiendo</button>
+                  <button className="ghost" onClick={() => store.answerBeltDefense(false)}>No lo defiendo</button>
+                </div>
+              </>
+            ) : (
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {online.beltDefending === null
+                  ? `Esperando la respuesta de ${championSeat.name || 'el campeón'}…`
+                  : online.beltDefending
+                    ? 'El campeón defiende el cinturón: si gana, retiene el título.'
+                    : 'El campeón no lo defiende: el cinturón queda en juego como exhibición.'}
+              </div>
+            )}
           </div>
         )}
 
@@ -381,7 +476,11 @@ export function LobbyPage() {
               <span className="muted">
                 {connectedPlayers.length < 2
                   ? `Se necesitan al menos 2 jugadores conectados. Compartí el código ${online.code} para que ingresen.`
-                  : 'Todos los conectados deben elegir Superestrella y mazo.'}
+                  : defensePending
+                    ? `El campeón tiene que responder si defiende el cinturón ${belt?.name ?? ''}.`
+                    : !ownersLoaded
+                      ? 'Cargando cinturones…'
+                      : 'Todos los conectados deben elegir Superestrella y mazo.'}
               </span>
             )}
           </div>

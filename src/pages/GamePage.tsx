@@ -108,6 +108,11 @@ export function GamePage() {
               const belt = BELTS.find((b) => b.id === displayGame.beltId)
               return belt ? <img src={belt.image} alt={belt.name} style={{ height: 32, objectFit: 'contain', marginRight: 4 }} /> : null
             })()}
+            {displayGame.beltId && displayGame.beltChampionId && (
+              <span className="stat-chip">
+                {displayGame.beltDefending ? '🛡 Defensa de título' : 'Cinturón en juego'}
+              </span>
+            )}
             {displayGame.gameMode === 'winner-takes-all' && (
               <span className="stat-chip">Winner Takes All</span>
             )}
@@ -795,6 +800,13 @@ function GameOver({ game }: { game: GameState }) {
   const winners = game.winner ?? []
   const winner = winners[0]
   const belt = game.beltId ? BELTS.find((b) => b.id === game.beltId) : null
+  const winnerSuperstar = winner !== undefined ? game.players[winner]?.superstarId ?? null : null
+  const retained =
+    belt !== null &&
+    winners.length === 1 &&
+    game.beltDefending === true &&
+    game.beltChampionId !== null &&
+    winnerSuperstar === game.beltChampionId
   return (
     <div className="card" style={{ textAlign: 'center', borderColor: 'var(--gold)' }}>
       {belt && winners.length === 1 && (
@@ -813,7 +825,7 @@ function GameOver({ game }: { game: GameState }) {
       </h2>
       {belt && winners.length === 1 && (
         <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--gold)', margin: '8px 0' }}>
-          🏆 NUEVO CAMPEÓN 🏆
+          {retained ? '🏆 CAMPEÓN — DEFENSA EXITOSA 🏆' : '🏆 NUEVO CAMPEÓN 🏆'}
         </p>
       )}
       <p className="muted">

@@ -14,8 +14,28 @@ export interface GameResult {
   game_mode: string
   belt_won: boolean
   belt_name: string | null
+  /** True when the reigning champion agreed to defend the belt in that match. */
+  belt_defending?: boolean
   player_names: string[]
   player_superstars: string[]
+}
+
+/**
+ * `belt_name` doubles as the place where we remember whether the belt was
+ * defended, since the schema has no column for it. The flag is stripped when
+ * results are read, so old rows (and manual admin entries) keep working.
+ */
+const DEFENSE_PREFIX = 'def::'
+
+export function encodeBeltName(name: string, defending: boolean): string {
+  return defending ? DEFENSE_PREFIX + name : name
+}
+
+export function decodeBeltName(raw: string | null | undefined): { name: string | null; defending: boolean } {
+  if (!raw) return { name: null, defending: false }
+  return raw.startsWith(DEFENSE_PREFIX)
+    ? { name: raw.slice(DEFENSE_PREFIX.length), defending: true }
+    : { name: raw, defending: false }
 }
 
 export interface SuperstarMatchStat {
@@ -56,7 +76,7 @@ export async function saveGameResult(game: GameState): Promise<void> {
     player_count: game.players.length,
     game_mode: game.gameMode,
     belt_won: !!(winnerIdx != null && game.beltId),
-    belt_name: belt?.name ?? null,
+    belt_name: belt ? encodeBeltName(belt.name, game.beltDefending === true) : null,
     player_names: game.players.map(p => p.name),
     player_superstars: game.players.map(p => p.superstarId),
   }).select('id').single()
@@ -94,7 +114,74 @@ export async function getRecentResults(limit = 50): Promise<GameResult[]> {
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit)
-  return (data as GameResult[]) ?? []
+  return ((data as GameResult[]) ?? []).map((r) => {
+    const { name, defending } = decodeBeltName(r.belt_name)
+    return { ...r, belt_name: name, belt_defending: defending && r.belt_won }
+  })
+}
+
+/** Belt id (or belt name for belts no longer in the data file) -> superstar id of its holder. */
+export async function getBeltOwners(): Promise<Record<string, string>> {
+  const supabase = await getSupabase()
+  const { data } = await supabase
+    .from('game_results')
+    .select('*')
+    .not('belt_name', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  const owners: Record<string, string> = {}
+  for (const r of (data as GameResult[]) ?? []) {
+    const { name } = decodeBeltName(r.belt_name)
+    if (!name) continue
+    const key = BELTS.find((b) => b.name === name)?.id ?? name
+    if (owners[key] !== undefined) continue
+    if (r.belt_won && r.winner_superstar) owners[key] = r.winner_superstar
+  }
+  return owners
+}
+
+export interface BeltDefenseStat {
+  /** Matches played as reigning champion with the belt on the line. */
+  defenses: number
+  /** Defenses where the champion kept the belt. */
+  held: number
+}
+
+/**
+ * Replays belt results oldest-first to work out which superstar held each
+ * belt, then counts every match the champion entered with the belt on the line.
+ */
+export async function getBeltDefenseStats(): Promise<Record<string, BeltDefenseStat>> {
+  const supabase = await getSupabase()
+  const { data } = await supabase
+    .from('game_results')
+    .select('*')
+    .not('belt_name', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  const rows = ((data as GameResult[]) ?? []).slice().reverse()
+  const owners: Record<string, string> = {}
+  const stats: Record<string, BeltDefenseStat> = {}
+
+  for (const r of rows) {
+    const { name, defending } = decodeBeltName(r.belt_name)
+    if (!name) continue
+    const key = BELTS.find((b) => b.name === name)?.id ?? name
+    const holder = owners[key]
+    const played = r.player_superstars ?? []
+
+    if (defending && r.belt_won && holder && played.includes(holder) && r.winner_superstar) {
+      const s = stats[holder] ?? { defenses: 0, held: 0 }
+      s.defenses++
+      if (r.winner_superstar === holder) s.held++
+      stats[holder] = s
+    }
+
+    if (r.belt_won && r.winner_superstar) owners[key] = r.winner_superstar
+  }
+  return stats
 }
 
 export interface PlayerStats {

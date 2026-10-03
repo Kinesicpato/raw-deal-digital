@@ -57,6 +57,8 @@ export interface NewGameConfig {
   }>
   gameMode?: 'rumble' | 'winner-takes-all'
   beltId?: string | null
+  beltDefending?: boolean | null
+  beltChampionId?: string | null
 }
 
 export function newGame(cfg: NewGameConfig): GameState {
@@ -102,6 +104,8 @@ export function newGame(cfg: NewGameConfig): GameState {
     winType: null,
     gameMode: cfg.gameMode ?? 'rumble',
     beltId: cfg.beltId ?? null,
+    beltDefending: cfg.beltDefending ?? null,
+    beltChampionId: cfg.beltChampionId ?? null,
     _prematchActed: [],
     _openingKept: [],
   }
@@ -816,6 +820,7 @@ function beginManualOverturn(state: GameState, defenderIdx: number, purpose: 'da
   // Effects are NEVER applied automatically: print the text so the players
   // execute it manually on the table.
   if (card.effect && card.effect.length > 0) {
+    // Intentionally a no-op: effects are resolved by the players on the table.
   }
   state.pendingEffects = null
 
@@ -839,6 +844,7 @@ function beginManualOverturn(state: GameState, defenderIdx: number, purpose: 'da
       return
     }
   } else {
+    // damageToDeal > 0 falls through to the overturn decision below.
   }
   res.damageDealt = 0
   state.pendingDecision = {
@@ -1079,6 +1085,7 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
         }
       }
       if (moved.length > 0) {
+        // Cards already moved hand; nothing else to do here.
       }
       state._searchPool = undefined
       state.pendingDecision = null
@@ -1314,6 +1321,7 @@ export function activateRingCard(state: GameState, playerIdx: number, cardId: st
   // Effects are never applied automatically — the players read and execute
   // the card text by hand.
   if (card.effect && card.effect.length > 0) {
+    // Intentionally a no-op: effects are resolved by the players on the table.
   }
   state.pendingEffects = null
   void idx

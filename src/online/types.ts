@@ -57,12 +57,14 @@ export type ClientMsg =
   | { type: 'hello'; name: string }
   | { type: 'setRole'; role: 'player' | 'spectator' }
   | { type: 'pick'; superstarId: string; handSize: number | null; deck: DeckPick | null }
+  | { type: 'beltDefense'; defending: boolean }
   | { type: 'intent'; action: IntentName; args: unknown[] }
 
 export type HostMsg =
   | { type: 'welcome'; idx: number; roster: RosterEntry[] }
   | { type: 'lobby'; roster: RosterEntry[] }
   | { type: 'decks'; decks: SharedDeck[] }
+  | { type: 'belt'; beltId: string | null; defending: boolean | null }
   | { type: 'state'; game: GameState }
   | { type: 'error'; message: string }
 

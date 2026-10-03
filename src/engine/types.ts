@@ -119,6 +119,10 @@ export interface GameState {
   winType: 'pin' | 'countout' | 'draw' | null
   gameMode: 'rumble' | 'winner-takes-all'
   beltId: string | null
+  /** Did the reigning champion agree to defend the belt in this match? */
+  beltDefending: boolean | null
+  /** Superstar that held the belt before this match started (null = no champion). */
+  beltChampionId: string | null
   /** Cards offered to the current player by a pending search. */
   _searchPool?: string[]
   /** Players who already acted in the current Pre-match stage. */
