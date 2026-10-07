@@ -50,6 +50,29 @@ function text(entries: ZipEntry[], name: string): string {
 const ids = (prefix: string, n: number): string[] =>
   Array.from({ length: n }, (_, i) => `${prefix}-${i}`)
 
+/** One [x, y] margin-relative offset (EMU) per floating card, in document order. */
+function anchorOffsets(doc: string): [number, number][] {
+  const re =
+    /<wp:positionH relativeFrom="margin"><wp:posOffset>(\d+)<\/wp:posOffset><\/wp:positionH><wp:positionV relativeFrom="margin"><wp:posOffset>(\d+)<\/wp:posOffset><\/wp:positionV>/g
+  return [...doc.matchAll(re)].map((m) => [Number(m[1]), Number(m[2])])
+}
+
+/** Card count per sheet, i.e. per paragraph that carries floating drawings. */
+function cardsPerSheet(doc: string): number[] {
+  return doc
+    .split('<w:p>')
+    .filter((para) => para.includes('<wp:anchor'))
+    .map((para) => para.split('<w:drawing>').length - 1)
+}
+
+/** The [col * cellW, row * cellH] positions a grid of `count` cells should use. */
+function gridOffsets(grid: { cols: number; emuW: number; emuH: number }, count: number): [number, number][] {
+  return Array.from({ length: count }, (_, i) => [
+    (i % grid.cols) * grid.emuW,
+    Math.floor(i / grid.cols) * grid.emuH,
+  ])
+}
+
 const deps: DeckDocxDeps = {
   fetchPng: async () => PNG,
   rotatePng: async (b) => b,
@@ -103,8 +126,8 @@ describe('buildDeckDocx', () => {
     expect(doc).toContain('<w:pgSz w:w="12240" w:h="18720"/>')
 
     // 20 arsenal cards -> 3 sheets, plus 1 sheet per backlash half.
-    const tables = doc.split('<w:tbl>').length - 1
-    expect(tables).toBe(5)
+    expect(doc).not.toContain('<w:tbl>')
+    expect(cardsPerSheet(doc)).toEqual([9, 9, 2, 10, 10])
 
     // Arsenal cells are portrait (6.4 x 9 cm), backlash cells are rotated (9 x 6.4 cm).
     const portrait = '<wp:extent cx="2304000" cy="3240000"/>'
@@ -112,14 +135,17 @@ describe('buildDeckDocx', () => {
     expect(doc.split(portrait).length - 1).toBe(20)
     expect(doc.split(landscape).length - 1).toBe(20)
     expect(doc.split('<w:drawing>').length - 1).toBe(40)
+    // Anchors live in body paragraphs, never inside a cell.
+    expect(doc.split('layoutInCell="0"').length - 1).toBe(40)
 
-    // Exactly 9 cards per arsenal sheet.
-    const tablesXml = doc.split('</w:tbl>')
-    expect(tablesXml[0]!.split('<w:tc>').length - 1).toBe(9)
-    expect(tablesXml[1]!.split('<w:tc>').length - 1).toBe(9)
-    expect(tablesXml[2]!.split('<w:tc>').length - 1).toBe(9)
-    // ...and 10 per backlash sheet.
-    expect(tablesXml[3]!.split('<w:tc>').length - 1).toBe(10)
+    // Every card sits on its grid slot: col/cellW, row/cellH from the margin.
+    const offsets = anchorOffsets(doc)
+    expect(offsets).toHaveLength(40)
+    expect(offsets.slice(0, 9)).toEqual(gridOffsets(ARSENAL_GRID, 9))
+    expect(offsets.slice(9, 18)).toEqual(gridOffsets(ARSENAL_GRID, 9))
+    expect(offsets.slice(18, 20)).toEqual(gridOffsets(ARSENAL_GRID, 2))
+    expect(offsets.slice(20, 30)).toEqual(gridOffsets(BACKLASH_GRID, 10))
+    expect(offsets.slice(30, 40)).toEqual(gridOffsets(BACKLASH_GRID, 10))
 
     // Sections: arsenal ends with a section break, then the backlash section.
     expect(doc).toContain('<w:sectPr>')
@@ -137,9 +163,11 @@ describe('buildDeckDocx', () => {
       { ...deps, fetchPng: async (id) => (id === 'card-4' ? null : PNG) },
     )
     const doc = text(unzip(bytes), 'word/document.xml')
-    expect(doc.split('<w:tbl>').length - 1).toBe(1)
-    expect(doc.split('<w:tc>').length - 1).toBe(9)
+    expect(cardsPerSheet(doc)).toEqual([8])
     expect(doc.split('<w:drawing>').length - 1).toBe(8)
+    // The gap keeps slot (1,1): positions are index based, never packed.
+    const all = gridOffsets(ARSENAL_GRID, 9)
+    expect(anchorOffsets(doc)).toEqual([...all.slice(0, 4), ...all.slice(5)])
     // No backlash content: the single section keeps the arsenal margins.
     expect(doc.match(/<w:sectPr>/g)?.length).toBe(1)
     expect(doc).toContain('<w:pgMar w:top="1600"')
@@ -152,10 +180,9 @@ describe('buildDeckDocx', () => {
     )
     const doc = text(unzip(bytes), 'word/document.xml')
     expect(doc).toContain('<w:pgMar w:top="200"')
-    expect(doc.split('<w:tbl>').length - 1).toBe(1)
-    // The page keeps the full 2x5 grid, but only 3 cards carry artwork.
-    expect(doc.split('<w:tc>').length - 1).toBe(10)
+    expect(cardsPerSheet(doc)).toEqual([3])
     expect(doc.split('<w:drawing>').length - 1).toBe(3)
+    expect(anchorOffsets(doc)).toEqual(gridOffsets(BACKLASH_GRID, 3))
     expect(doc).toContain('<wp:extent cx="3240000" cy="2304000"/>')
   })
 })

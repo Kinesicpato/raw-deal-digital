@@ -5,6 +5,12 @@
  *   - Arsenal cards: 3x3 grid, 9 cards per sheet, cell 6.4 x 9 cm.
  *   - Backlash cards: rotated 90 degrees, cell 9 x 6.4 cm, 2x5 = 10 per sheet.
  *
+ * Each sheet is one paragraph carrying its cards as floating drawings pinned
+ * relative to the section margin. Anchoring inside table cells makes Word
+ * resolve the offset against the cell as well, which shifts (and clips) cards;
+ * body paragraphs have no such origin, so `col*cellW` / `row*cellH` land on the
+ * grid exactly.
+ *
  * Written by hand (ZIP with stored entries + minimal WordprocessingML) so the
  * app needs no extra dependency.
  */
@@ -221,19 +227,38 @@ function sectPrXml(margins: Margins, last = false): string {
 /** A 1pt paragraph that either breaks the page or ends a section. */
 function tinyParagraphXml(inner: string): string {
   const rPr = '<w:rPr><w:sz w:val="2"/></w:rPr>'
-  return `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>${rPr}${inner}</w:pPr>${inner.includes('<w:sectPr>') ? '' : `<w:r>${rPr}${inner}</w:r>`}</w:p>`
+  // Only sectPr belongs inside w:pPr; a w:br there is invalid and makes Word
+  // push the break itself onto the next page, leaving a blank sheet behind.
+  const inPPr = inner.includes('<w:sectPr>') ? inner : ''
+  const inRun = inPPr ? '' : `<w:r>${rPr}${inner}</w:r>`
+  return `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>${rPr}${inPPr}</w:pPr>${inRun}</w:p>`
 }
 
 const pageBreakXml = (): string =>
   tinyParagraphXml('<w:br w:type="page"/>')
 
+/** Holds a sheet's floating cards. Exactly 1pt tall so it never shifts pagination. */
+function anchorParagraphXml(inner: string): string {
+  const rPr = '<w:rPr><w:sz w:val="2"/></w:rPr>'
+  return `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/>${rPr}</w:pPr>${inner}</w:p>`
+}
+
 const sectionBreakXml = (margins: Margins): string => tinyParagraphXml(sectPrXml(margins))
 
-function drawingXml(relId: string, docPrId: number, width: number, height: number): string {
+function drawingXml(relId: string, docPrId: number, width: number, height: number, x: number, y: number): string {
   const name = `Card ${docPrId}`
+  // Floating drawing pinned relative to the section margin. Inline drawings
+  // hang off the line's baseline and get clipped by the exact-height rows the
+  // table used to impose; a margin-relative anchor has no layout to fight.
   return (
-    `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">` +
+    `<w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="${251658240 + docPrId}" ` +
+    `behindDoc="0" locked="1" layoutInCell="0" allowOverlap="1">` +
+    `<wp:simplePos x="0" y="0"/>` +
+    `<wp:positionH relativeFrom="margin"><wp:posOffset>${x}</wp:posOffset></wp:positionH>` +
+    `<wp:positionV relativeFrom="margin"><wp:posOffset>${y}</wp:posOffset></wp:positionV>` +
     `<wp:extent cx="${width}" cy="${height}"/>` +
+    `<wp:effectExtent l="0" t="0" r="0" b="0"/>` +
+    `<wp:wrapNone/>` +
     `<wp:docPr id="${docPrId}" name="${name}"/>` +
     `<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>` +
     `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
@@ -241,52 +266,25 @@ function drawingXml(relId: string, docPrId: number, width: number, height: numbe
     `<pic:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
     `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${width}" cy="${height}"/></a:xfrm>` +
     `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
-    `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`
+    `</pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing>`
   )
 }
 
-function tableXml(
+function sheetXml(
   page: Cell[],
   grid: PageGrid,
   mediaFor: (cell: Cell) => MediaEntry | null,
   nextDocPrId: () => number,
 ): string {
-  const cellW = grid.cellW
-  const cellH = grid.cellH
-  const cols: string[] = []
-  for (let i = 0; i < grid.cols; i++) cols.push(`<w:gridCol w:w="${cellW}"/>`)
-
-  const rows: string[] = []
-  for (let r = 0; r < grid.rows; r++) {
-    const cells: string[] = []
-    for (let c = 0; c < grid.cols; c++) {
-      const cell = page[r * grid.cols + c]
-      let run = ''
-      if (cell) {
-        const media = mediaFor(cell)
-        if (media) {
-          run = `<w:r>${drawingXml(media.relId, nextDocPrId(), grid.emuW, grid.emuH)}</w:r>`
-        }
-      }
-      cells.push(
-        `<w:tc><w:tcPr><w:tcW w:w="${cellW}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>` +
-          `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="${cellH}" w:lineRule="exact"/>` +
-          `<w:jc w:val="center"/></w:pPr>${run}</w:p></w:tc>`,
-      )
-    }
-    rows.push(
-      `<w:tr><w:trPr><w:trHeight w:val="${cellH}" w:hRule="exact"/><w:cantSplit/></w:trPr>${cells.join('')}</w:tr>`,
-    )
-  }
-
-  const total = cellW * grid.cols
-  return (
-    `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:jc w:val="center"/>` +
-    `<w:tblLayout w:type="fixed"/>` +
-    `<w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders>` +
-    `<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>` +
-    `</w:tblPr><w:tblGrid>${cols.join('')}</w:tblGrid>${rows.join('')}</w:tbl>`
-  )
+  const runs: string[] = []
+  page.forEach((cell, i) => {
+    const media = mediaFor(cell)
+    if (!media) return
+    const c = i % grid.cols
+    const r = Math.floor(i / grid.cols)
+    runs.push(`<w:r>${drawingXml(media.relId, nextDocPrId(), grid.emuW, grid.emuH, c * grid.emuW, r * grid.emuH)}</w:r>`)
+  })
+  return anchorParagraphXml(runs.join(''))
 }
 
 function documentXml(body: string, finalMargins: Margins): string {
@@ -399,7 +397,7 @@ export async function buildDeckDocx(input: DeckDocxInput, deps: DeckDocxDeps): P
 
   if (hasArsenal) {
     arsenalPages.forEach((page, i) => {
-      body.push(tableXml(page, ARSENAL_GRID, mediaFor, nextDocPrId))
+      body.push(sheetXml(page, ARSENAL_GRID, mediaFor, nextDocPrId))
       if (i < arsenalPages.length - 1) body.push(pageBreakXml())
       else if (hasBacklash) body.push(sectionBreakXml(ARSENAL_MARGINS))
     })
@@ -407,7 +405,7 @@ export async function buildDeckDocx(input: DeckDocxInput, deps: DeckDocxDeps): P
 
   backlashPages.forEach((page, i) => {
     if (i > 0) body.push(pageBreakXml())
-    body.push(tableXml(page, BACKLASH_GRID, mediaFor, nextDocPrId))
+    body.push(sheetXml(page, BACKLASH_GRID, mediaFor, nextDocPrId))
   })
 
   const finalMargins = hasBacklash ? BACKLASH_MARGINS : ARSENAL_MARGINS
