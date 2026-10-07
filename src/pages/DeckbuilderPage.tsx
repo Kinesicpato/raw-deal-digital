@@ -7,6 +7,7 @@ import { CardFace, CardDetailModal, CardRemoveModal } from '../components/CardVi
 import { CardZoomPreview } from '../components/CardZoom'
 import { CardTypeTabs, classifyCard, type CardClassFilter } from '../components/CardTypeTabs'
 import { AppBanner } from '../components/Branding'
+import { downloadDeckDocx } from '../export/deckDocx'
 
 type Back = 'none' | 'Pre-match' | 'Mid-match'
 
@@ -45,6 +46,7 @@ export function DeckbuilderPage() {
   const [classFilter, setClassFilter] = useState<CardClassFilter>('all')
   const [starFilter, setStarFilter] = useState<'all' | 'own' | 'generic'>('all')
   const [onlyChain, setOnlyChain] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const validation = useMemo(() => {
     if (!superstarId) {
@@ -133,6 +135,22 @@ export function DeckbuilderPage() {
     }
     if (onlineRole === 'host') useAppStore.getState().reshareDecks()
     setView(backTo)
+  }
+
+  const exportDocx = async () => {
+    if (exporting) return
+    if (arsenal.length === 0 && pre.length === 0 && mid.length === 0) {
+      alert('El mazo está vacío: agregá cartas antes de descargarlo.')
+      return
+    }
+    setExporting(true)
+    try {
+      await downloadDeckDocx({ name: deckName, arsenal, backlashPre: pre, backlashMid: mid })
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo generar el documento Word.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const newDeck = () => {
@@ -376,6 +394,18 @@ export function DeckbuilderPage() {
               <button className="ghost" style={{ flex: 1 }} onClick={quickBuild}>Mazo de ejemplo</button>
               <button className="ghost" style={{ flex: 1 }} onClick={() => setArsenal([])}>Limpiar</button>
             </div>
+            {decks.length > 0 && (
+              <div className="row" style={{ marginTop: 8 }}>
+                <button
+                  className="ghost"
+                  style={{ flex: 1 }}
+                  disabled={exporting}
+                  onClick={() => void exportDocx()}
+                >
+                  {exporting ? 'Generando…' : 'Descargar .docx'}
+                </button>
+              </div>
+            )}
             <div className="muted" style={{ marginTop: 6, fontSize: 11, textAlign: 'center' }}>
               Mazos guardados: {decks.length}/10
             </div>
