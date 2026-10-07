@@ -153,6 +153,9 @@ export function DeckbuilderPage() {
     }
   }
 
+  // The export mirrors these arrays as-is, so the .docx keeps the pick order.
+  const pickOrderCount = arsenal.length + pre.length + mid.length
+
   const newDeck = () => {
     setSuperstarId('')
     setArsenal([])
@@ -394,18 +397,21 @@ export function DeckbuilderPage() {
               <button className="ghost" style={{ flex: 1 }} onClick={quickBuild}>Mazo de ejemplo</button>
               <button className="ghost" style={{ flex: 1 }} onClick={() => setArsenal([])}>Limpiar</button>
             </div>
-            {decks.length > 0 && (
-              <div className="row" style={{ marginTop: 8 }}>
-                <button
-                  className="ghost"
-                  style={{ flex: 1 }}
-                  disabled={exporting}
-                  onClick={() => void exportDocx()}
-                >
-                  {exporting ? 'Generando…' : 'Descargar .docx'}
-                </button>
-              </div>
-            )}
+            <div className="row" style={{ marginTop: 8 }}>
+              <button
+                className="ghost"
+                style={{ flex: 1 }}
+                disabled={exporting || pickOrderCount === 0}
+                title={
+                  pickOrderCount === 0
+                    ? 'Agregá cartas para descargar el documento.'
+                    : `Descarga las ${pickOrderCount} cartas elegidas, en el orden en que las vas juntando.`
+                }
+                onClick={() => void exportDocx()}
+              >
+                {exporting ? 'Generando…' : 'Descargar .docx'}
+              </button>
+            </div>
             <div className="muted" style={{ marginTop: 6, fontSize: 11, textAlign: 'center' }}>
               Mazos guardados: {decks.length}/10
             </div>
