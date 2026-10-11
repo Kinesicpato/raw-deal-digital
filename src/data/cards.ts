@@ -4574,7 +4574,106 @@ export const SET1509_CARDS: CardDef[] = [
   }),
 ]
 
-export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...AJ_STYLES_FANSET_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS].map((c) => applyVerifiedStats(c))
+// ─── Vitoco (backlash + arsenal del mazo) ───
+export const VITOCO_CARDS: CardDef[] = [
+  card({
+    id: 'how-important-is-it',
+    name: 'How Important Is It?',
+    type: 'Action',
+    traits: ['Unique'],
+    fortitude: 10,
+    damage: 0,
+    backlash: 'Mid-match',
+    text: 'When this card is in your Ring area, you cannot play Mid-match cards and during your opponent\'s turn, before his Draw Segment, he may discard 2 cards. If he does not, his Superstar Ability is blank until the start of his next turn.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'mind-games',
+    name: 'Mind Games',
+    type: 'Action',
+    traits: ['Unique'],
+    fortitude: 8,
+    damage: 0,
+    text: 'Cannot be reversed if played by Mankind / Cactus Jack / Dude Love. Look at your opponent\'s hand. If you find at least 1 Maneuver card, choose a Maneuver card and your opponent discards the chosen card. Search his Arsenal and put all copies of that card into his Ringside pile. Your opponent then shuffles his Arsenal.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'im-hardcore-im-hardcore',
+    name: "I'm Hardcore! I'm Hardcore!",
+    type: 'Action',
+    traits: ['Unique'],
+    fortitude: 6,
+    damage: 0,
+    text: 'Cannot be reversed when played by Cactus Jack or The Mystery Wrestler. Search your Arsenal for 1 Foreign Object card, reveal it to your opponent, put it into your hand, and shuffle your Arsenal. When this card is in your Ring area, your Foreign Object cards are -4F. When this card is in your Ringside pile, during your turn you may discard 3 cards and then put this card into your hand.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'dem-damn-dudleyz',
+    name: 'Dem Damn Dudleyz!',
+    type: 'Action',
+    traits: ['Foreign Object', 'Run-in', 'Throwback'],
+    fortitude: 3,
+    damage: 0,
+    text: 'Search your Arsenal for 1 Foreign Object, reveal it to your opponent, put it into your hand, and shuffle your Arsenal.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'recover-again',
+    name: 'Recover Again',
+    type: 'Action',
+    fortitude: 6,
+    damage: 0,
+    text: 'This card is -2F when the card titled Recovery is in your Ring area. Shuffle up to 4 cards from your Ringside pile into your Arsenal and draw 1 card. Discard 1 card unless the card titled Recovery is in your Ring area.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'struck-by-a-kendo-stick',
+    name: 'Struck by a Kendo Stick',
+    type: 'Maneuver',
+    subtypes: ['Strike'],
+    traits: ['Foreign Object'],
+    fortitude: 6,
+    damage: 5,
+    text: 'Cannot be reversed by the cards titled Elbow to the Face, Double Digits, or Triple H\'s Reverse Neck Breaker.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'struck-by-a-kendo-stick-tb',
+    name: 'Struck by a Kendo Stick',
+    type: 'Maneuver',
+    subtypes: ['Strike'],
+    traits: ['Foreign Object', 'Throwback'],
+    fortitude: 3,
+    damage: 7,
+    text: 'When successfully played, search your Arsenal for 1 Foreign Object card, reveal it to your opponent, put it into your hand, and shuffle your Arsenal.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'overhand-chairshot',
+    name: 'Overhand Chairshot',
+    type: 'Maneuver',
+    subtypes: ['Strike'],
+    traits: ['Multi', 'Unique', 'Foreign Object', 'Heel'],
+    brand: 'Raw',
+    fortitude: 5,
+    damage: 5,
+    text: 'Cannot be reversed by the card titled Back Rake. When this card is in your Ring area, you may put this card into your Ringside pile to reverse any Foreign Object or any card played after the card titled Roll Out of the Ring and end your opponent\'s turn.',
+    set: 'Vitoco',
+  }),
+  card({
+    id: 'struck-by-an-unknown-foreign-object',
+    name: 'Struck by an Unknown Foreign Object',
+    type: 'Maneuver',
+    subtypes: ['Strike'],
+    traits: ['Heel', 'Foreign Object'],
+    fortitude: 12,
+    damage: 8,
+    text: 'Can only be played when the card titled Roll Out of the Ring is in any Ring area. When successfully played, put up to 2 non-Maneuver cards from your opponent\'s Ring area into his Ringside pile. If he has an Enforcer revealed, he also chooses 1 different Enforcer.',
+    set: 'Vitoco',
+  }),
+]
+
+export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...AJ_STYLES_FANSET_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS].map((c) => applyVerifiedStats(c))
 
 /** Convenience lookup. */
 const index = new Map<string, CardDef>()
