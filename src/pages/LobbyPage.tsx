@@ -171,6 +171,12 @@ export function LobbyPage() {
             : `Te estás uniendo como jugador ${myIdx + 1}. El anfitrión comienza la partida.`}
       </p>
 
+      {online.role === 'host' && !online.connected && (
+        <p className="muted" style={{ textAlign: 'center', marginTop: -4 }}>
+          Conectando con Supabase…
+        </p>
+      )}
+
       <div className="card" style={{ maxWidth: 640, margin: '0 auto' }}>
         <h3>Jugadores ({online.roster.filter((r) => r.connected).length}/{online.roster.length})</h3>
         {online.roster.map((r) => {

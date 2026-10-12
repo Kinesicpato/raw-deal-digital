@@ -430,7 +430,7 @@ export const useAppStore = create<AppState>()(
           hostShareDecks(decks)
         },
 
-        createRoom: (name, seats) => {
+        createRoom: async (name, seats) => {
           stopOnline()
           const code = randomCode()
           const prevMode = get().online.gameMode
@@ -448,80 +448,97 @@ export const useAppStore = create<AppState>()(
             view: 'lobby',
             lastError: null,
           })
-          startHost(code, seats, name, {
-            onOpen: () => {
-              const st = get()
-              set({ online: { ...st.online, connected: true } })
-            },
-            onRoster: (r) => {
-              const st = get()
-              let online = { ...st.online, roster: r }
-              // The belt can only be played while its champion is in the room.
-              const { championIdx } = beltContext(online, st.beltOwners)
-              if (online.beltId && st.beltOwners[online.beltId] && championIdx === null) {
-                online = { ...online, beltId: null, beltDefending: null }
-                hostSetBelt(null, null)
-              }
-              set({ online })
-            },
-            onIntent: (idx, action, args) => applyRemoteIntent(get, idx, action, args),
-            onPeerClosed: () => {
-              /* roster already updated via onRoster */
-            },
-            onBeltDefense: (idx, defending) => {
-              const st = get()
-              const o = st.online
-              const { owner, championIdx } = beltContext(o, st.beltOwners)
-              if (o.role !== 'host' || !owner || championIdx !== idx) return
-              set({ online: { ...o, beltDefending: defending } })
-              hostSetBelt(o.beltId, defending)
-            },
-            onError: (message) => set({ lastError: message }),
-          })
+          try {
+            await startHost(code, seats, name, {
+              onOpen: () => {
+                const st = get()
+                set({ online: { ...st.online, connected: true } })
+              },
+              onRoster: (r) => {
+                const st = get()
+                let online = { ...st.online, roster: r }
+                // The belt can only be played while its champion is in the room.
+                const { championIdx } = beltContext(online, st.beltOwners)
+                if (online.beltId && st.beltOwners[online.beltId] && championIdx === null) {
+                  online = { ...online, beltId: null, beltDefending: null }
+                  hostSetBelt(null, null)
+                }
+                set({ online })
+              },
+              onIntent: (idx, action, args) => applyRemoteIntent(get, idx, action, args),
+              onPeerClosed: () => {
+                /* roster already updated via onRoster */
+              },
+              onBeltDefense: (idx, defending) => {
+                const st = get()
+                const o = st.online
+                const { owner, championIdx } = beltContext(o, st.beltOwners)
+                if (o.role !== 'host' || !owner || championIdx !== idx) return
+                set({ online: { ...o, beltDefending: defending } })
+                hostSetBelt(o.beltId, defending)
+              },
+              onError: (message) => set({ lastError: message }),
+            })
+          } catch (err) {
+            stopOnline()
+            set({
+              online: defaultOnline,
+              lastError: err instanceof Error ? err.message : 'No pude crear la sala. Intentá de nuevo.',
+            })
+            return
+          }
           // startHost() clears the module-level room state first, so the belt
           // and the shared decks have to be announced after that call.
           hostSetBelt(prevBelt, null)
           hostShareDecks(get().decks.map((d) => ({ ...d })))
         },
 
-        joinRoom: (code, name) => {
+        joinRoom: async (code, name) => {
           stopOnline()
           set({
             online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null, beltDefending: null },
             view: 'lobby',
             lastError: null,
           })
-          startClient(code, name, {
-            onOpen: () => {
-              const st = get()
-              set({ online: { ...st.online, connected: true } })
-            },
-            onWelcome: (idx, roster) => {
-              const st = get()
-              set({ online: { ...st.online, myIdx: idx, roster } })
-            },
-            onRoster: (roster) => {
-              const st = get()
-              set({ online: { ...st.online, roster } })
-            },
-            onDecks: (decks) => {
-              const st = get()
-              set({ online: { ...st.online, sharedDecks: decks } })
-            },
-            onBelt: (beltId, defending) => {
-              const st = get()
-              set({ online: { ...st.online, beltId, beltDefending: defending } })
-            },
-            onState: (game) => {
-              const st = get()
-              set({ online: st.online, game, view: 'game', lastError: null })
-            },
-            onError: (message) => set({ lastError: message }),
-            onClosed: () => {
-              set({ lastError: 'La sala se cerró (el anfitrión se desconectó).', view: 'menu', game: null })
-              stopOnline()
-            },
-          })
+          try {
+            await startClient(code, name, {
+              onOpen: () => {
+                const st = get()
+                set({ online: { ...st.online, connected: true } })
+              },
+              onWelcome: (idx, roster) => {
+                const st = get()
+                set({ online: { ...st.online, myIdx: idx, roster } })
+              },
+              onRoster: (roster) => {
+                const st = get()
+                set({ online: { ...st.online, roster } })
+              },
+              onDecks: (decks) => {
+                const st = get()
+                set({ online: { ...st.online, sharedDecks: decks } })
+              },
+              onBelt: (beltId, defending) => {
+                const st = get()
+                set({ online: { ...st.online, beltId, beltDefending: defending } })
+              },
+              onState: (game) => {
+                const st = get()
+                set({ online: st.online, game, view: 'game', lastError: null })
+              },
+              onError: (message) => set({ lastError: message }),
+              onClosed: () => {
+                set({ lastError: 'La sala se cerró (el anfitrión se desconectó).', view: 'menu', game: null })
+                stopOnline()
+              },
+            })
+          } catch (err) {
+            stopOnline()
+            set({
+              online: defaultOnline,
+              lastError: err instanceof Error ? err.message : 'No pude unirme a la sala. Intentá de nuevo.',
+            })
+          }
         },
 
         leaveOnline: () => {

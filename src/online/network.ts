@@ -1,6 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { GameState } from '../engine/types'
-import { getSupabase } from './supabase'
+import { ensureSupabaseReachable, getSupabase } from './supabase'
 import {
   buildClientView,
   type ClientMsg,
@@ -101,6 +101,7 @@ function sendToClient(targetIdx: number, payload: HostMsg): void {
 
 export async function startHost(code: string, seatCount: number, hostName: string, hooks: HostHooks): Promise<void> {
   stopOnline()
+  await ensureSupabaseReachable()
   role = 'host'
   hostHooksRef = hooks
   registry.clear()
@@ -290,6 +291,7 @@ export function hostSendError(idx: number, message: string): void {
 
 export async function startClient(code: string, name: string, hooks: ClientHooks): Promise<void> {
   stopOnline()
+  await ensureSupabaseReachable()
   role = 'client'
   hostHooksRef = null
 
