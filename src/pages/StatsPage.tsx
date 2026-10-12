@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { AppBanner } from '../components/Branding'
 import { CardFace } from '../components/CardView'
-import { SUPERSTARS } from '../data/cards'
+import { SUPERSTARS, BELTS, type BeltDef } from '../data/cards'
 import {
   getRecentResults,
   getPlayerStats,
   getSuperstarStats,
   getSuperstarMatchDetails,
   getBeltDefenseStats,
+  getBeltOwners,
   deleteGameResult,
   insertGameResultManual,
   deleteAllStats,
@@ -22,6 +23,17 @@ import {
 function superstarsName(id: string | null): string {
   if (!id) return '—'
   return SUPERSTARS.find((s) => s.id === id)?.name ?? id
+}
+
+/** Belts currently held by a superstar (owner map is belt -> superstar, inverted here). */
+function beltsHeldBy(owners: Record<string, string>, superstarId: string): BeltDef[] {
+  const held: BeltDef[] = []
+  for (const [key, holder] of Object.entries(owners)) {
+    if (holder !== superstarId) continue
+    const belt = BELTS.find((b) => b.id === key) ?? { id: key, name: key, image: '' }
+    held.push(belt)
+  }
+  return held
 }
 
 function formatDate(iso: string): string {
@@ -65,6 +77,7 @@ export function StatsPage() {
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [starStats, setStarStats] = useState<SuperstarAggregate[]>([])
   const [beltDefenses, setBeltDefenses] = useState<Record<string, BeltDefenseStat>>({})
+  const [beltOwners, setBeltOwners] = useState<Record<string, string>>({})
   const [selectedStar, setSelectedStar] = useState<string | null>(null)
   const [matchDetails, setMatchDetails] = useState<SuperstarMatchDetail[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,13 +88,16 @@ export function StatsPage() {
 
   const reload = useCallback(() => {
     setLoading(true)
-    Promise.all([getRecentResults(), getPlayerStats(), getSuperstarStats(), getBeltDefenseStats()]).then(([r, p, s, d]) => {
-      setResults(r)
-      setPlayers(p)
-      setStarStats(s)
-      setBeltDefenses(d)
-      setLoading(false)
-    })
+    Promise.all([getRecentResults(), getPlayerStats(), getSuperstarStats(), getBeltDefenseStats(), getBeltOwners()]).then(
+      ([r, p, s, d, owners]) => {
+        setResults(r)
+        setPlayers(p)
+        setStarStats(s)
+        setBeltDefenses(d)
+        setBeltOwners(owners)
+        setLoading(false)
+      },
+    )
   }, [])
 
   useEffect(() => { reload() }, [reload])
@@ -411,6 +427,7 @@ export function StatsPage() {
                   {SUPERSTARS.map((star) => {
                     const agg = starStats.find((s) => s.superstar_id === star.id) ?? null
                     const isSelected = selectedStar === star.id
+                    const heldBelts = beltsHeldBy(beltOwners, star.id)
                     return (
                       <div
                         key={star.id}
@@ -424,8 +441,37 @@ export function StatsPage() {
                           textAlign: 'center',
                           width: 90,
                           transition: 'border-color 0.15s',
+                          position: 'relative',
                         }}
                       >
+                        {heldBelts.length > 0 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 4,
+                              right: 4,
+                              zIndex: 1,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 2,
+                              alignItems: 'flex-end',
+                            }}
+                            title={heldBelts.map((b) => b.name).join(' · ')}
+                          >
+                            {heldBelts.map((b) => (
+                              b.image ? (
+                                <img
+                                  key={b.id}
+                                  src={b.image}
+                                  alt={b.name}
+                                  style={{ height: 18, maxWidth: 40, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}
+                                />
+                              ) : (
+                                <span key={b.id} style={{ fontSize: 9, fontWeight: 700, color: 'var(--gold, #ffd700)' }}>🏆</span>
+                              )
+                            ))}
+                          </div>
+                        )}
                         <CardFace id={`superstar-${star.id}`} size="xs" />
                         <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600, lineHeight: 1.2 }}>
                           {star.name}
@@ -442,6 +488,23 @@ export function StatsPage() {
                   const agg = starStats.find((s) => s.superstar_id === selectedStar) ?? null
                   const star = SUPERSTARS.find((s) => s.id === selectedStar)
                   if (!star) return null
+                  const heldBelts = beltsHeldBy(beltOwners, selectedStar)
+
+                  const BeltHeldRow = heldBelts.length === 0 ? null : (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Cinturón vigente</div>
+                      {heldBelts.map((b) => (
+                        <div key={b.id} className="row" style={{ alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                          {b.image ? (
+                            <img src={b.image} alt={b.name} style={{ height: 28, objectFit: 'contain' }} />
+                          ) : (
+                            <span style={{ fontSize: 18 }}>🏆</span>
+                          )}
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{b.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
 
                   if (!agg) {
                     return (
@@ -450,6 +513,7 @@ export function StatsPage() {
                           <CardFace id={`superstar-${star.id}`} size="sm" />
                           <div style={{ fontWeight: 700, fontSize: 16 }}>{star.name}</div>
                         </div>
+                        {BeltHeldRow}
                         <p className="muted">Todavía no hay estadísticas para esta superestrella.</p>
                         <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                           Jugará partidas online para que aparezcan sus datos aquí.
@@ -469,6 +533,8 @@ export function StatsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {BeltHeldRow}
 
                       {(() => {
                         const def = beltDefenses[agg.superstar_id]
