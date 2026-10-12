@@ -21,6 +21,12 @@ export interface RosterEntry {
   beltId?: string | null
 }
 
+/** A client asking to enter a full room (or a match already in progress). */
+export interface JoinRequest {
+  senderId: string
+  name: string
+}
+
 /** Serialized shape of a saved deck, shared by the host so clients can pick it. */
 export interface SharedDeck {
   name: string
@@ -67,6 +73,8 @@ export type HostMsg =
   | { type: 'belt'; beltId: string | null; defending: boolean | null }
   | { type: 'state'; game: GameState }
   | { type: 'error'; message: string }
+  | { type: 'joinPending' }
+  | { type: 'joinDenied'; reason?: string }
 
 /** The player index that must answer the current pending decision, or null. */
 export function decisionOwner(game: GameState): number | null {

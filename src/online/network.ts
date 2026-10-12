@@ -7,6 +7,7 @@ import {
   type DeckPick,
   type HostMsg,
   type IntentName,
+  type JoinRequest,
   type RosterEntry,
   type SharedDeck,
 } from './types'
@@ -34,6 +35,10 @@ export interface HostHooks {
   onError: (message: string) => void
   /** A client answered whether it defends the belt (only the champion's seat may). */
   onBeltDefense?: (idx: number, defending: boolean) => void
+  /** A client asks to enter a full room (or a match already in progress). */
+  onJoinRequest?: (req: JoinRequest) => void
+  /** A client that asked to join went away before the host answered. */
+  onJoinLeave?: (senderId: string) => void
 }
 
 export interface ClientHooks {
@@ -46,6 +51,10 @@ export interface ClientHooks {
   onClosed: () => void
   /** Host announced (or re-announced) the belt in play for the room. */
   onBelt?: (beltId: string | null, defending: boolean | null) => void
+  /** The host queued our join request: wait for approval before entering. */
+  onJoinPending?: () => void
+  /** The host rejected our join request. */
+  onJoinDenied?: (reason?: string) => void
 }
 
 let role: 'host' | 'client' | null = null
@@ -58,6 +67,10 @@ let hostHooksRef: HostHooks | null = null
 let hostSharedDecks: SharedDeck[] = []
 /** Belt chosen for the room, kept on the host so late joiners receive it. */
 let hostBelt: { beltId: string | null; defending: boolean | null } = { beltId: null, defending: null }
+/** Join requests waiting for the host's answer (senderId -> requested name). */
+const pendingJoins = new Map<string, string>()
+/** True once the host started the duel: from then on, approvals enter as spectators. */
+let hostGameStarted = false
 
 function emitRoster(hooks: HostHooks | null) {
   if (!hooks) return
@@ -84,6 +97,8 @@ export function stopOnline(): void {
   hostHooksRef = null
   hostSharedDecks = []
   hostBelt = { beltId: null, defending: null }
+  pendingJoins.clear()
+  hostGameStarted = false
 }
 
 function sendToAll(payload: Record<string, unknown>): void {
@@ -92,7 +107,7 @@ function sendToAll(payload: Record<string, unknown>): void {
 }
 
 function sendToClient(targetIdx: number, payload: HostMsg): void {
-  sendToAll({ target: targetIdx, msg: payload })
+  sendToAll({ target: targetIdx, senderHint: connectedClients.get(targetIdx), msg: payload })
 }
 
 // ---------------------------------------------------------------------------
@@ -126,29 +141,26 @@ export async function startHost(code: string, seatCount: number, hostName: strin
     const msg = payload.msg as ClientMsg
 
     if (msg.type === 'hello') {
-      const idx = nextFreeSeat()
-      if (idx === null) {
-        sendToAll({ target: -1, senderHint: senderId, msg: { type: 'error', message: 'Sala llena (máximo 8 jugadores).' } satisfies HostMsg })
+      const free = nextFreeSeat()
+      const canGrow = registry.size < MAX_SEATS
+      if (free === null && !canGrow) {
+        sendToAll({ target: -1, senderHint: senderId, msg: { type: 'joinDenied', reason: 'Sala llena (máximo 8 jugadores).' } satisfies HostMsg })
         return
       }
-      connectedClients.set(idx, senderId)
-      const entry = registry.get(idx)
-      if (entry) {
-        entry.name = msg.name
-        entry.connected = true
-        sendToClient(idx, { type: 'welcome', idx, roster: currentRoster() })
-        sendToClient(idx, { type: 'belt', beltId: hostBelt.beltId, defending: hostBelt.defending })
-        if (hostSharedDecks.length > 0) {
-          sendToClient(idx, { type: 'decks', decks: hostSharedDecks })
-        }
-        emitRoster(hooks)
+      if (hostGameStarted || free === null) {
+        pendingJoins.set(senderId, msg.name)
+        sendToAll({ target: -1, senderHint: senderId, msg: { type: 'joinPending' } satisfies HostMsg })
+        hooks.onJoinRequest?.({ senderId, name: msg.name })
+        return
       }
+      admitClient(senderId, free, msg.name, hooks)
     } else if (msg.type === 'setRole') {
       const idx = clientIdx(senderId)
       if (idx === null) return
       const entry = registry.get(idx)
       if (entry && entry.connected) {
-        entry.spectator = msg.role === 'spectator'
+        // Once the duel has started nobody can switch in as a player.
+        entry.spectator = hostGameStarted ? true : msg.role === 'spectator'
         emitRoster(hooks)
       }
     } else if (msg.type === 'pick') {
@@ -169,12 +181,20 @@ export async function startHost(code: string, seatCount: number, hostName: strin
       if (idx !== null && registry.get(idx)?.connected) hooks.onBeltDefense?.(idx, msg.defending === true)
     } else if (msg.type === 'intent') {
       const idx = clientIdx(senderId)
-      if (idx !== null && registry.get(idx)?.connected) hooks.onIntent(idx, msg.action, msg.args)
+      const entry = idx !== null ? registry.get(idx) : null
+      // Spectators (including mid-game approvals) never act: their seat index
+      // is unrelated to the players array and could impersonate a player.
+      if (entry?.spectator) {
+        if (idx !== null) sendToClient(idx, { type: 'error', message: 'Estás observando la partida, no podés jugar.' })
+        return
+      }
+      if (idx !== null && entry?.connected) hooks.onIntent(idx, msg.action, msg.args)
     }
   })
 
   ch.on('broadcast', { event: 'leave' }, ({ payload }: { payload: Record<string, unknown> }) => {
     const senderId = payload.sender as string
+    if (dropPendingJoin(senderId, hooks)) return
     const idx = clientIdx(senderId)
     if (idx === null) return
     connectedClients.delete(idx)
@@ -209,6 +229,9 @@ export async function startHost(code: string, seatCount: number, hostName: strin
         hooks.onPeerClosed(idx)
       }
     }
+    for (const senderId of [...pendingJoins.keys()]) {
+      if (!onlineIds.has(senderId)) dropPendingJoin(senderId, hooks)
+    }
   })
 
   ch.subscribe(async (status: string) => {
@@ -221,6 +244,28 @@ export async function startHost(code: string, seatCount: number, hostName: strin
       hooks.onError('Error al crear la sala. Intentá de nuevo.')
     }
   })
+}
+
+function admitClient(senderId: string, idx: number, name: string, hooks: HostHooks): void {
+  connectedClients.set(idx, senderId)
+  pendingJoins.delete(senderId)
+  const entry = registry.get(idx)
+  if (!entry) return
+  entry.name = name
+  entry.connected = true
+  sendToClient(idx, { type: 'welcome', idx, roster: currentRoster() })
+  sendToClient(idx, { type: 'belt', beltId: hostBelt.beltId, defending: hostBelt.defending })
+  if (hostSharedDecks.length > 0) {
+    sendToClient(idx, { type: 'decks', decks: hostSharedDecks })
+  }
+  emitRoster(hooks)
+}
+
+/** Drops a join request that never got an answer (the requester went away). */
+function dropPendingJoin(senderId: string, hooks: HostHooks): boolean {
+  if (!pendingJoins.delete(senderId)) return false
+  hooks.onJoinLeave?.(senderId)
+  return true
 }
 
 function clientIdx(senderId: string): number | null {
@@ -285,6 +330,53 @@ export function hostSendError(idx: number, message: string): void {
   sendToClient(idx, { type: 'error', message })
 }
 
+/** Tells the host whether the duel has started: from then on approvals enter as spectators. */
+export function hostSetGameStarted(started: boolean): void {
+  hostGameStarted = started
+}
+
+/**
+ * Admits a requested client. If the match already started (or the room was
+ * full) the new seat is created on the spot, growing the roster up to
+ * MAX_SEATS; mid-game joiners are always flagged as spectators so the engine
+ * never sees them as players.
+ */
+export function hostApproveJoin(senderId: string): boolean {
+  const hooks = hostHooksRef
+  const name = pendingJoins.get(senderId)
+  if (!hooks || name === undefined) return false
+  let idx = nextFreeSeat()
+  if (idx === null) {
+    if (registry.size >= MAX_SEATS) {
+      pendingJoins.delete(senderId)
+      hooks.onJoinLeave?.(senderId)
+      sendToAll({ target: -1, senderHint: senderId, msg: { type: 'joinDenied', reason: 'Sala llena (máximo 8 jugadores).' } satisfies HostMsg })
+      return false
+    }
+    idx = registry.size
+    registry.set(idx, { idx, name: '', superstarId: null, handSize: null, deck: null, connected: false })
+  }
+  const entry = registry.get(idx)
+  // Mid-game joiners are spectators: set the flag before the welcome so the
+  // roster the newcomer receives already shows them as such.
+  if (hostGameStarted && entry) entry.spectator = true
+  admitClient(senderId, idx, name, hooks)
+  return true
+}
+
+/** Rejects a join request: the client goes back to the join form. */
+export function hostRejectJoin(senderId: string, reason?: string): boolean {
+  const hooks = hostHooksRef
+  if (!pendingJoins.delete(senderId)) return false
+  hooks?.onJoinLeave?.(senderId)
+  sendToAll({
+    target: -1,
+    senderHint: senderId,
+    msg: { type: 'joinDenied', reason: reason ?? 'El anfitrión no autorizó tu ingreso.' } satisfies HostMsg,
+  })
+  return true
+}
+
 // ---------------------------------------------------------------------------
 // CLIENT
 // ---------------------------------------------------------------------------
@@ -304,9 +396,14 @@ export async function startClient(code: string, name: string, hooks: ClientHooks
   ch.on('broadcast', { event: 'msg' }, ({ payload }: { payload: Record<string, unknown> }) => {
     const msg = payload.msg as HostMsg
     const target = payload.target as number | undefined
-    if (target !== undefined && target !== -1) {
-      const myIdx = mySeatIdx
-      if (myIdx !== null && target !== myIdx) return
+    const hint = payload.senderHint as string | undefined
+    if (hint !== undefined) {
+      // Addressed to a specific client: ignore it unless it's us. This is what
+      // lets an unseated client (waiting for approval) receive joinPending /
+      // joinDenied without catching other seats' messages.
+      if (hint !== clientId) return
+    } else if (target !== undefined && target !== -1) {
+      if (mySeatIdx === null || target !== mySeatIdx) return
     }
 
     if (msg.type === 'welcome') {
@@ -322,6 +419,10 @@ export async function startClient(code: string, name: string, hooks: ClientHooks
       hooks.onState(msg.game)
     } else if (msg.type === 'error') {
       hooks.onError(msg.message)
+    } else if (msg.type === 'joinPending') {
+      hooks.onJoinPending?.()
+    } else if (msg.type === 'joinDenied') {
+      hooks.onJoinDenied?.(msg.reason)
     }
   })
 

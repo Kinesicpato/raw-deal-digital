@@ -33,6 +33,9 @@ import {
   hostSetHandSize,
   hostSetBelt,
   hostShareDecks,
+  hostApproveJoin,
+  hostRejectJoin,
+  hostSetGameStarted,
   randomCode,
   startClient,
   startHost,
@@ -40,7 +43,14 @@ import {
   onlineRole,
   isOnline,
 } from '../online/network'
-import { decisionOwner, type IntentName, type RosterEntry, type SharedDeck, type GameMode } from '../online/types'
+import {
+  decisionOwner,
+  type IntentName,
+  type JoinRequest,
+  type RosterEntry,
+  type SharedDeck,
+  type GameMode,
+} from '../online/types'
 import { saveGameResult } from '../online/stats'
 
 export interface DeckDraft {
@@ -65,6 +75,10 @@ interface OnlineInfo {
   beltId: string | null
   /** Champion's answer for the belt in play: null = still unanswered. */
   beltDefending: boolean | null
+  /** Host side: join requests waiting for an answer. */
+  joinRequests: JoinRequest[]
+  /** Client side: our join request is queued, waiting for the host's answer. */
+  pendingApproval: boolean
 }
 
 interface AppState {
@@ -123,6 +137,10 @@ interface AppState {
   answerBeltDefense: (defending: boolean) => void
   startOnlineGame: () => void
   applyRemoteState: (game: GameState) => void
+  /** Host: admit a client that asked to join (creates the seat if needed). */
+  approveJoin: (senderId: string) => void
+  /** Host: turn down a join request. */
+  rejectJoin: (senderId: string) => void
 }
 
 function cloneGame(g: GameState): GameState {
@@ -132,7 +150,19 @@ function cloneGame(g: GameState): GameState {
   return JSON.parse(JSON.stringify(g))
 }
 
-const defaultOnline: OnlineInfo = { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null, beltDefending: null }
+const defaultOnline: OnlineInfo = {
+  role: null,
+  code: null,
+  myIdx: null,
+  roster: [],
+  sharedDecks: [],
+  connected: false,
+  gameMode: 'rumble',
+  beltId: null,
+  beltDefending: null,
+  joinRequests: [],
+  pendingApproval: false,
+}
 
 /** Which superstar holds the belt in play and which seat (if any) plays it. */
 function beltContext(
@@ -444,7 +474,7 @@ export const useAppStore = create<AppState>()(
             connected: i === 0,
           }))
           set({
-            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode, beltId: prevBelt, beltDefending: null },
+            online: { role: 'host', code, myIdx: 0, roster, sharedDecks: get().decks.map((d) => ({ ...d })), connected: false, gameMode: prevMode, beltId: prevBelt, beltDefending: null, joinRequests: [], pendingApproval: false },
             view: 'lobby',
             lastError: null,
           })
@@ -477,6 +507,16 @@ export const useAppStore = create<AppState>()(
                 set({ online: { ...o, beltDefending: defending } })
                 hostSetBelt(o.beltId, defending)
               },
+              onJoinRequest: (req) => {
+                set((s) => ({
+                  online: { ...s.online, joinRequests: [...s.online.joinRequests.filter((r) => r.senderId !== req.senderId), req] },
+                }))
+              },
+              onJoinLeave: (senderId) => {
+                set((s) => ({
+                  online: { ...s.online, joinRequests: s.online.joinRequests.filter((r) => r.senderId !== senderId) },
+                }))
+              },
               onError: (message) => set({ lastError: message }),
             })
           } catch (err) {
@@ -496,7 +536,7 @@ export const useAppStore = create<AppState>()(
         joinRoom: async (code, name) => {
           stopOnline()
           set({
-            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null, beltDefending: null },
+            online: { role: 'client', code: code.toUpperCase(), myIdx: null, roster: [], sharedDecks: [], connected: false, gameMode: 'rumble', beltId: null, beltDefending: null, joinRequests: [], pendingApproval: false },
             view: 'lobby',
             lastError: null,
           })
@@ -508,7 +548,11 @@ export const useAppStore = create<AppState>()(
               },
               onWelcome: (idx, roster) => {
                 const st = get()
-                set({ online: { ...st.online, myIdx: idx, roster } })
+                // Mid-game approvals arrive already flagged as spectators in
+                // the roster: mirror that locally so the UI never offers controls.
+                const me = roster.find((r) => r.idx === idx)
+                const isSpectator = me?.spectator === true ? true : st.online.isSpectator
+                set({ online: { ...st.online, myIdx: idx, roster, pendingApproval: false, isSpectator } })
               },
               onRoster: (roster) => {
                 const st = get()
@@ -527,6 +571,17 @@ export const useAppStore = create<AppState>()(
                 set({ online: st.online, game, view: 'game', lastError: null })
               },
               onError: (message) => set({ lastError: message }),
+              onJoinPending: () => {
+                set((s) => ({ online: { ...s.online, pendingApproval: true } }))
+              },
+              onJoinDenied: (reason) => {
+                stopOnline()
+                set({
+                  online: defaultOnline,
+                  view: 'lobby',
+                  lastError: reason ?? 'El anfitrión no autorizó tu ingreso a la sala.',
+                })
+              },
               onClosed: () => {
                 set({ lastError: 'La sala se cerró (el anfitrión se desconectó).', view: 'menu', game: null })
                 stopOnline()
@@ -690,6 +745,7 @@ export const useAppStore = create<AppState>()(
             beltDefending: owner ? st.online.beltDefending : null,
           }
           const game = newGame(cfg)
+          hostSetGameStarted(true)
           set({ game, lastError: null, view: 'game' })
           broadcastState(game)
         },
@@ -697,6 +753,31 @@ export const useAppStore = create<AppState>()(
         applyRemoteState: (game) => {
           const st = get()
           set({ online: st.online, game, view: 'game', lastError: null })
+        },
+
+        approveJoin: (senderId) => {
+          const st = get()
+          if (st.online.role !== 'host') return
+          const admitted = hostApproveJoin(senderId)
+          set((s) => ({
+            online: { ...s.online, joinRequests: s.online.joinRequests.filter((r) => r.senderId !== senderId) },
+          }))
+          if (!admitted) {
+            set({ lastError: 'No pude darle lugar (la sala llegó al máximo).' })
+            return
+          }
+          // A mid-game approval has to reach the newcomer right away: they are
+          // not in the roster yet when the last broadcast happened.
+          if (st.game) broadcastState(st.game)
+        },
+
+        rejectJoin: (senderId) => {
+          const st = get()
+          if (st.online.role !== 'host') return
+          hostRejectJoin(senderId)
+          set((s) => ({
+            online: { ...s.online, joinRequests: s.online.joinRequests.filter((r) => r.senderId !== senderId) },
+          }))
         },
       }
     },

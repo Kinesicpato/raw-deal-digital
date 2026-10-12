@@ -6,6 +6,7 @@ import { getBeltOwners } from '../online/stats'
 import { AppBanner } from '../components/Branding'
 import { CardFace } from '../components/CardView'
 import { Toast } from '../components/Toast'
+import { JoinRequestsPanel } from '../components/JoinRequestsPanel'
 import type { GameMode } from '../online/types'
 
 function starName(id: string): string {
@@ -165,9 +166,11 @@ export function LobbyPage() {
         {online.role === 'host'
           ? `Compartí el código ${online.code} con tus rivales. Vos sos el jugador ${(myIdx ?? 0) + 1}.`
           : myIdx === null
-            ? online.connected
-              ? 'Conectado a la sala. Esperando al anfitrión…'
-              : 'Conectando con la sala…'
+            ? online.pendingApproval
+              ? 'Solicitud enviada — esperando la aprobación del anfitrión…'
+              : online.connected
+                ? 'Conectado a la sala. Esperando al anfitrión…'
+                : 'Conectando con la sala…'
             : `Te estás uniendo como jugador ${myIdx + 1}. El anfitrión comienza la partida.`}
       </p>
 
@@ -348,6 +351,8 @@ export function LobbyPage() {
             </div>
           </div>
         )}
+
+        {online.role === 'host' && <JoinRequestsPanel />}
 
         {online.role === 'host' && online.roster.length > 2 && (
           <div style={{ marginTop: 16 }}>

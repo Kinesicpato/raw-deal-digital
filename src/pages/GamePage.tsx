@@ -12,6 +12,7 @@ import { AppBanner } from '../components/Branding'
 import { Toast } from '../components/Toast'
 import { buildClientView } from '../online/types'
 import { MusicPlayer } from '../components/MusicPlayer'
+import { JoinRequestsPanel } from '../components/JoinRequestsPanel'
 import { ArsenalPositionPicker } from '../components/ArsenalPositionPicker'
 import type { ArsenalPosition } from '../engine/game'
 import { getDrag, setDrag } from '../components/DragState'
@@ -90,12 +91,18 @@ export function GamePage() {
 
   const isOnline = online.role !== null && online.role !== undefined
   const myIdx = online.myIdx
+  // A spectator never gets a player's seat view: host-side snapshots for them
+  // are already full (viewerIdx -1), so re-deriving with a seat index could
+  // both hide the table and, worse, hand them the controls of whatever player
+  // happens to share their seat index.
+  const amSpectator = online.isSpectator === true
+  const viewerIdx = amSpectator ? -1 : myIdx
   // Online viewers only ever see the rules-allowed snapshot of the game
   // (opponents' hands/Arsenal/Backlash stay hidden unless a reveal decision
   // exposes them), applied to the host's own screen too.
-  const displayGame = isOnline && myIdx != null ? buildClientView(game, myIdx) : game
+  const displayGame = isOnline && viewerIdx != null ? buildClientView(game, viewerIdx) : game
   const displayActive = displayGame.players[displayGame.activeIndex]
-  const isMyTurn = !isOnline || displayGame.activeIndex === myIdx
+  const isMyTurn = !amSpectator && (!isOnline || displayGame.activeIndex === myIdx)
   const showHandControls = isMyTurn && !!displayActive && !displayActive.isAI
 
   return (
@@ -142,8 +149,8 @@ export function GamePage() {
                 onCardHover={setZoom}
                 onTools={(zone) => setTools({ player: i, zone })}
                 toolsOpen={tools?.player === i}
-                toolsEnabled={!isOnline || i === myIdx}
-                canControl={!isOnline || i === myIdx}
+                toolsEnabled={!isOnline || (!amSpectator && i === myIdx)}
+                canControl={!isOnline || (!amSpectator && i === myIdx)}
                 compact={isOnline ? false : i !== displayGame.activeIndex}
               />
             ))}
@@ -168,7 +175,7 @@ export function GamePage() {
               onCardHover={setZoom}
             />
           )}
-          {displayGame.phase === 'main' && !showHandControls && isOnline && myIdx != null && displayGame.players[myIdx] && (
+          {displayGame.phase === 'main' && !showHandControls && isOnline && !amSpectator && myIdx != null && displayGame.players[myIdx] && (
             <HandZone
               player={displayGame.players[myIdx]}
               playerIdx={myIdx}
@@ -215,7 +222,7 @@ export function GamePage() {
         <div className="modal-chips-bar">
           {displayGame.players.map((pl, i) => {
             const rating = computeFortitude([...pl.midmatchPlayed, ...pl.ring], getCardSafe)
-            const isMe = isOnline ? i === myIdx : i === displayGame.activeIndex
+            const isMe = isOnline ? !amSpectator && i === myIdx : i === displayGame.activeIndex
             return (
               <div key={pl.id} className={`modal-chip-group ${isMe ? 'me' : ''}`}>
                 <span className="modal-chip">{pl.name.split(' ')[0]}</span>
@@ -231,6 +238,7 @@ export function GamePage() {
       <CardDetailModal id={detail} onClose={() => setDetail(null)} />
       <CardZoomPreview id={detail ? null : zoom} />
       {lastError && <Toast message={lastError} onClose={clearError} />}
+      {isOnline && online.role === 'host' && <JoinRequestsPanel floating />}
       <MusicPlayer />
     </div>
   )

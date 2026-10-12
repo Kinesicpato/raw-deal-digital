@@ -28,6 +28,9 @@ export function DecisionModal() {
 
   // In an online match, only the player responsible for this decision may see it.
   // Exception: reversalPlayed and multiplayer reversalChoice are shown to all players.
+  // Spectators never act: their seat index is unrelated to the players array, so
+  // comparing it against the owner could wrongly show someone else's decision.
+  if (online.isSpectator) return null
   const owner = decisionOwner(game)
   const isMultiReversal = d.type === 'reversalChoice' && 'reversedPlayers' in d && d.reversedPlayers
   if (online.role && online.myIdx !== owner && d.type !== 'reversalPlayed' && !isMultiReversal) return null
