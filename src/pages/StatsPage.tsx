@@ -441,20 +441,16 @@ export function StatsPage() {
                           textAlign: 'center',
                           width: 90,
                           transition: 'border-color 0.15s',
-                          position: 'relative',
                         }}
                       >
+                        <CardFace id={`superstar-${star.id}`} size="xs" />
                         {heldBelts.length > 0 && (
                           <div
                             style={{
-                              position: 'absolute',
-                              top: 4,
-                              right: 4,
-                              zIndex: 1,
                               display: 'flex',
-                              flexDirection: 'column',
-                              gap: 2,
-                              alignItems: 'flex-end',
+                              justifyContent: 'center',
+                              gap: 4,
+                              marginTop: 4,
                             }}
                             title={heldBelts.map((b) => b.name).join(' · ')}
                           >
@@ -464,15 +460,14 @@ export function StatsPage() {
                                   key={b.id}
                                   src={b.image}
                                   alt={b.name}
-                                  style={{ height: 18, maxWidth: 40, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}
+                                  style={{ height: 23, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}
                                 />
                               ) : (
-                                <span key={b.id} style={{ fontSize: 9, fontWeight: 700, color: 'var(--gold, #ffd700)' }}>🏆</span>
+                                <span key={b.id} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold, #ffd700)' }}>🏆</span>
                               )
                             ))}
                           </div>
                         )}
-                        <CardFace id={`superstar-${star.id}`} size="xs" />
                         <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600, lineHeight: 1.2 }}>
                           {star.name}
                         </div>
@@ -496,9 +491,9 @@ export function StatsPage() {
                       {heldBelts.map((b) => (
                         <div key={b.id} className="row" style={{ alignItems: 'center', gap: 8, padding: '4px 0' }}>
                           {b.image ? (
-                            <img src={b.image} alt={b.name} style={{ height: 28, objectFit: 'contain' }} />
+                            <img src={b.image} alt={b.name} style={{ height: 35, objectFit: 'contain' }} />
                           ) : (
-                            <span style={{ fontSize: 18 }}>🏆</span>
+                            <span style={{ fontSize: 22 }}>🏆</span>
                           )}
                           <span style={{ fontSize: 13, fontWeight: 600 }}>{b.name}</span>
                         </div>
