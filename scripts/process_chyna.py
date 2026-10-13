@@ -15,9 +15,17 @@ Sheet 1 (arsenal + superstar):
     image8  -> 9th-wonder-of-the-world        (Action F9/D0, unique)
     image9  -> chynas-pedigree                (Trademark Finisher/Action F25/D20, unique, stun 3)
 Sheet 2 (arsenal):
-    image10 -> throw-you-around-like-a-rag-doll (Action F15/D0, unique)
+    image12 -> throw-you-around-like-a-rag-doll (Action F15/D0, unique)
+    image11 -> suplex-into-the-ring            (Action/Reversal:Special F0/D0, throwback)
+    image10 -> hes-playing-possum              (Action F1/D0)
 Sheet 3 (backlash):
-    image11 -> ovicular-fortitude             (Mid-match Action F10/D0, unique) [landscape]
+    image15 -> ovicular-fortitude              (Mid-match Action F10/D0, unique) [landscape]
+    image13 -> greco-roman-holiday             (Mid-match Grapple F5/D5)
+    image14 -> atomic-bear-hug                 (Mid-match Submission:Chain F3/D7)
+
+NOTE: Updated docx re-mapped image indices; image10/11 are now Possum/Suplex
+(landscape-ish crops on black), image12/15 are the older rag-doll/ovicular
+scans at higher res, image13/14 are the two new backlash cards.
 
 D values verified against card scans (damage boxes cropped and read).
 """
@@ -40,16 +48,23 @@ PORTRAIT_CARDS = [
     ('image7.png', 'chynas-patented-low-blow'),
     ('image8.png', '9th-wonder-of-the-world'),
     ('image9.png', 'chynas-pedigree'),
-    ('image10.png', 'throw-you-around-like-a-rag-doll'),
+    ('image12.png', 'throw-you-around-like-a-rag-doll'),
+    ('image10.png', 'hes-playing-possum'),
+    ('image11.png', 'suplex-into-the-ring'),
 ]
 
 # Cards needing manual bbox (photo backgrounds / non-black borders).
 # image4: portrait card composited on arena photo, left-center of 1024x572.
-# image11: landscape backlash card nearly filling 1024x729.
 MANUAL_BBOX = {
     'image4.png': (302, 12, 722, 568),
-    'image11.png': (38, 34, 1008, 708),
 }
+
+# Landscape backlash cards: (filename, slug)
+LANDSCAPE_CARDS = [
+    ('image15.png', 'ovicular-fortitude'),
+    ('image13.png', 'greco-roman-holiday'),
+    ('image14.png', 'atomic-bear-hug'),
+]
 
 
 def detect_card_bbox(img):
@@ -141,13 +156,18 @@ for filename, bbox in MANUAL_BBOX.items():
     card = img.crop(bbox)
     slug = {
         'image4.png': 'handspring-elbow-vc',
-        'image11.png': 'ovicular-fortitude',
     }[filename]
     dst = os.path.join(OUT, f'{slug}.png')
-    if filename == 'image11.png':
-        result, _ = process_landscape(card)
-    else:
-        result = fit_on_black(card, TARGET_W, TARGET_H)
+    result = fit_on_black(card, TARGET_W, TARGET_H)
+    result.save(dst)
+    print(f'OK {slug}: {filename} bbox={bbox} ({os.path.getsize(dst)} bytes)')
+
+print('\nProcessing landscape backlash cards...')
+for filename, slug in LANDSCAPE_CARDS:
+    src = os.path.join(MEDIA, filename)
+    dst = os.path.join(OUT, f'{slug}.png')
+    img = Image.open(src).convert('RGB')
+    result, bbox = process_landscape(img)
     result.save(dst)
     print(f'OK {slug}: {filename} bbox={bbox} ({os.path.getsize(dst)} bytes)')
 
