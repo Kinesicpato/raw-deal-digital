@@ -19,7 +19,9 @@ export function cardArtUrl(c: CardDef): string {
 
 /** The full card rendered as a single raster image (never depends on CSS layout). */
 export function CardArt({ c, title }: { c: CardDef; title: string }) {
-  return <img src={cardArtUrl(c)} alt={title} className="cf-art" draggable={false} aria-hidden />
+  const hidden = c.id === '__hidden__'
+  const src = hidden ? '/cards/__back.png' : cardArtUrl(c)
+  return <img src={src} alt={title} className="cf-art" draggable={false} aria-hidden />
 }
 
 export function CardFace({
@@ -48,27 +50,29 @@ export function CardFace({
   dragPlayerIdx?: number
 }) {
   const c = getCardSafe(id)
+  const hidden = id === '__hidden__'
+  const isFaceDown = faceDown || hidden
   const cls = [
     'cardface',
     size,
     `type-${c.type}`,
     c.traits?.includes('Chain') ? 'traits-chain' : '',
     playable ? 'playable' : '',
-    faceDown ? 'cf-back' : '',
+    isFaceDown ? 'cf-back' : '',
     selected ? 'selected' : '',
     draggable ? 'card-draggable' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
-  const src = faceDown ? '/cards/__back.png' : cardArtUrl(c)
+  const src = isFaceDown ? '/cards/__back.png' : cardArtUrl(c)
   return (
     <div
       className={cls}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      title={`${c.name} — ${cardTypeLabel(c)}`}
+      title={hidden ? 'Carta oculta' : `${c.name} — ${cardTypeLabel(c)}`}
       style={selected ? { boxShadow: '0 0 0 3px var(--gold)' } : undefined}
       draggable={draggable}
       onDragStart={(e) => {
@@ -84,7 +88,7 @@ export function CardFace({
         ;(e.target as HTMLElement).classList.remove('card-dragging')
       }}
     >
-      <img src={src} alt={`${c.name} — ${cardTypeLabel(c)}`} className="cf-art" draggable={false} />
+      <img src={src} alt={hidden ? 'Carta oculta' : `${c.name} — ${cardTypeLabel(c)}`} className="cf-art" draggable={false} />
     </div>
   )
 }
@@ -92,6 +96,24 @@ export function CardFace({
 /** Modal that shows the full card details. */
 export function CardDetailModal({ id, onClose }: { id: string | null; onClose: () => void }) {
   if (!id) return null
+  if (id === '__hidden__') {
+    return (
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="row" style={{ alignItems: 'flex-start', gap: 14 }}>
+            <CardFace id="__hidden__" size="lg" />
+            <div className="grid" style={{ flex: 1, gap: 6 }}>
+              <h3 style={{ margin: 0 }}>Carta oculta</h3>
+              <p className="muted">No tienes permiso para ver esta carta.</p>
+            </div>
+          </div>
+          <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
+            <button onClick={onClose}>Cerrar</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
   const c = getCardSafe(id)
   return (
     <div className="modal-backdrop" onClick={onClose}>

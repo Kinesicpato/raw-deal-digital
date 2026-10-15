@@ -11,6 +11,17 @@ import { CardArt, cardTypeLabel } from './CardView'
 export function CardZoomPreview({ id }: { id: string | null }) {
   const pending = useAppStore((s) => s.game?.pendingDecision)
   if (pending || !id) return null
+  if (id === '__hidden__') {
+    return (
+      <div className="zoom-preview" key={id}>
+        <CardArt c={{ id, name: 'Carta oculta', type: 'Action', fortitude: 0, damage: 0, text: '' }} title="Carta oculta" />
+        <div className="zoom-info">
+          <div className="zoom-name">Carta oculta</div>
+          <div className="muted">No tienes permiso para ver esta carta.</div>
+        </div>
+      </div>
+    )
+  }
   const c = getCardSafe(id)
   return (
     <div className="zoom-preview" key={id}>
