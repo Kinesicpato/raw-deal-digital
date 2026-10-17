@@ -882,6 +882,9 @@ h3 {
   max-height: 90vh;
   overflow-y: auto;
 }
+.modal.modal-wide {
+  max-width: min(1180px, 96vw);
+}
 
 /* ============================================================
    LOG

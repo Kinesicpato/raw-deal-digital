@@ -129,7 +129,7 @@ export function PlayerToolsModal({
   return (
     <>
       <div className="modal-backdrop" onClick={onClose}>
-        <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
           <div className="row" style={{ marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Cartas de {p.name}</h3>
             <div className="spacer" />
@@ -173,7 +173,7 @@ export function PlayerToolsModal({
 
           <div
             className="hand"
-            style={{ width: '100%', maxHeight: 500, overflowY: 'auto', flexWrap: 'wrap' }}
+            style={{ width: '100%', maxHeight: 'calc(90vh - 250px)', overflowY: 'auto', flexWrap: 'wrap' }}
             onDragOver={isArsenal ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } : undefined}
             onDrop={isArsenal ? (e) => { e.preventDefault(); if (e.target === e.currentTarget) handleDrop(list.length) } : undefined}
           >
