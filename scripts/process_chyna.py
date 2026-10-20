@@ -21,11 +21,16 @@ Sheet 2 (arsenal):
     image15 -> scream-if-you-want-it           (Reversal:Special F7/D0, unique)
     image14 -> listen-you-reekazoid            (Action F0/D0, unique)
     image13 -> technical-drop-kick             (Strike/Action:Set-up F0/D4, unique, stun 1)
-Sheet 3 (backlash):
-    image19 -> ovicular-fortitude              (Mid-match Action F10/D0, unique) [landscape]
-    image18 -> greco-roman-holiday             (Mid-match Grapple F5/D5)
-    image17 -> atomic-bear-hug                 (Mid-match Submission:Chain F3/D7)
-    image16 -> liaison-with-lita               (Mid-match Action F2/D0, cheater)
+    image18 -> shove-off-the-top-rope          (Action/Reversal:Special F1/D0)
+    image17 -> fall-away-slam                  (Grapple/Reversal:Special F4/D9, stun 1)
+    image16 -> wraparound-wrist-lock           (Submission:Chain F0/D3)
+    image19 -> quick-snap-body-slam            (Grapple:Chain F0/D4)
+    image20 -> toss                            (Grapple:Chain F2/D5)
+Sheet 3+ (backlash):
+    image24 -> ovicular-fortitude              (Mid-match Action F10/D0, unique) [landscape]
+    image23 -> greco-roman-holiday             (Mid-match Grapple F5/D5)
+    image22 -> atomic-bear-hug                 (Mid-match Submission:Chain F3/D7)
+    image21 -> liaison-with-lita               (Mid-match Action F2/D0, cheater)
 
 NOTE: Image indices shift each time the docx is updated. Always re-run
 inspect_chyna.py after extracting a new docx. D values verified by
@@ -58,6 +63,11 @@ PORTRAIT_CARDS = [
     ('image15.png', 'scream-if-you-want-it'),
     ('image14.png', 'listen-you-reekazoid'),
     ('image13.png', 'technical-drop-kick'),
+    ('image18.png', 'shove-off-the-top-rope'),
+    ('image17.png', 'fall-away-slam'),
+    ('image16.png', 'wraparound-wrist-lock'),
+    ('image19.png', 'quick-snap-body-slam'),
+    ('image20.png', 'toss'),
 ]
 
 # Cards needing manual bbox (photo backgrounds / non-black borders).
@@ -68,10 +78,10 @@ MANUAL_BBOX = {
 
 # Landscape backlash cards: (filename, slug)
 LANDSCAPE_CARDS = [
-    ('image19.png', 'ovicular-fortitude'),
-    ('image18.png', 'greco-roman-holiday'),
-    ('image17.png', 'atomic-bear-hug'),
-    ('image16.png', 'liaison-with-lita'),
+    ('image24.png', 'ovicular-fortitude'),
+    ('image23.png', 'greco-roman-holiday'),
+    ('image22.png', 'atomic-bear-hug'),
+    ('image21.png', 'liaison-with-lita'),
 ]
 
 
