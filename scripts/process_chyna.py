@@ -18,14 +18,18 @@ Sheet 2 (arsenal):
     image12 -> throw-you-around-like-a-rag-doll (Action F15/D0, unique)
     image11 -> suplex-into-the-ring            (Action/Reversal:Special F0/D0, throwback)
     image10 -> hes-playing-possum              (Action F1/D0)
+    image15 -> scream-if-you-want-it           (Reversal:Special F7/D0, unique)
+    image14 -> listen-you-reekazoid            (Action F0/D0, unique)
+    image13 -> technical-drop-kick             (Strike/Action:Set-up F0/D4, unique, stun 1)
 Sheet 3 (backlash):
-    image15 -> ovicular-fortitude              (Mid-match Action F10/D0, unique) [landscape]
-    image13 -> greco-roman-holiday             (Mid-match Grapple F5/D5)
-    image14 -> atomic-bear-hug                 (Mid-match Submission:Chain F3/D7)
+    image19 -> ovicular-fortitude              (Mid-match Action F10/D0, unique) [landscape]
+    image18 -> greco-roman-holiday             (Mid-match Grapple F5/D5)
+    image17 -> atomic-bear-hug                 (Mid-match Submission:Chain F3/D7)
+    image16 -> liaison-with-lita               (Mid-match Action F2/D0, cheater)
 
-NOTE: Updated docx re-mapped image indices; image10/11 are now Possum/Suplex
-(landscape-ish crops on black), image12/15 are the older rag-doll/ovicular
-scans at higher res, image13/14 are the two new backlash cards.
+NOTE: Image indices shift each time the docx is updated. Always re-run
+inspect_chyna.py after extracting a new docx. D values verified by
+cropping damage boxes and reading them at 3x zoom.
 
 D values verified against card scans (damage boxes cropped and read).
 """
@@ -51,6 +55,9 @@ PORTRAIT_CARDS = [
     ('image12.png', 'throw-you-around-like-a-rag-doll'),
     ('image10.png', 'hes-playing-possum'),
     ('image11.png', 'suplex-into-the-ring'),
+    ('image15.png', 'scream-if-you-want-it'),
+    ('image14.png', 'listen-you-reekazoid'),
+    ('image13.png', 'technical-drop-kick'),
 ]
 
 # Cards needing manual bbox (photo backgrounds / non-black borders).
@@ -61,9 +68,10 @@ MANUAL_BBOX = {
 
 # Landscape backlash cards: (filename, slug)
 LANDSCAPE_CARDS = [
-    ('image15.png', 'ovicular-fortitude'),
-    ('image13.png', 'greco-roman-holiday'),
-    ('image14.png', 'atomic-bear-hug'),
+    ('image19.png', 'ovicular-fortitude'),
+    ('image18.png', 'greco-roman-holiday'),
+    ('image17.png', 'atomic-bear-hug'),
+    ('image16.png', 'liaison-with-lita'),
 ]
 
 
