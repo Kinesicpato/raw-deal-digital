@@ -5,13 +5,22 @@ import type { CardDef } from '../data/types'
 import { validateBacklashDeck, validateDeck, getCopiesLimit } from '../engine/rules'
 import { CardFace, CardDetailModal, CardRemoveModal } from '../components/CardView'
 import { CardZoomPreview } from '../components/CardZoom'
-import { CardTypeTabs, classifyCard, type CardClassFilter } from '../components/CardTypeTabs'
 import { AppBanner } from '../components/Branding'
 import { downloadDeckDocx } from '../export/deckDocx'
 
 type Back = 'none' | 'Pre-match' | 'Mid-match'
 
 type RemoveTarget = { id: string; zone: 'arsenal' | 'pre' | 'mid' }
+
+/** Sort key: superstars first, then yellow Maneuvers, hybrids, Actions, Reversals. */
+function colorRank(c: CardDef): number {
+  if (c.type === 'Superstar') return 0
+  const extras = (c.extraTypes ?? []).filter((t) => t !== c.type)
+  if (c.type === 'Hybrid' || extras.length > 0) return 2
+  if (c.type === 'Maneuver') return 1
+  if (c.type === 'Action') return 3
+  return 4
+}
 
 export function DeckbuilderPage() {
   const decks = useAppStore((s) => s.decks)
@@ -43,9 +52,7 @@ export function DeckbuilderPage() {
   const [deckName, setDeckName] = useState(active?.name ?? nextDefaultName())
 
   const [search, setSearch] = useState('')
-  const [classFilter, setClassFilter] = useState<CardClassFilter>('all')
-  const [starFilter, setStarFilter] = useState<'all' | 'own' | 'generic'>('all')
-  const [onlyChain, setOnlyChain] = useState(false)
+  const [backlashSearch, setBacklashSearch] = useState('')
   const [exporting, setExporting] = useState(false)
 
   const validation = useMemo(() => {
@@ -65,14 +72,18 @@ export function DeckbuilderPage() {
   const filtered = useMemo(() => {
     return ALL_CARDS.filter((c) => {
       if (c.backlash) return false
-      if (classFilter !== 'all' && classifyCard(c) !== classFilter) return false
-      if (starFilter === 'own' && !(c.superstar && c.superstar.includes(superstarId))) return false
-      if (starFilter === 'generic' && c.superstar && c.superstar.length > 0) return false
-      if (onlyChain && !c.traits?.includes('Chain')) return false
       if (search && !`${c.name} ${c.text}`.toLowerCase().includes(search.toLowerCase())) return false
       return true
-    })
-  }, [search, classFilter, starFilter, onlyChain, superstarId])
+    }).sort((a, b) => colorRank(a) - colorRank(b))
+  }, [search])
+
+  const backlashCards = useMemo(() => {
+    return ALL_CARDS.filter((c) => {
+      if (!c.backlash) return false
+      if (backlashSearch && !`${c.name} ${c.text}`.toLowerCase().includes(backlashSearch.toLowerCase())) return false
+      return true
+    }).sort((a, b) => colorRank(a) - colorRank(b))
+  }, [backlashSearch])
 
   const counts = useMemo(() => {
     const m = new Map<string, number>()
@@ -219,17 +230,7 @@ export function DeckbuilderPage() {
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: 16 }}>
         <div>
           <div className="filters">
-            <CardTypeTabs value={classFilter} onChange={setClassFilter} />
             <input placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <select value={starFilter} onChange={(e) => setStarFilter(e.target.value as 'all' | 'own' | 'generic')}>
-              <option value="all">Todas las firmas</option>
-              <option value="own">Mi Superstar</option>
-              <option value="generic">Genéricas</option>
-            </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input type="checkbox" checked={onlyChain} onChange={(e) => setOnlyChain(e.target.checked)} />
-              Chain
-            </label>
           </div>
 
           <div className="cardlist" style={{ maxHeight: 600, overflowY: 'auto' }}>
@@ -296,7 +297,7 @@ export function DeckbuilderPage() {
             </>
           ) : (
             <p className="muted">
-              Elegí tu Superstar: andá a la pestaña <b>Superestrella</b> de la lista y tocá su carta.
+              Elegí tu Superstar: tocá su carta (aparece primera en la lista).
             </p>
           )}
 
@@ -304,22 +305,6 @@ export function DeckbuilderPage() {
             <span className={`deckcount ${validation.valid ? 'ok' : 'bad'}`}>{arsenal.length}/60</span>
             {backlashValidation.valid ? <span className="deckcount ok">{pre.length + mid.length}/20 Backlash</span> : <span className="deckcount bad">{pre.length + mid.length}/20 Backlash</span>}
           </div>
-
-          {!validation.valid && (
-            <div className="card" style={{ background: '#2a1210', borderColor: 'var(--red)', margin: '8px 0' }}>
-              {validation.issues.slice(0, 4).map((i) => (
-                <div key={i.code} style={{ fontSize: 12, color: '#f0a9a1' }}>• {i.message}</div>
-              ))}
-              {validation.issues.length > 4 && <div style={{ fontSize: 12, color: '#f0a9a1' }}>…y {validation.issues.length - 4} más</div>}
-            </div>
-          )}
-          {!backlashValidation.valid && backlashValidation.issues.length > 0 && (
-            <div className="card" style={{ background: '#2a1210', borderColor: 'var(--red)', margin: '8px 0' }}>
-              {backlashValidation.issues.map((i) => (
-                <div key={i.code} style={{ fontSize: 12, color: '#f0a9a1' }}>• {i.message}</div>
-              ))}
-            </div>
-          )}
 
           <div className="big-label">Arsenal ({arsenal.length})</div>
           <div className="chiprow">
@@ -368,8 +353,14 @@ export function DeckbuilderPage() {
             {mid.length === 0 && <span className="muted">Vacío.</span>}
           </div>
           <div className="big-label">Añadir Backlash</div>
+          <input
+            placeholder="Buscar backlash…"
+            value={backlashSearch}
+            onChange={(e) => setBacklashSearch(e.target.value)}
+            style={{ marginBottom: 8 }}
+          />
           <div className="chiprow">
-            {ALL_CARDS.filter((c) => c.backlash).map((c) => (
+            {backlashCards.map((c) => (
               <div key={c.id}>
                 <CardFace
                   id={c.id}
