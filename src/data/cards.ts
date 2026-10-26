@@ -2969,6 +2969,18 @@ export const MIDMATCH_BACKLASH_CARDS: CardDef[] = [
     backlash: 'Mid-match',
     set: 'Midmatch',
   }),
+  card({
+    id: 'Settle down son',
+    name: 'Settle down son',
+    type: 'Action',
+    subtypes: ['Action'],
+    traits: [''],
+    fortitude: 10,
+    damage: 0,
+    text: "Look at your opponent’s hand and choose up to 3 non-hybrid Maneuver cards. Your opponent then discards the chosen card(s).",
+    backlash: 'Mid-match',
+    set: 'Midmatch',
+  }),
 ]
 
 export const EXTRAS_CARDS: CardDef[] = [
