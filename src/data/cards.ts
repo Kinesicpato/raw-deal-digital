@@ -2969,18 +2969,7 @@ export const MIDMATCH_BACKLASH_CARDS: CardDef[] = [
     backlash: 'Mid-match',
     set: 'Midmatch',
   }),
-  card({
-    id: 'Settle down son',
-    name: 'Settle down son',
-    type: 'Action',
-    subtypes: ['Action'],
-    traits: [''],
-    fortitude: 10,
-    damage: 0,
-    text: "Look at your opponent’s hand and choose up to 3 non-hybrid Maneuver cards. Your opponent then discards the chosen card(s).",
-    backlash: 'Mid-match',
-    set: 'Midmatch',
-  }),
+ 
 ]
 
 export const EXTRAS_CARDS: CardDef[] = [
@@ -4997,6 +4986,18 @@ export const CHYNA_CARDS: CardDef[] = [
     text: 'Can only be played if you have 3 or more Superstar-specific cards in your Ring area.
 Shuffle 3 cards from your Ringside pile into your Arsenal. For every copy of this card in your Ring area, your opponent may overturn 5 cards. If he does not, you may shuffle 5 of your cards removed from the game into your Arsenal.',
     set: 'HHH',
+  }),
+   card({
+    id:'Settle down son',
+    name:'Settle down son',
+    type: 'Action',
+    subtypes: ['Action'],
+    traits: [''],
+    fortitude: 10,
+    damage: 0,
+    text: "Look at your opponent’s hand and choose up to 3 non-hybrid Maneuver cards. Your opponent then discards the chosen card(s).",
+    backlash: 'Mid-match',
+    set: 'Midmatch',
   }),
 ]
 
