@@ -4973,6 +4973,19 @@ export const CHYNA_CARDS: CardDef[] = [
     text: 'When successfully played, if your next card played this turn is a maneuver, it cannot be reversed from your opponent\'s Backlash deck. "He\'s getting thrown like an Olympic rag doll..." — Tazz',
     set: 'Chyna',
   }),
+  card({
+    id: 'hhh-The King of Kings',
+    name: 'The King of Kings',
+    type: 'Action',
+    subtypes: ['Fan Favorite'],
+    traits: [''],
+    superstar: ['HHH'],
+    fortitude: 7,
+    damage: 3,
+    text: 'Can only be played if you have 3 or more Superstar-specific cards in your Ring area.
+Shuffle 3 cards from your Ringside pile into your Arsenal. For every copy of this card in your Ring area, your opponent may overturn 5 cards. If he does not, you may shuffle 5 of your cards removed from the game into your Arsenal.',
+    set: 'HHH',
+  }),
 ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...AJ_STYLES_CARDS, ...AJ_STYLES_FANSET_CARDS, ...BRAUN_STROWMAN_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS, ...CHYNA_CARDS].map((c) => applyVerifiedStats(c))
