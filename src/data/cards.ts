@@ -4983,8 +4983,7 @@ export const CHYNA_CARDS: CardDef[] = [
     superstar: ['HHH'],
     fortitude: 7,
     damage: 3,
-    text: 'Can only be played if you have 3 or more Superstar-specific cards in your Ring area.
-Shuffle 3 cards from your Ringside pile into your Arsenal. For every copy of this card in your Ring area, your opponent may overturn 5 cards. If he does not, you may shuffle 5 of your cards removed from the game into your Arsenal.',
+    text: 'Can only be played if you have 3 or more Superstar-specific cards in your Ring area, Shuffle 3 cards from your Ringside pile into your Arsenal. For every copy of this card in your Ring area, your opponent may overturn 5 cards',
     set: 'HHH',
   }),
    card({
