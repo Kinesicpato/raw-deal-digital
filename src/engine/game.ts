@@ -1299,6 +1299,15 @@ export function manualReorderArsenal(
 }
 
 /** Show one player's hand to a specific opponent (or hide it with null). */
+export function manualRevealHand(state: GameState, playerIdx: number, targetIdx: number | null): void {
+  const p = state.players[playerIdx]
+  if (!p) return
+  if (targetIdx !== null && (targetIdx === playerIdx || targetIdx < 0 || targetIdx >= state.players.length)) {
+    return
+  }
+  p.handRevealedTo = targetIdx
+}
+
 /**
  * Activate the effect of a card sitting in the active player's Ring area or
  * Mid-match zone (ACE / persistent effects). The card stays where it is and

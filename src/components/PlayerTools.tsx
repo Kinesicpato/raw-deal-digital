@@ -250,6 +250,31 @@ export function PlayerToolsModal({
             </button>
           </div>
 
+          <div className="row reveal-hand-row" style={{ marginTop: 10, gap: 6, flexWrap: 'wrap' }}>
+            <span className="muted" style={{ fontSize: 12 }}>
+              Mostrar tu mano a:
+            </span>
+            {game.players.map((op, i) => {
+              if (i === playerIdx) return null
+              const shown = p.handRevealedTo === i
+              return (
+                <button
+                  key={i}
+                  className={`ghost ${shown ? 'reveal-target' : ''}`}
+                  title={shown ? `Tu mano está visible para ${op.name} — apretá de nuevo para ocultarla` : `Mostrar tu mano a ${op.name}`}
+                  onClick={() => store.manualRevealHand(playerIdx, shown ? null : i)}
+                >
+                  {shown ? '✓ ' : ''}{op.name}
+                </button>
+              )
+            })}
+            {p.handRevealedTo !== null && (
+              <span className="stat-chip" style={{ background: 'var(--yellow)', color: '#221a05' }}>
+                👁 Mano visible
+              </span>
+            )}
+          </div>
+
           <ShowCardToOpponent game={game} playerIdx={playerIdx} list={list} selected={selected} zone={from} />
 
           <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>

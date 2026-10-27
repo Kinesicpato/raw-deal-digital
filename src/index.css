@@ -82,10 +82,17 @@ button.danger {
 button.ghost {
   background: transparent;
 }
+/* Active state of a "show my hand to X" toggle: lit yellow while revealed,
+   back to the plain ghost look when the option is off. */
 button.ghost.reveal-target {
-  background: var(--green);
-  border-color: var(--green);
-  color: #fff;
+  background: var(--yellow);
+  border-color: var(--gold);
+  color: #221a05;
+  font-weight: 800;
+  box-shadow: 0 0 12px rgba(217, 181, 49, 0.45);
+}
+button.ghost.reveal-target:hover:not(:disabled) {
+  filter: brightness(1.1);
 }
 
 .page {

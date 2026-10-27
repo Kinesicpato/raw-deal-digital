@@ -11,6 +11,7 @@ import {
   manualRingToArsenal,
   manualShuffleArsenal,
   manualReorderArsenal,
+  manualRevealHand,
   manualRemoveFromZone,
   manualZoneToArsenal,
   manualDrawFromArsenal,
@@ -114,6 +115,7 @@ interface AppState {
   manualRingToArsenal: (playerIdx: number, cardIds: string[]) => string | null
   manualShuffleArsenal: (playerIdx: number) => void
   manualReorderArsenal: (playerIdx: number, orderedIds: string[]) => string | null
+  manualRevealHand: (playerIdx: number, targetIdx: number | null) => void
   manualRemove: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
@@ -384,6 +386,15 @@ export const useAppStore = create<AppState>()(
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
           return err
+        },
+
+        manualRevealHand: (playerIdx, targetIdx) => {
+          const s = get()
+          if (!s.game) return
+          if (route('manualRevealHand', [playerIdx, targetIdx])) return
+          manualRevealHand(s.game, playerIdx, targetIdx)
+          set((st) => ({ game: st.game ? { ...st.game } : null }))
+          if (s.online.role === 'host' && s.game) broadcastState(s.game)
         },
 
         showCardToOpponent: (fromPlayer, cardId, toPlayer) => {
@@ -851,6 +862,7 @@ const MANUAL_INTENTS: IntentName[] = [
   'manualDrawFromArsenal',
   'manualShuffleArsenal',
   'manualReorderArsenal',
+  'manualRevealHand',
   'showCardToOpponent',
 ]
 
@@ -864,7 +876,19 @@ export function applyRemoteIntent(
   const s = get()
   try {
     if (MANUAL_INTENTS.includes(action)) {
-      if (action === 'showCardToOpponent') {
+      if (action === 'manualRevealHand') {
+        // A player may show their own hand to anyone, or reveal a specific
+        // opponent's hand to themselves (and hide either reveal they made).
+        const [player, target] = args as [number, number | null]
+        const valid =
+          player === idx ||
+          (target !== null && target === idx) ||
+          (target === null && s.game?.players[player]?.handRevealedTo === idx)
+        if (!valid) {
+          hostSendError(idx, 'Solo podés revelar tu mano o la de un oponente para vos mismo.')
+          return
+        }
+      } else if (action === 'showCardToOpponent') {
         const [fromPlayer] = args as [number, string, number]
         if (fromPlayer !== idx) {
           hostSendError(idx, 'Solo podés mostrar tus propias cartas.')
