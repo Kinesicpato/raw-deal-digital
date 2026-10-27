@@ -454,9 +454,9 @@ h3 {
 }
 .panel .draw-count {
   width: 50px;
-  padding: 8px 4px;
+  padding: 7px 4px;
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   -moz-appearance: textfield;
 }
@@ -465,33 +465,42 @@ h3 {
   -webkit-appearance: none;
   margin: 0;
 }
+/* Same look as the zone chips (Mano / Arsenal / Ringside): dark chip with a
+   coloured left accent — Arsenal's yellow, since that's where cards come from. */
 .panel .draw-btn {
-  padding: 9px 16px;
-  font-size: 14px;
+  padding: 7px 12px;
+  font-size: 13px;
   font-weight: 800;
-  background: linear-gradient(180deg, #4fa8ff, #2f6fd0);
-  color: #fff;
-  border: 1px solid #2a5fae;
-  box-shadow: 0 0 14px rgba(79, 168, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--yellow);
+  border-radius: 10px;
   white-space: nowrap;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
 }
 .panel .draw-btn:hover:not(:disabled) {
-  filter: brightness(1.15);
+  border-color: var(--gold);
+  background: rgba(216, 169, 47, 0.08);
+}
+.panel .draw-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .panel .draw-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  box-shadow: none;
 }
 .panel.compact .draw-btn {
-  padding: 7px 11px;
-  font-size: 13px;
+  padding: 5px 10px;
+  font-size: 12px;
 }
 .panel.compact .draw-count {
   width: 42px;
-  padding: 6px 4px;
-  font-size: 13px;
+  padding: 5px 4px;
+  font-size: 12px;
 }
 .panel.compact {
   padding: 6px 10px;
