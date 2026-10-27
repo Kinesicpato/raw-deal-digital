@@ -285,6 +285,10 @@ function PlayerPanel({
   // Fortitude Rating shown live: sum of the "D" (Damage) box of every card in
   // the player's Ring area plus Mid-match/Pre-match cards played.
   const rating = computeFortitude([...p.midmatchPlayed, ...p.ring], getCardSafe)
+  // How many cards the "Robar" button takes from the Arsenal (default: 1).
+  const [drawCount, setDrawCount] = useState('1')
+  const drawQty = Math.min(99, Math.max(1, Math.floor(Number(drawCount) || 1)))
+  const canDraw = p.arsenal.length > 0
   // All useDropZone hooks MUST be called unconditionally to satisfy React's
   // Rules of Hooks — they cannot live inside conditional branches.
   const arsenalDrop = useDropZone(idx, 'arsenal')
@@ -336,13 +340,38 @@ function PlayerPanel({
           Ringside <b>{p.ringside.length}</b>
         </button>
         {toolsEnabled && (
-          <button
-            className={`tools-btn ${toolsOpen ? 'open' : ''}`}
-            title="Herramientas manuales"
-            onClick={() => onTools()}
-          >
-            ⚙ Herramientas
-          </button>
+          <div className="draw-controls">
+            <input
+              className="draw-count"
+              type="number"
+              min={1}
+              max={99}
+              step={1}
+              value={drawCount}
+              title="Cuántas cartas robar del Arsenal"
+              aria-label="Cartas a robar"
+              onChange={(e) => setDrawCount(e.target.value)}
+              onBlur={() => setDrawCount(String(drawQty))}
+            />
+            <button
+              className="draw-btn"
+              disabled={!canDraw}
+              title={canDraw ? `Robar ${drawQty} carta(s) del Arsenal a tu mano` : 'Arsenal vacío — no se puede robar'}
+              onClick={() => {
+                const err = useAppStore.getState().manualDrawFromArsenal(idx, drawQty)
+                if (err) useAppStore.getState().setLastError(err)
+              }}
+            >
+              🃏 Robar
+            </button>
+            <button
+              className={`tools-btn ${toolsOpen ? 'open' : ''}`}
+              title="Herramientas manuales"
+              onClick={() => onTools()}
+            >
+              ⚙ Herramientas
+            </button>
+          </div>
         )}
       </div>
       {compact ? (

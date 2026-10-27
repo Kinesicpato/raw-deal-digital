@@ -440,6 +440,59 @@ h3 {
   padding: 7px 11px;
   font-size: 13px;
 }
+
+/* "Robar" control next to the Herramientas button: a number input (how many
+   cards to take from the Arsenal) plus the draw button itself. */
+.panel .draw-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.panel .draw-controls .tools-btn {
+  margin-left: 0;
+}
+.panel .draw-count {
+  width: 50px;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  -moz-appearance: textfield;
+}
+.panel .draw-count::-webkit-outer-spin-button,
+.panel .draw-count::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.panel .draw-btn {
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #4fa8ff, #2f6fd0);
+  color: #fff;
+  border: 1px solid #2a5fae;
+  box-shadow: 0 0 14px rgba(79, 168, 255, 0.3);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.panel .draw-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+.panel .draw-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.panel.compact .draw-btn {
+  padding: 7px 11px;
+  font-size: 13px;
+}
+.panel.compact .draw-count {
+  width: 42px;
+  padding: 6px 4px;
+  font-size: 13px;
+}
 .panel.compact {
   padding: 6px 10px;
   border-radius: 10px;
