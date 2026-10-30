@@ -198,8 +198,11 @@ export function DeckbuilderPage() {
     }
     const ordered = pool.sort((a, b) => score(b) - score(a))
     const out: string[] = []
+    const used = new Set<string>()
     for (const c of ordered) {
       if (out.length >= 60) break
+      if (used.has(c.id)) continue // duplicate catalog entry for the same id
+      used.add(c.id)
       const limit = getCopiesLimit(c)
       const add = Math.min(limit, 60 - out.length)
       if (limit === Infinity) continue
@@ -210,8 +213,8 @@ export function DeckbuilderPage() {
     const pickBack = (where: 'Pre-match' | 'Mid-match'): string[] =>
       [...ownBacklash, ...genericBacklash]
         .filter((c) => c.backlash === where)
+        .reduce<string[]>((acc, c) => (acc.includes(c.id) ? acc : [...acc, c.id]), [])
         .slice(0, 10)
-        .map((c) => c.id)
     setArsenal(out)
     setPre(pickBack('Pre-match'))
     setMid(pickBack('Mid-match'))

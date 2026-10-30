@@ -122,51 +122,21 @@ export function newGame(cfg: NewGameConfig): GameState {
   if (first !== undefined) state.activeIndex = first
 
   // Shuffle each Arsenal and deal the opening hand before the Pre-match.
+  // NOTE: the deal is deliberately pure — no re-drawing or "playable hand"
+  // fixing, so every card keeps the same odds regardless of how often it
+  // was played before. (The old ensurePlayableOpeningHand swap made F:0
+  // non-Reversal cards show up in ~52% of opening hands instead of the
+  // fair 45%.)
   players.forEach((p) => {
     p.arsenal = shuffled(p.arsenal)
     const ss = getSuperstar(p.superstarId)
     drawCards(p, p.handSize ?? ss.handSize, getCard)
-    ensurePlayableOpeningHand(state, p)
   })
 
   // Skip the opening hand confirmation: start the match immediately.
   startMatch(state)
 
   return state
-}
-
-/**
- * Guarantees the opening hand contains enough playable (F:0, non-reversal)
- * cards so the first Main Segment isn't a dead stop. Swaps unusable hand
- * cards for F:0 Maneuver/Action cards from the Arsenal when available.
- */
-function ensurePlayableOpeningHand(_state: GameState, p: PlayerState): void {
-  const needPlayable = Math.min(3, p.hand.length)
-  let playable = p.hand.filter((id) => {
-    const c = getCard(id)
-    return c.type !== 'Reversal' && c.fortitude === 0
-  }).length
-  let pi = 0
-  while (playable < needPlayable && pi < p.hand.length) {
-    const curId = p.hand[pi]
-    if (!curId) break
-    const cur = getCard(curId)
-    if (cur.type !== 'Reversal' && cur.fortitude === 0) {
-      pi++
-      continue
-    }
-    const swapIdx = p.arsenal.findIndex((id) => {
-      const c = getCard(id)
-      return c.type !== 'Reversal' && c.fortitude === 0
-    })
-    if (swapIdx === -1) break
-    const swap = p.arsenal[swapIdx]!
-    p.arsenal.splice(swapIdx, 1)
-    p.hand[pi] = swap
-    p.arsenal.push(curId)
-    playable++
-    pi++
-  }
 }
 
 // ---------------------------------------------------------------------------

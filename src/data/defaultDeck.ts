@@ -15,8 +15,14 @@ export function buildDefaultDeck(superstarId: string): { arsenal: string[]; pre:
   })
 
   const arsenal: string[] = []
+  // The catalog can define the same card id more than once (two prints of the
+  // same title). Counting per entry would hand out the copy limit twice for
+  // those cards, so they'd show up in dealt hands more often than allowed.
+  const seen = new Set<string>()
   for (const c of pool) {
     if (arsenal.length >= 60) break
+    if (seen.has(c.id)) continue
+    seen.add(c.id)
     const limit = getCopiesLimit(c)
     const copies = limit === Infinity ? 3 : Math.min(limit, 3)
     for (let i = 0; i < copies && arsenal.length < 60; i++) arsenal.push(c.id)
