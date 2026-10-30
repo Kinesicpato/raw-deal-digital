@@ -288,6 +288,9 @@ function PlayerPanel({
   // How many cards the "Robar" button takes from the Arsenal (default: 1).
   const [drawCount, setDrawCount] = useState('1')
   const drawQty = Math.min(99, Math.max(1, Math.floor(Number(drawCount) || 1)))
+  // How many cards the "Overturn" button flips into the Ringside (default: 1).
+  const [overturnCount, setOverturnCount] = useState('1')
+  const overturnQty = Math.min(99, Math.max(1, Math.floor(Number(overturnCount) || 1)))
   const canDraw = p.arsenal.length > 0
   // All useDropZone hooks MUST be called unconditionally to satisfy React's
   // Rules of Hooks — they cannot live inside conditional branches.
@@ -363,6 +366,30 @@ function PlayerPanel({
               }}
             >
               🃏 Robar
+            </button>
+            <input
+              className="draw-count"
+              type="number"
+              min={1}
+              max={99}
+              step={1}
+              value={overturnCount}
+              title="Cuántas cartas voltear (Overturn) del Arsenal al Ringside"
+              aria-label="Cartas a voltear"
+              onChange={(e) => setOverturnCount(e.target.value)}
+              onBlur={() => setOverturnCount(String(overturnQty))}
+              style={{ marginLeft: 4 }}
+            />
+            <button
+              className="draw-btn"
+              disabled={!canDraw}
+              title={canDraw ? `Voltear ${overturnQty} carta(s) del Arsenal al Ringside, boca arriba` : 'Arsenal vacío — no hay cartas para voltear'}
+              onClick={() => {
+                const err = useAppStore.getState().manualOverturn(idx, overturnQty)
+                if (err) useAppStore.getState().setLastError(err)
+              }}
+            >
+              🔄 Overturn
             </button>
             <button
               className={`tools-btn ${toolsOpen ? 'open' : ''}`}

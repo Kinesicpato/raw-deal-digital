@@ -55,6 +55,7 @@ export type IntentName =
   | 'manualZoneToArsenal'
   | 'manualRemove'
   | 'manualDrawFromArsenal'
+  | 'manualOverturn'
   | 'manualShuffleArsenal'
   | 'manualReorderArsenal'
   | 'manualRevealHand'

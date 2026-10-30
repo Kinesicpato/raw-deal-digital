@@ -15,6 +15,7 @@ import {
   manualRemoveFromZone,
   manualZoneToArsenal,
   manualDrawFromArsenal,
+  manualOverturn,
   manualMoveCards,
   flipOverturnCard,
   stopOverturnCard,
@@ -119,6 +120,7 @@ interface AppState {
   manualRemove: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualZoneToArsenal: (playerIdx: number, zone: 'hand' | 'ring' | 'ringside', cardIds: string[]) => string | null
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
+  manualOverturn: (playerIdx: number, count: number) => string | null
   manualMove: (playerIdx: number, from: ManualZone, to: ManualZone, cardIds: string[], position?: ArsenalPosition) => string | null
   showCardToOpponent: (fromPlayer: number, cardId: string, toPlayer: number) => void
   clearShownCard: () => void
@@ -444,6 +446,16 @@ export const useAppStore = create<AppState>()(
           if (!s.game) return null
           if (route('manualDrawFromArsenal', [playerIdx, count])) return null
           const err = manualDrawFromArsenal(s.game, playerIdx, count)
+          set((st) => ({ game: st.game ? { ...st.game } : null }))
+          if (s.online.role === 'host' && s.game) broadcastState(s.game)
+          return err
+        },
+
+        manualOverturn: (playerIdx, count) => {
+          const s = get()
+          if (!s.game) return null
+          if (route('manualOverturn', [playerIdx, count])) return null
+          const err = manualOverturn(s.game, playerIdx, count)
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game) broadcastState(s.game)
           return err
@@ -860,6 +872,7 @@ const MANUAL_INTENTS: IntentName[] = [
   'manualZoneToArsenal',
   'manualRemove',
   'manualDrawFromArsenal',
+  'manualOverturn',
   'manualShuffleArsenal',
   'manualReorderArsenal',
   'manualRevealHand',

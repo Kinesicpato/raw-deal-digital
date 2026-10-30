@@ -1,7 +1,7 @@
 import { getCard, getSuperstar } from '../data/cards'
 import type { CardDef } from '../data/types'
 import type { GameState, PlayerState, PendingDecision, Resolution } from './types'
-import { computeFortitude, drawCards, shuffled } from './rules'
+import { computeFortitude, drawCards, dealDamage, shuffled } from './rules'
 import { eliminate, resolveNextEffect } from './effects'
 
 type CardPlayKey = 'reversals' | 'strikes' | 'grapples' | 'submissions' | 'highRisk' | 'actions' | 'midmatch'
@@ -1235,6 +1235,17 @@ export function manualDrawFromArsenal(state: GameState, playerIdx: number, count
     const c = p.arsenal.shift()
     if (c) p.hand.push(c)
   }
+  return null
+}
+
+/** Overturn (flip face-up) the top `count` cards of the Arsenal into the
+ * Ringside — the house-rule companion of "Robar" (damage-style flips). */
+export function manualOverturn(state: GameState, playerIdx: number, count: number): string | null {
+  const p = state.players[playerIdx]
+  if (!p) return 'No player.'
+  if (!Number.isInteger(count) || count < 1) return 'Invalid number of cards to overturn.'
+  if (p.arsenal.length === 0) return 'Arsenal is empty.'
+  dealDamage(p, Math.min(count, p.arsenal.length))
   return null
 }
 
