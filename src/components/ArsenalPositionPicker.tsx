@@ -2,7 +2,8 @@ import type { ArsenalPosition } from '../engine/game'
 
 /**
  * Overlay that asks the user where to place cards going into the Arsenal:
- * beginning, end, or shuffled randomly.
+ * beginning, end, or at a random position (the rest of the Arsenal keeps
+ * its order — it is never reshuffled).
  */
 export function ArsenalPositionPicker({
   cardCount,
@@ -29,8 +30,12 @@ export function ArsenalPositionPicker({
           <button className="primary" onClick={() => onPick('end')}>
             Final de Arsenal
           </button>
-          <button className="primary" onClick={() => onPick('shuffle')}>
-            Revolver
+          <button
+            className="primary"
+            title="Las cartas caen en una posición aleatoria del Arsenal; el resto conserva su orden"
+            onClick={() => onPick('shuffle')}
+          >
+            Posición aleatoria
           </button>
           <button className="ghost" onClick={onCancel} style={{ marginTop: 4 }}>
             Cancelar

@@ -1166,13 +1166,11 @@ export function manualMoveCards(
     if (position === 'start') {
       dst.unshift(...ids)
     } else if (position === 'shuffle') {
-      dst.push(...ids)
-      for (let i = dst.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        const tmp = dst[i]!
-        dst[i] = dst[j]!
-        dst[j] = tmp
-      }
+      // Drop the cards at ONE random spot: the Arsenal keeps its order
+      // intact — only the moved cards land somewhere unpredictable.
+      // (This used to Fisher–Yates the whole pile, destroying its order.)
+      const pos = Math.floor(Math.random() * (dst.length + 1))
+      dst.splice(pos, 0, ...ids)
     } else {
       dst.push(...ids)
     }
