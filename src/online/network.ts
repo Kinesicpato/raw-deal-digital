@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { GameState } from '../engine/types'
 import { ensureSupabaseReachable, getSupabase } from './supabase'
+import { decideHello } from './protocol'
 import {
   buildClientView,
   type ClientMsg,
@@ -39,6 +40,8 @@ export interface HostHooks {
   onJoinRequest?: (req: JoinRequest) => void
   /** A client that asked to join went away before the host answered. */
   onJoinLeave?: (senderId: string) => void
+  /** A client was (re)admitted to a seat: re-send whatever state it needs (e.g. the running game after a reconnect). */
+  onAdmitted?: (idx: number) => void
 }
 
 export interface ClientHooks {
@@ -69,8 +72,31 @@ let hostSharedDecks: SharedDeck[] = []
 let hostBelt: { beltId: string | null; defending: boolean | null } = { beltId: null, defending: null }
 /** Join requests waiting for the host's answer (senderId -> requested name). */
 const pendingJoins = new Map<string, string>()
+/**
+ * Seats promised to known clients (senderId -> seat). A client that
+ * reconnects after a hiccup re-sends `hello` with its stable id and must
+ * resume the same seat instead of raising a join request or losing its spot
+ * to a newcomer. Cleared only on an explicit leave or when the room resets.
+ */
+const seatByClient = new Map<string, number>()
 /** True once the host started the duel: from then on, approvals enter as spectators. */
 let hostGameStarted = false
+
+/** Client-side timers (module level so stopOnline() can always cancel them). */
+let closeTimer: ReturnType<typeof setTimeout> | null = null
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+/** In-memory fallback for the stable client id when sessionStorage is blocked. */
+const knownClientIds = new Map<string, string>()
+/**
+ * Host-side: clients absent from the latest presence snapshot, awaiting the
+ * grace period before being dropped. A sync snapshot can briefly lag behind a
+ * reconnect (the client re-tracked with the same id a moment earlier), so an
+ * immediate drop would silently disconnect a player that is, in fact, back.
+ */
+const pendingDrops = new Set<string>()
+let dropTimer: ReturnType<typeof setTimeout> | null = null
+/** How long a client may stay absent from presence before the host drops it. */
+const PRESENCE_DROP_GRACE_MS = 6000
 
 function emitRoster(hooks: HostHooks | null) {
   if (!hooks) return
@@ -86,7 +112,25 @@ export function onlineRole(): 'host' | 'client' | null {
 }
 
 export function stopOnline(): void {
+  if (closeTimer !== null) {
+    clearTimeout(closeTimer)
+    closeTimer = null
+  }
+  if (retryTimer !== null) {
+    clearTimeout(retryTimer)
+    retryTimer = null
+  }
+  if (dropTimer !== null) {
+    clearTimeout(dropTimer)
+    dropTimer = null
+  }
+  pendingDrops.clear()
   if (channel) {
+    // An intentional departure frees the seat right away: otherwise the host
+    // would only notice through the presence heartbeat (~30s).
+    if (role === 'client' && clientId) {
+      channel.send({ type: 'broadcast', event: 'leave', payload: { sender: clientId } })
+    }
     channel.unsubscribe()
     channel = null
   }
@@ -98,6 +142,7 @@ export function stopOnline(): void {
   hostSharedDecks = []
   hostBelt = { beltId: null, defending: null }
   pendingJoins.clear()
+  seatByClient.clear()
   hostGameStarted = false
 }
 
@@ -141,19 +186,32 @@ export async function startHost(code: string, seatCount: number, hostName: strin
     const msg = payload.msg as ClientMsg
 
     if (msg.type === 'hello') {
-      const free = nextFreeSeat()
-      const canGrow = registry.size < MAX_SEATS
-      if (free === null && !canGrow) {
-        sendToAll({ target: -1, senderHint: senderId, msg: { type: 'joinDenied', reason: 'Sala llena (máximo 8 jugadores).' } satisfies HostMsg })
+      const reservedIdx = seatByClient.get(senderId) ?? null
+      const action = decideHello({
+        seatedIdx: clientIdx(senderId),
+        reservedIdx,
+        reservedFree: reservedIdx !== null && !connectedClients.has(reservedIdx),
+        freeSeat: nextFreeSeat(),
+        canGrow: registry.size < MAX_SEATS,
+        gameStarted: hostGameStarted,
+      })
+      if (action.kind === 'restore') {
+        // A client we already know is back (channel rejoined after a hiccup):
+        // resume its seat quietly — no join request, no new seat.
+        admitClient(senderId, action.idx, msg.name, hooks)
         return
       }
-      if (hostGameStarted || free === null) {
+      if (action.kind === 'deny') {
+        sendToAll({ target: -1, senderHint: senderId, msg: { type: 'joinDenied', reason: action.reason } satisfies HostMsg })
+        return
+      }
+      if (action.kind === 'pending') {
         pendingJoins.set(senderId, msg.name)
         sendToAll({ target: -1, senderHint: senderId, msg: { type: 'joinPending' } satisfies HostMsg })
         hooks.onJoinRequest?.({ senderId, name: msg.name })
         return
       }
-      admitClient(senderId, free, msg.name, hooks)
+      admitClient(senderId, action.idx, msg.name, hooks, { fresh: true })
     } else if (msg.type === 'setRole') {
       const idx = clientIdx(senderId)
       if (idx === null) return
@@ -194,6 +252,8 @@ export async function startHost(code: string, seatCount: number, hostName: strin
 
   ch.on('broadcast', { event: 'leave' }, ({ payload }: { payload: Record<string, unknown> }) => {
     const senderId = payload.sender as string
+    // An explicit leave means "I'm done": free the seat for good.
+    seatByClient.delete(senderId)
     if (dropPendingJoin(senderId, hooks)) return
     const idx = clientIdx(senderId)
     if (idx === null) return
@@ -201,8 +261,12 @@ export async function startHost(code: string, seatCount: number, hostName: strin
     const entry = registry.get(idx)
     if (entry) {
       entry.connected = false
-      entry.name = ''
-      entry.superstarId = null
+      // Mid-game the engine already holds its own copy of the player, so keep
+      // the identity around: coming back (even from a fresh tab) resumes it.
+      if (!hostGameStarted) {
+        entry.name = ''
+        entry.superstarId = null
+      }
     }
     emitRoster(hooks)
     hooks.onPeerClosed(idx)
@@ -216,17 +280,19 @@ export async function startHost(code: string, seatCount: number, hostName: strin
         if (p.client_id) onlineIds.add(p.client_id)
       }
     }
-    for (const [idx, cid] of connectedClients) {
-      if (!onlineIds.has(cid)) {
-        connectedClients.delete(idx)
-        const entry = registry.get(idx)
-        if (entry) {
-          entry.connected = false
-          entry.name = ''
-          entry.superstarId = null
-        }
-        emitRoster(hooks)
-        hooks.onPeerClosed(idx)
+    for (const [, cid] of connectedClients) {
+      if (onlineIds.has(cid)) {
+        // Back (or never really gone): cancel any pending drop.
+        pendingDrops.delete(cid)
+        continue
+      }
+      // Dropped out of presence (network blip, backgrounded tab, reconnect
+      // race…). Don't drop them yet: flag the absence and re-check after a
+      // grace period — a snapshot can briefly lag behind a client that just
+      // re-tracked with the same id.
+      if (!pendingDrops.has(cid)) {
+        pendingDrops.add(cid)
+        scheduleDropCheck(hooks, ch)
       }
     }
     for (const senderId of [...pendingJoins.keys()]) {
@@ -246,19 +312,43 @@ export async function startHost(code: string, seatCount: number, hostName: strin
   })
 }
 
-function admitClient(senderId: string, idx: number, name: string, hooks: HostHooks): void {
+function admitClient(
+  senderId: string,
+  idx: number,
+  name: string,
+  hooks: HostHooks,
+  opts: { fresh?: boolean } = {},
+): void {
+  // This seat now belongs to this client: drop any stale reservation another
+  // client id may still hold for it (e.g. their previous session).
+  for (const [other, seat] of seatByClient) {
+    if (seat === idx && other !== senderId) seatByClient.delete(other)
+  }
+  seatByClient.set(senderId, idx)
   connectedClients.set(idx, senderId)
   pendingJoins.delete(senderId)
+  pendingDrops.delete(senderId)
   const entry = registry.get(idx)
   if (!entry) return
+  if (opts.fresh) {
+    // A brand-new player is taking the seat: forget whoever sat here before.
+    entry.superstarId = null
+    entry.handSize = null
+    entry.deck = null
+    entry.spectator = undefined
+  }
   entry.name = name
   entry.connected = true
+  // NOTE: `spectator` is deliberately left untouched (a fresh admission
+  // resets it above). A reconnect must never FLIP a seated player to
+  // spectator — only mid-game approvals set that flag, before admission.
   sendToClient(idx, { type: 'welcome', idx, roster: currentRoster() })
   sendToClient(idx, { type: 'belt', beltId: hostBelt.beltId, defending: hostBelt.defending })
   if (hostSharedDecks.length > 0) {
     sendToClient(idx, { type: 'decks', decks: hostSharedDecks })
   }
   emitRoster(hooks)
+  hooks.onAdmitted?.(idx)
 }
 
 /** Drops a join request that never got an answer (the requester went away). */
@@ -266,6 +356,41 @@ function dropPendingJoin(senderId: string, hooks: HostHooks): boolean {
   if (!pendingJoins.delete(senderId)) return false
   hooks.onJoinLeave?.(senderId)
   return true
+}
+
+/**
+ * After the grace period, drops the clients that are STILL absent from
+ * presence. Names, Superstar and the seat reservation are kept so a later
+ * reconnect resumes exactly where they left off instead of starting over.
+ */
+function scheduleDropCheck(hooks: HostHooks, ch: RealtimeChannel): void {
+  if (dropTimer !== null) return
+  dropTimer = setTimeout(() => {
+    dropTimer = null
+    const state = ch.presenceState()
+    const onlineIds = new Set<string>()
+    for (const [, presences] of Object.entries(state)) {
+      for (const p of presences as { client_id?: string }[]) {
+        if (p.client_id) onlineIds.add(p.client_id)
+      }
+    }
+    for (const [idx, cid] of [...connectedClients]) {
+      if (onlineIds.has(cid) || !pendingDrops.has(cid)) {
+        pendingDrops.delete(cid)
+        continue
+      }
+      connectedClients.delete(idx)
+      pendingDrops.delete(cid)
+      const entry = registry.get(idx)
+      if (entry) {
+        // Keep the identity and the seat promise: a reconnect resumes it.
+        entry.connected = false
+        if (!hostGameStarted) entry.name = ''
+      }
+      emitRoster(hooks)
+      hooks.onPeerClosed(idx)
+    }
+  }, PRESENCE_DROP_GRACE_MS)
 }
 
 function clientIdx(senderId: string): number | null {
@@ -276,8 +401,24 @@ function clientIdx(senderId: string): number | null {
 }
 
 function nextFreeSeat(): number | null {
-  const free = [...registry.entries()].filter(([, r]) => !r.connected).map(([idx]) => idx)
+  const free = [...registry.entries()]
+    .filter(([idx, r]) => {
+      if (r.connected) return false
+      // Mid-game a "free" seat can belong to a disconnected PLAYER: it stays
+      // reserved for their reconnect and is never handed to a newcomer.
+      if (hostGameStarted && seatHeld(idx)) return false
+      return true
+    })
+    .map(([idx]) => idx)
   return free.length > 0 ? Math.min(...free) : null
+}
+
+/** Whether some known client still holds a promise on this seat. */
+function seatHeld(idx: number): boolean {
+  for (const [, seat] of seatByClient) {
+    if (seat === idx) return true
+  }
+  return false
 }
 
 function currentRoster(): RosterEntry[] {
@@ -336,6 +477,15 @@ export function hostSetGameStarted(started: boolean): void {
 }
 
 /**
+ * Whether the CURRENT room's match is running. The store may still hold a
+ * persisted game from a previous session; this is the guard that stops such
+ * a stale snapshot from being broadcast into a fresh lobby.
+ */
+export function isMatchLive(): boolean {
+  return hostGameStarted
+}
+
+/**
  * Admits a requested client. If the match already started (or the room was
  * full) the new seat is created on the spot, growing the roster up to
  * MAX_SEATS; mid-game joiners are always flagged as spectators so the engine
@@ -345,6 +495,25 @@ export function hostApproveJoin(senderId: string): boolean {
   const hooks = hostHooksRef
   const name = pendingJoins.get(senderId)
   if (!hooks || name === undefined) return false
+  // Safety net: a sender that already holds a seat is a reconnecting player,
+  // never a new guest. Restore the seat instead of creating a spectator.
+  const seated = clientIdx(senderId)
+  if (seated !== null) {
+    admitClient(senderId, seated, name, hooks)
+    return true
+  }
+  // Mid-game, a request from someone with the name of a disconnected player
+  // is that player coming back (e.g. after a page reload with a fresh id):
+  // resume their seat as a player instead of adding a spectator.
+  if (hostGameStarted) {
+    const resumable = [...registry.entries()].find(
+      ([, r]) => !r.connected && r.name === name && r.spectator !== true,
+    )
+    if (resumable) {
+      admitClient(senderId, resumable[0], name, hooks)
+      return true
+    }
+  }
   let idx = nextFreeSeat()
   if (idx === null) {
     if (registry.size >= MAX_SEATS) {
@@ -360,7 +529,7 @@ export function hostApproveJoin(senderId: string): boolean {
   // Mid-game joiners are spectators: set the flag before the welcome so the
   // roster the newcomer receives already shows them as such.
   if (hostGameStarted && entry) entry.spectator = true
-  admitClient(senderId, idx, name, hooks)
+  admitClient(senderId, idx, name, hooks, { fresh: !hostGameStarted })
   return true
 }
 
@@ -381,6 +550,35 @@ export function hostRejectJoin(senderId: string, reason?: string): boolean {
 // CLIENT
 // ---------------------------------------------------------------------------
 
+/** How long the client waits for the host to reappear in presence before
+ * declaring the room closed (a missing host is often just a blip). */
+const HOST_ABSENT_GRACE_MS = 15_000
+/** Delay before re-subscribing after a channel error/timeout. */
+const RECONNECT_RETRY_MS = 3_000
+
+/**
+ * Client ids must be stable per room and per tab session: when the channel
+ * (re)joins, the host recognizes the same id and restores the seat instead of
+ * treating the player as a new guest mid-game.
+ */
+function stableClientId(code: string): string {
+  const key = `rawdeal-client:${code}`
+  try {
+    const saved = sessionStorage.getItem(key)
+    if (saved) return saved
+    const id = crypto.randomUUID()
+    sessionStorage.setItem(key, id)
+    return id
+  } catch {
+    // sessionStorage can be blocked (private mode): fall back to memory.
+    const saved = knownClientIds.get(code)
+    if (saved) return saved
+    const id = crypto.randomUUID()
+    knownClientIds.set(code, id)
+    return id
+  }
+}
+
 export async function startClient(code: string, name: string, hooks: ClientHooks): Promise<void> {
   stopOnline()
   await ensureSupabaseReachable()
@@ -391,7 +589,7 @@ export async function startClient(code: string, name: string, hooks: ClientHooks
   const ch = supabase.channel(roomName(code), { config: { broadcast: { self: false } } })
   channel = ch
 
-  clientId = crypto.randomUUID()
+  clientId = stableClientId(code)
 
   ch.on('broadcast', { event: 'msg' }, ({ payload }: { payload: Record<string, unknown> }) => {
     const msg = payload.msg as HostMsg
@@ -426,15 +624,31 @@ export async function startClient(code: string, name: string, hooks: ClientHooks
     }
   })
 
-  ch.on('presence', { event: 'sync' }, () => {
+  const hostPresent = (): boolean => {
     const state = ch.presenceState()
-    const hostPresent = Object.values(state).some(
+    return Object.values(state).some(
       (presences) => (presences as { client_id?: string }[]).some((p) => p.client_id === 'host'),
     )
-    if (!hostPresent && connected) {
+  }
+
+  ch.on('presence', { event: 'sync' }, () => {
+    if (hostPresent()) {
+      if (closeTimer !== null) {
+        clearTimeout(closeTimer)
+        closeTimer = null
+      }
+      return
+    }
+    // The host vanishing from presence is often transient (backgrounded tab,
+    // network blip, presence heartbeat late). Wait a grace period — re-checking
+    // along the way — before ending the room for everyone.
+    if (!connected || closeTimer !== null) return
+    closeTimer = setTimeout(() => {
+      closeTimer = null
+      if (!connected || hostPresent()) return
       connected = false
       hooks.onClosed()
-    }
+    }, HOST_ABSENT_GRACE_MS)
   })
 
   let connected = false
@@ -444,11 +658,22 @@ export async function startClient(code: string, name: string, hooks: ClientHooks
     if (status === 'SUBSCRIBED') {
       await ch.track({ client_id: clientId, role: 'client' })
       console.log('[Supabase] Client joined room:', code, 'with ID:', clientId)
+      // Re-sending `hello` on every (re)join is safe: with a stable id the
+      // host restores our seat (and re-sends the game) instead of raising a
+      // join request for a player that is already in the match.
       ch.send({ type: 'broadcast', event: 'msg', payload: { sender: clientId, msg: { type: 'hello', name } satisfies ClientMsg } })
       connected = true
       hooks.onOpen()
-    } else if (status === 'CHANNEL_ERROR') {
-      hooks.onError('Error al conectar con la sala. Intentá de nuevo.')
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      hooks.onError('Se cortó la conexión con la sala. Intentando reconectar…')
+      // Auto-rejoin: the socket layer doesn't always retry on its own, and a
+      // client silently out of the room looks like a lost player to the host.
+      if (retryTimer === null && channel === ch) {
+        retryTimer = setTimeout(() => {
+          retryTimer = null
+          if (channel === ch && !connected) ch.subscribe()
+        }, RECONNECT_RETRY_MS)
+      }
     }
   })
 }

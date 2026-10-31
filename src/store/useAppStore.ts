@@ -38,6 +38,7 @@ import {
   hostApproveJoin,
   hostRejectJoin,
   hostSetGameStarted,
+  isMatchLive,
   randomCode,
   startClient,
   startHost,
@@ -540,6 +541,13 @@ export const useAppStore = create<AppState>()(
                   online: { ...s.online, joinRequests: s.online.joinRequests.filter((r) => r.senderId !== senderId) },
                 }))
               },
+              onAdmitted: () => {
+                // A (re)admitted client needs the running game right away.
+                // isMatchLive() guards against broadcasting a persisted game
+                // from a previous session into a fresh lobby.
+                const st = get()
+                if (st.game && isMatchLive()) broadcastState(st.game)
+              },
               onError: (message) => set({ lastError: message }),
             })
           } catch (err) {
@@ -573,8 +581,11 @@ export const useAppStore = create<AppState>()(
                 const st = get()
                 // Mid-game approvals arrive already flagged as spectators in
                 // the roster: mirror that locally so the UI never offers controls.
+                // An explicit non-spectator flag (a reconnecting PLAYER) must
+                // likewise clear any stale spectator state from a past session.
                 const me = roster.find((r) => r.idx === idx)
-                const isSpectator = me?.spectator === true ? true : st.online.isSpectator
+                const isSpectator =
+                  me?.spectator === true ? true : me?.spectator === false ? false : st.online.isSpectator
                 set({ online: { ...st.online, myIdx: idx, roster, pendingApproval: false, isSpectator } })
               },
               onRoster: (roster) => {
@@ -791,7 +802,8 @@ export const useAppStore = create<AppState>()(
           }
           // A mid-game approval has to reach the newcomer right away: they are
           // not in the roster yet when the last broadcast happened.
-          if (st.game) broadcastState(st.game)
+          // isMatchLive() keeps a stale persisted game out of a fresh lobby.
+          if (st.game && isMatchLive()) broadcastState(st.game)
         },
 
         rejectJoin: (senderId) => {
