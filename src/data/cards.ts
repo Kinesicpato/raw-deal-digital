@@ -1976,12 +1976,6 @@ export const RVD_CARDS: CardDef[] = [
     notes: 'Valores F/D verificados en línea (F:4, D:0). Condición y efecto no automatizados.',
     set: 'PDF',
   }),
-]
-
-
-
-
-  }),
   card({
     id: 'maintain-hold',
     name: 'Maintain Hold',
