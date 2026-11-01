@@ -1987,6 +1987,7 @@ export const RVD_CARDS: CardDef[] = [
     notes: 'Valores F/D del OCR; verificar.',
     set: 'ALE',
 }),
+  ]
 
 /** Serie "Classic" extraída del banco "Aj y Extras.pdf". Cartas genéricas.
  *  Los textos se limpiaron a partir del OCR; valores F/D provisionales. */
