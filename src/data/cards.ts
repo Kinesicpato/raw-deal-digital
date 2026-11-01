@@ -4709,9 +4709,7 @@ export const CHYNA_CARDS: CardDef[] = [
     type: 'Action',
     fortitude: 10,
     damage: 0,
-    text: "Can only be played after a successfully played 4D or greater maneuver. Search your Arsenal for 1 High Risk maneuver card, reveal it to your opponent, put it into your hand, and shuffle your Arsenal.
-When your next card played this turn is a High Risk maneuver, it cannot be reversed.
-",
+    text: "Can only be played after a successfully played 4D or greater maneuver.",
     backlash: 'Mid-match',
     set: 'Midmatch',
   }),
