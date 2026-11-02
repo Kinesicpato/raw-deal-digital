@@ -101,3 +101,45 @@ describe('deal randomness', () => {
     }
   })
 })
+
+describe('deal independence across games (no relation to previous games)', () => {
+  it('consecutive games with the same config get different hands and arsenal tops', () => {
+    const deck = buildDefaultDeck(ss.id)
+    const original = [...deck.arsenal]
+    const cfg = {
+      players: [
+        { name: 'A', superstarId: ss.id, arsenal: [...deck.arsenal], backlashPre: deck.pre, backlashMid: deck.mid },
+      ],
+    } as NewGameConfig
+
+    const hands = new Set<string>()
+    const tops = new Set<string>()
+    for (let i = 0; i < 25; i++) {
+      const g = newGame(cfg)
+      hands.add(g.players[0]!.hand.join('|'))
+      tops.add(g.players[0]!.arsenal[0] ?? '')
+      // The deal never consumes or reorders the config's deck list: every
+      // game starts from the exact same input, so any difference between
+      // games comes from the shuffle alone.
+      expect(cfg.players[0]!.arsenal).toEqual(original)
+    }
+    expect(hands.size).toBe(25) // no opening hand ever repeats
+    expect(tops.size).toBeGreaterThan(10) // the arsenal top reshuffles every game
+  })
+
+  it('two players with identical deck lists receive independent hands', () => {
+    const deck = buildDefaultDeck(ss.id)
+    const runs = 20
+    let differ = 0
+    for (let i = 0; i < runs; i++) {
+      const g = newGame({
+        players: [
+          { name: 'A', superstarId: ss.id, arsenal: [...deck.arsenal], backlashPre: [], backlashMid: [] },
+          { name: 'B', superstarId: ss.id, arsenal: [...deck.arsenal], backlashPre: [], backlashMid: [] },
+        ],
+      } as NewGameConfig)
+      if (g.players[0]!.hand.join('|') !== g.players[1]!.hand.join('|')) differ++
+    }
+    expect(differ).toBe(runs) // identical inputs → independent shuffles
+  })
+})

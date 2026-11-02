@@ -78,8 +78,7 @@ export function SetupPage() {
         }
       }),
     }
-    startGame(cfg)
-    setView('game')
+    if (startGame(cfg)) setView('game')
   }
 
   return (

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { GameState } from '../src/engine/types'
 import { useAppStore, applyRemoteIntent, actorFor } from '../src/store/useAppStore'
+import { hostSetGameStarted } from '../src/online/network'
 import {
   newGame,
   startMatch,
@@ -30,6 +31,8 @@ function startGame2(arsenalA: string[], arsenalB: string[]): GameState {
 }
 
 function setStoreHost(game: GameState) {
+  // The store only broadcasts/applies intents while the room's match is live.
+  hostSetGameStarted(true)
   useAppStore.setState({
     online: { role: 'host', code: 'TEST', myIdx: 0, roster: [], sharedDecks: [], connected: true },
     game,
@@ -54,6 +57,7 @@ function hostOverturn(defenderIdx: number) {
 
 describe('online overturn intent handling', () => {
   beforeEach(() => {
+    hostSetGameStarted(false)
     useAppStore.setState({
       online: { role: null, code: null, myIdx: null, roster: [], sharedDecks: [], connected: false },
       game: null,
