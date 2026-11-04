@@ -4729,7 +4729,7 @@ export const CHYNA_CARDS: CardDef[] = [
     set: 'Midmatch',
   }),
  card({
-    id: 'text-book-head-vise',
+    id: 'text-book-head vise',
     name: 'Text book head vise',
     type: 'Maneuver',
     fortitude: 0,
