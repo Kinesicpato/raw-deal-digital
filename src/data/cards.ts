@@ -4718,6 +4718,16 @@ export const CHYNA_CARDS: CardDef[] = [
     text: 'Cannot be packed when packing A Revolution of the Mind or Legendary Departure. When the played maneuver is not Superstar-specific, this card cannot be reversed. When overturned as a reversal, this counts as 2 reversals and put this card in your Ring.',
     reverses: { maneuverTypes: ['Strike', 'Submission'] },
     }),
+  card({
+    id:'break-it-out',
+    name:'Break-it-out',
+    type: 'Maneuver',
+    fortitude: 14,
+    damage: 0,
+    text: "Put 1 card with a different card title than this card from your Ring area into your Ringside pile, put 2 cards from your opponent's Ring area into his Ringside pile.",
+    backlash: 'Mid-match',
+    set: 'Midmatch',
+  }),
 ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS, ...CHYNA_CARDS].map((c) => applyVerifiedStats(c))
