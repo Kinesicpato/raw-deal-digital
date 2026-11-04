@@ -4732,7 +4732,6 @@ export const CHYNA_CARDS: CardDef[] = [
     id: 'text-book-head vise',
     name: 'Text book head vise',
     type: 'Maneuver',
-    traits: ['Multi'],
     fortitude: 0,
     damage: 5,
     }),
