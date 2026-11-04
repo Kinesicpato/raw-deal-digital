@@ -4736,7 +4736,7 @@ export const CHYNA_CARDS: CardDef[] = [
     traits: ['Unique'],
     fortitude: 0,
     damage: 5
-    text: "Your opponent discard 1 card",
+    text: 'Your opponent discard 1 card',
    }),
     ]
 
