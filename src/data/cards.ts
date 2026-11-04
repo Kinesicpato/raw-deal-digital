@@ -4735,7 +4735,6 @@ export const CHYNA_CARDS: CardDef[] = [
     traits: ['Multi'],
     fortitude: 0,
     damage: 5,
-    ,
     }),
 ]
 
