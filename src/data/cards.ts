@@ -4721,7 +4721,7 @@ export const CHYNA_CARDS: CardDef[] = [
   card({
     id:'break-it-out',
     name:'Break-it-out',
-    type: 'Maneuver',
+    type: 'Action',
     fortitude: 14,
     damage: 0,
     text: "Put 1 card with a different card title than this card from your Ring area into your Ringside pile, put 2 cards from your opponent's Ring area into his Ringside pile.",
@@ -4729,14 +4729,13 @@ export const CHYNA_CARDS: CardDef[] = [
     set: 'Midmatch',
   }),
  card({
-    id: 'text-book-head vise',
+    id: 'text-book-head-vise',
     name: 'Text book head vise',
     type: 'Maneuver',
-    subtypes: ['Submission'],
-    traits: ['Unique'],
     fortitude: 0,
-    damage: 5
+    damage: 5,
     text: 'Your opponent discard 1 card',
+    set: 'HHH',
    }),
     ]
 
