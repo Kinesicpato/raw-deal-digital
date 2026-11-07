@@ -28,6 +28,18 @@ abilityText:
       'Your cards titled Chair Shot are not Heel cards. Once during each of your turns, you may discard 1 Strike or High Risk Maneuver card and if your next card played this turn is a Strike or High Risk maneuver, it is -#F. The maximum number of Mid-match cards you may have in your Ring area is increased by 2. (Habilidad sin automatizar en v1.)',
     backlashLimit: { preMatch: 10, midMatch: 12 },
   },
+   {
+    id: 'your-freaking-hero',
+    name: 'Your Freaking Hero',
+    value: 5,
+    handSize: 8,
+    brand: null,
+    alignment: 'Both',
+    gender: 'male',
+abilityText:
+      'When you successfully play a Chain card, you may draw 1 card. You may pack any cards with the Kurt Angle logo, but you do not count as Kurt Angle. Your card titled It’s True! It’s True! is not a Face card or a Heel card.',
+    backlashLimit: { preMatch: 10, midMatch: 12 },
+  },
   {
     id: 'mankind',
     name: 'Mankind',
@@ -4747,6 +4759,17 @@ export const CHYNA_CARDS: CardDef[] = [
     text: 'Your Chain cards cannot be reversed from your opponent’s Arsenal for the rest of the turn.',
     set: 'Kurt Angle',
   }),
+  card({
+    id: 'bad-to-the-bone',
+    name: 'Bad to the Bone!',
+    type: 'Reversal',
+    superstar: ['Kurt Angle'],
+    fortitude: 15,
+    damage: 0,
+    text: 'Reverse any Maneuver or Action card played by your opponent and end your opponent’s turn.',
+    set: 'Kurt Angle',
+  }),
+
     ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS, ...CHYNA_CARDS].map((c) => applyVerifiedStats(c))
