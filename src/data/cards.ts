@@ -4737,6 +4737,16 @@ export const CHYNA_CARDS: CardDef[] = [
     text: 'Your opponent discard 1 card',
     set: 'HHH',
    }),
+  card({
+    id: 'whoo!',
+    name: 'Whoo!',
+    type: 'Action',
+    superstar: ['Kurt Angle'],
+    fortitude: 4,
+    damage: 0,
+    text: 'Your Chain cards cannot be reversed from your opponent’s Arsenal for the rest of the turn.',
+    set: 'Kurt Angle',
+  }),
     ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS, ...CHYNA_CARDS].map((c) => applyVerifiedStats(c))
