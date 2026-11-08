@@ -91,7 +91,7 @@ abilityText:
   {
     id: 'kane',
     name: 'Kane',
-    value: 7,
+    value: 2,
     handSize: 2,
     brand: null,
     alignment: 'Both',
@@ -103,7 +103,7 @@ abilityText:
   {
     id: 'booker-t',
     name: 'Booker T',
-    value: 8,
+    value: 4,
     handSize: 4,
     brand: null,
     alignment: 'Both',

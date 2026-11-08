@@ -9,8 +9,8 @@ import type { GameState } from '../src/engine/types'
  *   3. equal Values → the lowest seat (entry order), so the room creator
  *      (seat 0) starts among tied players.
  *
- * Catalog values used here: booker-t=8, kane=7, mankind=4,
- * kurt-angle=3, chyna=3, edge=3.
+ * Catalog values used here: your-freaking-hero=5, mankind/cactus-jack/
+ * booker-t=4, kurt-angle=3, chyna=3, edge=3, kane=2.
  */
 
 function makeGame(players: Array<{ superstarId: string; seat?: number }>): GameState {
