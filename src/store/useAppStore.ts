@@ -775,6 +775,7 @@ export const useAppStore = create<AppState>()(
                 name: r.name,
                 superstarId: r.superstarId!,
                 handSize: r.handSize ?? undefined,
+                seat: r.idx,
                 arsenal: r.deck ? r.deck.arsenal : dd.arsenal,
                 backlashPre: r.deck ? r.deck.backlashPre : dd.pre,
                 backlashMid: r.deck ? r.deck.backlashMid : dd.mid,

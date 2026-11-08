@@ -18,6 +18,11 @@ export interface PlayerState {
   hand: string[]
   /** Opening hand size this player was dealt (defaults to their superstar's). */
   handSize?: number
+  /**
+   * Entry order in the room (0 = creator). Tie-breaker for who starts when
+   * Superstar Values are equal. Offline games default to their slot order.
+   */
+  seat?: number
   arsenal: string[]
   ringside: string[]
   ring: string[]

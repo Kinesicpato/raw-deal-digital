@@ -51,6 +51,8 @@ export interface NewGameConfig {
     isAI?: boolean
     aiLevel?: 1 | 2 | 3
     handSize?: number
+    /** Entry order in the room (0 = creator); defaults to the slot order. */
+    seat?: number
     arsenal: string[]
     backlashPre: string[]
     backlashMid: string[]
@@ -59,6 +61,29 @@ export interface NewGameConfig {
   beltId?: string | null
   beltDefending?: boolean | null
   beltChampionId?: string | null
+}
+
+/**
+ * Superstar that ALWAYS takes the first turn, no matter its Value or when it
+ * joined the room.
+ */
+const ALWAYS_FIRST_SUPERSTAR = 'edge'
+
+/**
+ * Who takes the first turn:
+ *   1. the `edge` superstar, always;
+ *   2. the highest Superstar Value;
+ *   3. equal Values → the lowest seat (entry order), so the room creator
+ *      (seat 0) starts among tied players.
+ */
+function compareStartOrder(a: PlayerState, b: PlayerState): number {
+  const ea = a.superstarId === ALWAYS_FIRST_SUPERSTAR ? 0 : 1
+  const eb = b.superstarId === ALWAYS_FIRST_SUPERSTAR ? 0 : 1
+  if (ea !== eb) return ea - eb
+  const va = getSuperstar(a.superstarId).value
+  const vb = getSuperstar(b.superstarId).value
+  if (va !== vb) return vb - va
+  return (a.seat ?? 0) - (b.seat ?? 0)
 }
 
 export function newGame(cfg: NewGameConfig): GameState {
@@ -70,6 +95,7 @@ export function newGame(cfg: NewGameConfig): GameState {
     aiLevel: p.aiLevel,
     hand: [],
     handSize: p.handSize,
+    seat: p.seat ?? i,
     arsenal: [...p.arsenal],
     ringside: [],
     ring: [],
@@ -110,14 +136,10 @@ export function newGame(cfg: NewGameConfig): GameState {
     _openingKept: [],
   }
 
-  // Order by Superstar Value descending.
+  // Who starts: edge first, then Superstar Value, ties by entry order.
   const ordered = players
     .map((_, i) => i)
-    .sort((a, b) => {
-      const va = getSuperstar(players[a]?.superstarId ?? '').value
-      const vb = getSuperstar(players[b]?.superstarId ?? '').value
-      return vb - va
-    })
+    .sort((a, b) => compareStartOrder(players[a]!, players[b]!))
   const first = ordered[0]
   if (first !== undefined) state.activeIndex = first
 
@@ -265,14 +287,10 @@ function advancePrematch(state: GameState, actorIdx: number): void {
 
 /** Begin the first turn (opening hand is already dealt in newGame). */
 export function startMatch(state: GameState): void {
-  // Recalculate order by Superstar Value.
+  // Recalculate who starts: edge first, then Superstar Value, ties by seat.
   const ordered = state.players
     .map((_, i) => i)
-    .sort((a, b) => {
-      const va = getSuperstar(state.players[a]?.superstarId ?? '').value
-      const vb = getSuperstar(state.players[b]?.superstarId ?? '').value
-      return vb - va
-    })
+    .sort((a, b) => compareStartOrder(state.players[a]!, state.players[b]!))
   const first = ordered[0]
   if (first !== undefined) state.activeIndex = first
   state.phase = 'start'
