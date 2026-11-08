@@ -4769,7 +4769,19 @@ export const CHYNA_CARDS: CardDef[] = [
     text: 'Reverse any Maneuver or Action card played by your opponent and end your opponent’s turn.',
     set: 'Kurt Angle',
   }),
-
+   card({
+    id: 'Ayatollah-of-rock',
+    name: 'Ayatollah of rock',
+    type: 'Action',
+    extraTypes: ['Reversal'],
+    traits: ['Special', 'Unique'],
+    superstar: ['jericho'],
+    fortitude: 13,
+    damage: 0,
+    text: 'Look at your opponent’s hand. Your next 3 maneuvers played this turn cannot be reversed from his Arsenal, Backlash deck, or Ringside pile.',
+    notes: 'Extras Jericho.pdf; valores verificados (Insurrextion_9.0 #21/150).',
+    set: 'Insurrextion',
+  }),
     ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS, ...CHYNA_CARDS].map((c) => applyVerifiedStats(c))
