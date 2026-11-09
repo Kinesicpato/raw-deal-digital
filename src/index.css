@@ -258,6 +258,22 @@ h3 {
   box-shadow: 0 0 0 3px var(--gold), 0 3px 10px rgba(0, 0, 0, 0.55);
   transform: scale(1.04);
 }
+/* A card of this pile currently granted to an opponent ("mostrar arsenal"):
+   ringed in gold with an eye badge, right where it sits in the list. */
+.pt-drag-item.pt-shown {
+  position: relative;
+  box-shadow: 0 0 0 3px var(--gold);
+}
+.pt-drag-item.pt-shown::after {
+  content: '👁';
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  font-size: 13px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+  pointer-events: none;
+}
 
 /* ============================================================
    CARD DRAG-AND-DROP (game board)

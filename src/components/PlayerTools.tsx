@@ -64,6 +64,16 @@ export function PlayerToolsModal({
 
   if (!p) return null
 
+  // Cards of this player's Arsenal currently granted to an opponent: ringed
+  // in place in the list (they are the ones that flip face-up for the
+  // viewer while the rest of the pile stays card backs).
+  const shownArsenal = game._shownCard
+  const isGrantedArsenalCard = (id: string) =>
+    !!shownArsenal &&
+    shownArsenal.from === playerIdx &&
+    shownArsenal.zone === 'arsenal' &&
+    shownArsenal.cardIds.includes(id)
+
   const count = (z: ManualZone) => {
     switch (z) {
       case 'hand':
@@ -184,7 +194,7 @@ export function PlayerToolsModal({
                 isArsenal ? (
                   <div
                     key={`${id}-${idx}`}
-                    className={`pt-drag-item ${dragIdx === idx ? 'pt-dragging' : ''} ${overIdx === idx && dragIdx !== idx ? 'pt-drop-target' : ''}`}
+                    className={`pt-drag-item ${dragIdx === idx ? 'pt-dragging' : ''} ${overIdx === idx && dragIdx !== idx ? 'pt-drop-target' : ''} ${isGrantedArsenalCard(id) ? 'pt-shown' : ''}`}
                     draggable
                     onDragStart={(e) => {
                       dragIdxRef.current = idx
@@ -275,7 +285,14 @@ export function PlayerToolsModal({
             )}
           </div>
 
-          <ShowCardToOpponent game={game} playerIdx={playerIdx} list={list} selected={selected} zone={from} />
+          <ShowCardToOpponent
+            game={game}
+            playerIdx={playerIdx}
+            list={list}
+            selected={selected}
+            zone={from}
+            clearSelection={() => setSelected(new Set())}
+          />
 
           <div className="row" style={{ marginTop: 10, justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
             <button className="primary" disabled={selected.size === 0} onClick={doMove}>
@@ -306,19 +323,78 @@ function ShowCardToOpponent({
   list,
   selected,
   zone,
+  clearSelection,
 }: {
   game: GameState
   playerIdx: number
   list: string[]
   selected: Set<number>
   zone: ManualZone
+  clearSelection: () => void
 }) {
   const store = useAppStore.getState()
   const shown = game._shownCard
 
   const selectedIds = [...selected].map((i) => list[i]).filter((id): id is string => typeof id === 'string')
 
-  if (shown && shown.from === playerIdx && selectedIds.length === 0) {
+  // ARSENAL: the reveal lives IN PLACE in the list above — the pile shows as
+  // card backs and the granted cards flip face-up right where they sit (the
+  // same pattern as a revealed hand), so there is NO panel of cards below.
+  if (zone === 'arsenal') {
+    const active = shown && shown.from === playerIdx && shown.zone === 'arsenal' ? shown : null
+    if (!active && selectedIds.length === 0) return null
+    const targetName = active ? (game.players[active.to]?.name ?? 'un oponente') : ''
+    return (
+      <div className="row reveal-hand-row" style={{ marginTop: 10, gap: 6, flexWrap: 'wrap' }}>
+        <span className="muted" style={{ fontSize: 12 }}>
+          Mostrar tu Arsenal a:
+        </span>
+        {game.players.map((op, i) => {
+          if (i === playerIdx) return null
+          const isActive = !!active && active.to === i
+          return (
+            <button
+              key={i}
+              className={`ghost ${isActive ? 'reveal-target' : ''}`}
+              title={
+                isActive
+                  ? `Tu Arsenal está visible para ${op.name} — apretá de nuevo para ocultarlo`
+                  : selectedIds.length > 0
+                    ? `Mostrar ${selectedIds.length} carta(s) del Arsenal a ${op.name}`
+                    : `Mostrar tu Arsenal a ${op.name}`
+              }
+              onClick={() => {
+                if (selectedIds.length > 0) {
+                  store.clearShownCard()
+                  for (const cid of selectedIds) store.showCardToOpponent(playerIdx, cid, i, 'arsenal')
+                  clearSelection()
+                } else if (isActive) {
+                  store.clearShownCard()
+                }
+              }}
+            >
+              {isActive ? '✓ ' : ''}
+              {op.name}
+            </button>
+          )
+        })}
+        {active && (
+          <>
+            <span className="stat-chip" style={{ background: 'var(--yellow)', color: '#221a05' }}>
+              👁 Arsenal visible para {targetName}
+            </span>
+            <button className="ghost" onClick={() => store.clearShownCard()}>
+              Ocultar
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // Other zones keep the legacy preview panel below the list. (An Arsenal
+  // reveal never lands here — it is handled in place above.)
+  if (shown && shown.from === playerIdx && selectedIds.length === 0 && shown.zone !== 'arsenal') {
     return (
       <div className="show-opponent-pick" style={{ marginTop: 10 }}>
         <div className="row" style={{ marginBottom: 6 }}>
@@ -355,7 +431,7 @@ function ShowCardToOpponent({
               onClick={() => {
                 store.clearShownCard()
                 for (const cid of selectedIds) {
-                  store.showCardToOpponent(playerIdx, cid, i)
+                  store.showCardToOpponent(playerIdx, cid, i, zone)
                 }
               }}
             >

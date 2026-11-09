@@ -60,6 +60,7 @@ export type IntentName =
   | 'manualReorderArsenal'
   | 'manualRevealHand'
   | 'showCardToOpponent'
+  | 'clearShownCard'
 
 export type ClientMsg =
   | { type: 'hello'; name: string }
@@ -99,7 +100,8 @@ const HIDDEN = '__hidden__'
  * Hidden information (other players' hands, Arsenal and Backlash decks) is
  * replaced by equal-length placeholders so counts stay accurate, unless the
  * game rules explicitly reveal it (handRevealedTo target, reorder-opponent
- * arsenal, look-at-opponent-hand).
+ * arsenal, look-at-opponent-hand) or a player granted THIS viewer a look at
+ * specific cards of a zone (shown cards stay face-up, in place).
  */
 export function buildClientView(game: GameState, viewerIdx: number): GameState {
   if (viewerIdx < -1) return game
@@ -108,6 +110,12 @@ export function buildClientView(game: GameState, viewerIdx: number): GameState {
   if (viewerIdx === -1) return clone
   const owner = decisionOwner(clone)
   const n = clone.players.length
+
+  // A reveal is private to the player who granted it and the one it was
+  // granted to: anyone else must not even learn it happened (nor which
+  // cards are in it).
+  const shown = clone._shownCard
+  if (shown && shown.from !== viewerIdx && shown.to !== viewerIdx) clone._shownCard = null
 
   clone.players.forEach((p, i) => {
     if (i === viewerIdx) return
@@ -123,7 +131,28 @@ export function buildClientView(game: GameState, viewerIdx: number): GameState {
       owner === viewerIdx &&
       clone.pendingDecision?.type === 'reorderOpponentArsenal' &&
       i === (clone.resolution?.target ?? (clone.pendingDecision.playerIdx + 1) % n)
-    if (!revealArsenal) p.arsenal = Array(p.arsenal.length).fill(HIDDEN)
+    if (!revealArsenal) {
+      // Cards player `i` granted THIS viewer to see stay face-up right where
+      // they sit in the Arsenal (the rest of the pile shows as card backs).
+      const granted =
+        shown && shown.from === i && shown.to === viewerIdx && shown.zone === 'arsenal'
+          ? shown.cardIds
+          : null
+      if (granted && granted.length > 0) {
+        // Reveal each granted id only as many times as it was granted, so a
+        // single copy shown never exposes a second copy sitting in the pile.
+        const pending = new Map<string, number>()
+        for (const id of granted) pending.set(id, (pending.get(id) ?? 0) + 1)
+        p.arsenal = p.arsenal.map((id) => {
+          const left = pending.get(id) ?? 0
+          if (left <= 0) return HIDDEN
+          pending.set(id, left - 1)
+          return id
+        })
+      } else {
+        p.arsenal = Array(p.arsenal.length).fill(HIDDEN)
+      }
+    }
 
     p.backlashPre = Array(p.backlashPre.length).fill(HIDDEN)
     p.backlashMid = Array(p.backlashMid.length).fill(HIDDEN)

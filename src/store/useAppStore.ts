@@ -123,7 +123,7 @@ interface AppState {
   manualDrawFromArsenal: (playerIdx: number, count: number) => string | null
   manualOverturn: (playerIdx: number, count: number) => string | null
   manualMove: (playerIdx: number, from: ManualZone, to: ManualZone, cardIds: string[], position?: ArsenalPosition) => string | null
-  showCardToOpponent: (fromPlayer: number, cardId: string, toPlayer: number) => void
+  showCardToOpponent: (fromPlayer: number, cardId: string, toPlayer: number, zone: ManualZone) => void
   clearShownCard: () => void
   setLastError: (msg: string | null) => void
 
@@ -407,15 +407,17 @@ export const useAppStore = create<AppState>()(
           if (s.online.role === 'host' && s.game && isMatchLive()) broadcastState(s.game)
         },
 
-        showCardToOpponent: (fromPlayer, cardId, toPlayer) => {
+        showCardToOpponent: (fromPlayer, cardId, toPlayer, zone) => {
           const s = get()
           if (!s.game) return
-          if (route('showCardToOpponent', [fromPlayer, cardId, toPlayer])) return
+          if (cardId === '__hidden__') return // never "show" a placeholder
+          if (route('showCardToOpponent', [fromPlayer, cardId, toPlayer, zone])) return
           const prev = s.game._shownCard
-          if (prev && prev.from === fromPlayer && prev.to === toPlayer) {
-            s.game._shownCard = { cardIds: [...prev.cardIds, cardId], from: fromPlayer, to: toPlayer }
+          if (prev && prev.from === fromPlayer && prev.to === toPlayer && prev.zone === zone) {
+            if (prev.cardIds.includes(cardId)) return // already showing this exact card
+            s.game._shownCard = { cardIds: [...prev.cardIds, cardId], from: fromPlayer, to: toPlayer, zone }
           } else {
-            s.game._shownCard = { cardIds: [cardId], from: fromPlayer, to: toPlayer }
+            s.game._shownCard = { cardIds: [cardId], from: fromPlayer, to: toPlayer, zone }
           }
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game && isMatchLive()) broadcastState(s.game)
@@ -424,6 +426,7 @@ export const useAppStore = create<AppState>()(
         clearShownCard: () => {
           const s = get()
           if (!s.game) return
+          if (route('clearShownCard', [])) return
           s.game._shownCard = null
           set((st) => ({ game: st.game ? { ...st.game } : null }))
           if (s.online.role === 'host' && s.game && isMatchLive()) broadcastState(s.game)
@@ -897,6 +900,7 @@ const MANUAL_INTENTS: IntentName[] = [
   'manualReorderArsenal',
   'manualRevealHand',
   'showCardToOpponent',
+  'clearShownCard',
 ]
 
 /** Host handles a remote client intent, validating it's that player's move. */
@@ -928,9 +932,17 @@ export function applyRemoteIntent(
           return
         }
       } else if (action === 'showCardToOpponent') {
-        const [fromPlayer] = args as [number, string, number]
+        const [fromPlayer] = args as [number, string, number, string]
         if (fromPlayer !== idx) {
           hostSendError(idx, 'Solo podés mostrar tus propias cartas.')
+          return
+        }
+      } else if (action === 'clearShownCard') {
+        // The player who granted the reveal — or the one it was granted to —
+        // may take it back.
+        const sc = s.game._shownCard
+        if (!sc || (idx !== sc.from && idx !== sc.to)) {
+          hostSendError(idx, 'No hay ninguna muestra de cartas para ocultar.')
           return
         }
       } else if (action !== 'undoReversalAction' && (args.length === 0 || args[0] !== idx)) {

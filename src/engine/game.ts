@@ -1,6 +1,6 @@
 import { getCard, getSuperstar } from '../data/cards'
 import type { CardDef } from '../data/types'
-import type { GameState, PlayerState, PendingDecision, Resolution } from './types'
+import type { GameState, PlayerState, PendingDecision, Resolution, ManualZone } from './types'
 import { computeFortitude, drawCards, dealDamage, shuffled } from './rules'
 import { eliminate, resolveNextEffect } from './effects'
 
@@ -1137,7 +1137,9 @@ export function applyDecision(state: GameState, decision: PendingDecision, paylo
 // MANUAL TABLE ACTIONS (house rules / player convenience)
 // ---------------------------------------------------------------------------
 
-export type ManualZone = 'hand' | 'arsenal' | 'ring' | 'ringside' | 'midmatch' | 'backlashMid' | 'out'
+// ManualZone lives in ./types (so `_shownCard` can reference it); re-exported
+// here for the existing `from '../engine/game'` consumers.
+export type { ManualZone }
 
 function zoneList(p: PlayerState, zone: ManualZone): string[] {
   switch (zone) {

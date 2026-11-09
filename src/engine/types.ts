@@ -9,6 +9,9 @@ export type Phase =
   | 'end'
   | 'gameover'
 
+/** Zones the manual house-rule tools can move cards between. */
+export type ManualZone = 'hand' | 'arsenal' | 'ring' | 'ringside' | 'midmatch' | 'backlashMid' | 'out'
+
 export interface PlayerState {
   id: string
   name: string
@@ -134,6 +137,10 @@ export interface GameState {
   _prematchActed: number[]
   /** Players who already chose (kept) their opening hand. */
   _openingKept: number[]
-  /** Manual house-rule: card(s) being shown to a specific opponent. */
-  _shownCard?: { cardIds: string[]; from: number; to: number } | null
+  /**
+   * Manual house-rule: card(s) being shown to a specific opponent, from a
+   * specific zone. In the viewer's snapshot the granted cards stay face-up,
+   * in place, inside that zone's list (the rest shows as card backs).
+   */
+  _shownCard?: { cardIds: string[]; from: number; to: number; zone?: ManualZone } | null
 }

@@ -281,6 +281,10 @@ function PlayerPanel({
   const isTarget = game.resolution?.target === idx
   const isOverturning = game.resolution?.overturning === true
   const isHandRevealed = p.handRevealedTo !== null
+  // The Arsenal reveal this player granted (only the owner and the target
+  // receive it in their snapshot, so third viewers never see this chip).
+  const reveal = game._shownCard
+  const shownArsenal = reveal && reveal.from === idx && reveal.zone === 'arsenal' ? reveal : null
   const hit = isTarget && isOverturning
   // Fortitude Rating shown live: sum of the "D" (Damage) box of every card in
   // the player's Ring area plus Mid-match/Pre-match cards played.
@@ -330,14 +334,18 @@ function PlayerPanel({
         </button>
         <div
           className="zone-chip zone-arsenal"
-          title="Arrastrá cartas acá · clic para ver/mover"
+          title={
+            shownArsenal
+              ? `Arsenal visible para ${game.players[shownArsenal.to]?.name ?? 'un oponente'} — clic para verlo`
+              : 'Arrastrá cartas acá · clic para ver/mover'
+          }
           onClick={() => onTools('arsenal')}
           data-zone="arsenal"
           data-player={idx}
           {...arsenalDrop}
           style={{ cursor: 'pointer' }}
         >
-          Arsenal <b>{p.arsenal.length}</b>
+          {shownArsenal ? '👁 ' : ''}Arsenal <b>{p.arsenal.length}</b>
         </div>
         <button className="zone-chip zone-ringside" title="Clic para ver/mover cartas del Ringside" onClick={() => onTools('ringside')}>
           Ringside <b>{p.ringside.length}</b>
