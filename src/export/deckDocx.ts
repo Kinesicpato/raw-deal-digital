@@ -17,10 +17,30 @@
 
 export interface DeckDocxInput {
   name: string
+  /** Superstar id, embedded so the .docx can travel to another browser/computer. */
+  superstarId?: string
   arsenal: string[]
   backlashPre: string[]
   backlashMid: string[]
 }
+
+/**
+ * The deck data embedded in the .docx (at `DECK_PART`). Word ignores parts it
+ * doesn't know, so the file still opens/prints normally while the app can read
+ * the deck back on another machine.
+ */
+export interface DeckFilePayload {
+  format: 'raw-deal-deck'
+  version: 1
+  name: string
+  superstarId: string
+  arsenal: string[]
+  backlashPre: string[]
+  backlashMid: string[]
+}
+
+/** ZIP entry holding the deck payload inside every exported .docx. */
+export const DECK_PART = 'raw-deal/deck.json'
 
 export interface DeckDocxDeps {
   /** Card art (300x420 PNG) as raw bytes, or null when the card has no art. */
@@ -323,6 +343,7 @@ function contentTypesXml(mediaCount: number): string {
     `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
     `<Default Extension="xml" ContentType="application/xml"/>` +
     `<Default Extension="png" ContentType="image/png"/>` +
+    `<Default Extension="json" ContentType="application/json"/>` +
     `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
     `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
     `${pngOverrides}</Types>`
@@ -416,6 +437,16 @@ export async function buildDeckDocx(input: DeckDocxInput, deps: DeckDocxDeps): P
     target: `media/${m.fileName}`,
   }))
 
+  const payload: DeckFilePayload = {
+    format: 'raw-deal-deck',
+    version: 1,
+    name: input.name,
+    superstarId: input.superstarId ?? '',
+    arsenal: input.arsenal,
+    backlashPre: input.backlashPre,
+    backlashMid: input.backlashMid,
+  }
+
   const files: { name: string; data: Uint8Array }[] = [
     { name: '[Content_Types].xml', data: str(contentTypesXml(mediaByKey.size)) },
     { name: '_rels/.rels', data: str(relsXml([{ id: 'rId1', type: REL_DOC, target: 'word/document.xml' }])) },
@@ -425,6 +456,8 @@ export async function buildDeckDocx(input: DeckDocxInput, deps: DeckDocxDeps): P
       data: str(relsXml([{ id: 'rId1', type: REL_STYLES, target: 'styles.xml' }, ...imageRels])),
     },
     { name: 'word/styles.xml', data: str(stylesXml()) },
+    // Embedded deck data: lets the same .docx be re-imported on another machine.
+    { name: DECK_PART, data: str(JSON.stringify(payload)) },
   ]
   for (const m of mediaByKey.values()) files.push({ name: `word/media/${m.fileName}`, data: m.bytes })
 
@@ -487,4 +520,147 @@ export async function downloadDeckDocx(input: DeckDocxInput): Promise<void> {
   link.click()
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+// ---------------------------------------------------------------------------
+// ZIP reading (import side)
+// ---------------------------------------------------------------------------
+
+const EOCD_SIG = 0x06054b50
+const CENTRAL_SIG = 0x02014b50
+const LOCAL_SIG = 0x04034b50
+
+/**
+ * Reads one entry from a ZIP by name via the central directory.
+ * Returns null when the archive is valid but has no such entry; throws when the
+ * bytes are not a readable ZIP at all. Only stored (method 0) entries are
+ * supported — that is how `zipStore` writes every file we generate.
+ */
+export function readZipEntry(bytes: Uint8Array, wanted: string): Uint8Array | null {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const dec = new TextDecoder()
+
+  // EOCD is at the end, possibly followed by a comment of up to 64KB.
+  let eocd = -1
+  const scanFrom = bytes.length - 22
+  const scanTo = Math.max(0, bytes.length - 22 - 0xffff)
+  for (let i = scanFrom; i >= scanTo; i--) {
+    if (dv.getUint32(i, true) === EOCD_SIG) {
+      eocd = i
+      break
+    }
+  }
+  if (eocd < 0) throw new Error('not-a-zip')
+
+  const total = dv.getUint16(eocd + 10, true)
+  let pos = dv.getUint32(eocd + 16, true)
+
+  for (let n = 0; n < total; n++) {
+    if (pos + 46 > bytes.length || dv.getUint32(pos, true) !== CENTRAL_SIG) throw new Error('not-a-zip')
+    const method = dv.getUint16(pos + 10, true)
+    const size = dv.getUint32(pos + 24, true)
+    const nameLen = dv.getUint16(pos + 28, true)
+    const extraLen = dv.getUint16(pos + 30, true)
+    const commentLen = dv.getUint16(pos + 32, true)
+    const localOff = dv.getUint32(pos + 42, true)
+    if (pos + 46 + nameLen > bytes.length) throw new Error('not-a-zip')
+    const name = dec.decode(bytes.subarray(pos + 46, pos + 46 + nameLen))
+    pos += 46 + nameLen + extraLen + commentLen
+
+    if (name !== wanted) continue
+    if (localOff + 30 > bytes.length || dv.getUint32(localOff, true) !== LOCAL_SIG) throw new Error('not-a-zip')
+    const lNameLen = dv.getUint16(localOff + 26, true)
+    const lExtraLen = dv.getUint16(localOff + 28, true)
+    const start = localOff + 30 + lNameLen + lExtraLen
+    if (start + size > bytes.length) throw new Error('not-a-zip')
+    if (method !== 0) throw new Error('compressed-entry')
+    return bytes.subarray(start, start + size)
+  }
+  return null
+}
+
+function strArray(v: unknown): string[] | null {
+  return Array.isArray(v) && v.every((x) => typeof x === 'string') ? (v as string[]) : null
+}
+
+/** Shape check for a parsed deck payload; null when it isn't ours. */
+function toDeckPayload(v: unknown): DeckFilePayload | null {
+  if (typeof v !== 'object' || v === null) return null
+  const o = v as Record<string, unknown>
+  if (o.format !== 'raw-deal-deck' || o.version !== 1) return null
+  if (typeof o.name !== 'string' || typeof o.superstarId !== 'string') return null
+  const arsenal = strArray(o.arsenal)
+  const backlashPre = strArray(o.backlashPre)
+  const backlashMid = strArray(o.backlashMid)
+  if (!arsenal || !backlashPre || !backlashMid) return null
+  return {
+    format: 'raw-deal-deck',
+    version: 1,
+    name: o.name,
+    superstarId: o.superstarId,
+    arsenal,
+    backlashPre,
+    backlashMid,
+  }
+}
+
+const NO_DECK_PART =
+  'Este .docx no trae los datos del mazo: usá el archivo que generó el botón ' +
+  '"Descargar .docx" del juego (si lo re-guardaste desde Word, perdés los datos).'
+
+/**
+ * Extracts the embedded deck payload from exported .docx bytes.
+ * Also accepts the bare JSON payload (the contents of `raw-deal/deck.json`).
+ * Throws with a user-facing Spanish message when the file can't be read.
+ */
+export function readDeckFile(bytes: Uint8Array): DeckFilePayload {
+  const dec = new TextDecoder()
+  const first = bytes.findIndex((b) => b !== 0x20 && b !== 0x09 && b !== 0x0d && b !== 0x0a)
+  if (first >= 0 && bytes[first] === 0x7b /* '{' */) {
+    // Bare JSON payload rather than a ZIP.
+    const parsed = parseDeckJson(dec.decode(bytes))
+    if (!parsed.payload) throw new Error('El archivo no tiene un formato de mazo reconocido.')
+    return parsed.payload
+  }
+
+  let raw: Uint8Array | null = null
+  let zipError: unknown = null
+  try {
+    raw = readZipEntry(bytes, DECK_PART)
+  } catch (err) {
+    zipError = err
+  }
+  if (zipError instanceof Error && zipError.message === 'compressed-entry') {
+    throw new Error(
+      'Los datos del mazo dentro del .docx quedaron comprimidos (el archivo fue re-guardado por Word). ' +
+        'Subí el .docx original que generó el juego.',
+    )
+  }
+  if (zipError) {
+    const isPdf = bytes.length >= 4 && dec.decode(bytes.subarray(0, 4)) === '%PDF'
+    throw new Error(
+      isPdf
+        ? 'Este archivo es un PDF: un PDF solo guarda imágenes, no los datos del mazo. Subí el .docx original del juego.'
+        : 'No parece un archivo Word (.docx). Subí el archivo que generó el botón "Descargar .docx".',
+    )
+  }
+  if (!raw) throw new Error(NO_DECK_PART)
+
+  const parsed = parseDeckJson(dec.decode(raw))
+  if (parsed.payload) return parsed.payload
+  if (parsed.reason === 'json') throw new Error('Los datos del mazo dentro del .docx están corruptos.')
+  throw new Error('El contenido del .docx no es un mazo reconocido.')
+}
+
+type ParsedDeck = { payload: DeckFilePayload; reason: null } | { payload: null; reason: 'json' | 'shape' }
+
+function parseDeckJson(text: string): ParsedDeck {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return { payload: null, reason: 'json' }
+  }
+  const payload = toDeckPayload(parsed)
+  return payload ? { payload, reason: null } : { payload: null, reason: 'shape' }
 }

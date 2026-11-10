@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { ALL_CARDS, getCard, getSuperstar } from '../data/cards'
 import type { CardDef } from '../data/types'
@@ -7,6 +7,7 @@ import { CardFace, CardDetailModal, CardRemoveModal } from '../components/CardVi
 import { CardZoomPreview } from '../components/CardZoom'
 import { AppBanner } from '../components/Branding'
 import { downloadDeckDocx } from '../export/deckDocx'
+import { importDeckBytes, uniqueDeckName } from '../export/deckImport'
 
 type Back = 'none' | 'Pre-match' | 'Mid-match'
 
@@ -156,11 +157,56 @@ export function DeckbuilderPage() {
     }
     setExporting(true)
     try {
-      await downloadDeckDocx({ name: deckName, arsenal, backlashPre: pre, backlashMid: mid })
+      await downloadDeckDocx({ name: deckName, superstarId, arsenal, backlashPre: pre, backlashMid: mid })
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No se pudo generar el documento Word.')
     } finally {
       setExporting(false)
+    }
+  }
+
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  /** Loads an exported .docx (or bare deck JSON) into the editor for review. */
+  const importFile = async (file: File) => {
+    if (importing) return
+    setImporting(true)
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const { deck, error, dropped } = importDeckBytes(bytes)
+      if (!deck) {
+        alert(error ?? 'No se pudo leer el archivo.')
+        return
+      }
+      let name = deck.name
+      const taken = decks.some((d) => d.name === name)
+      if (taken) {
+        const over = confirm(
+          `Ya existe un mazo llamado "${name}".\n\nOK = sobrescribirlo con el mazo del archivo.\nCancelar = guardarlo con otro nombre.`,
+        )
+        if (!over) name = uniqueDeckName(decks.map((d) => d.name), name)
+      }
+      // Load into the editor (not saved yet): the user reviews, then presses
+      // "Guardar mazo" — same flow as building a deck by hand.
+      setSuperstarId(deck.superstarId)
+      setArsenal(deck.arsenal)
+      setPre(deck.backlashPre)
+      setMid(deck.backlashMid)
+      setDeckName(name)
+      setActiveDeck(null)
+      const notes: string[] = [`Mazo "${name}" cargado en el editor. Revisalo y presioná "Guardar mazo".`]
+      if (dropped.length > 0) {
+        notes.push(`Cartas desconocidas en esta versión (quitadas): ${dropped.join(', ')}.`)
+      }
+      if (!taken && decks.length >= 10) {
+        notes.push('Atención: ya tenés 10 mazos guardados; borrá uno antes de poder guardar este.')
+      }
+      alert(notes.join('\n\n'))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo leer el archivo.')
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -405,9 +451,32 @@ export function DeckbuilderPage() {
               >
                 {exporting ? 'Generando…' : 'Descargar .docx'}
               </button>
+              <button
+                className="ghost"
+                style={{ flex: 1 }}
+                disabled={importing}
+                title="Carga un mazo descargado desde otro navegador o computadora (el .docx que generó el juego)."
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {importing ? 'Leyendo…' : 'Subir .docx'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = '' // allow picking the same file again
+                  if (file) void importFile(file)
+                }}
+              />
             </div>
             <div className="muted" style={{ marginTop: 6, fontSize: 11, textAlign: 'center' }}>
               Mazos guardados: {decks.length}/10
+            </div>
+            <div className="muted" style={{ marginTop: 4, fontSize: 11, textAlign: 'center' }}>
+              Para llevar tu mazo a otro navegador o computadora: descargá el .docx y subilo acá.
             </div>
           </div>
         </div>
