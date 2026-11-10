@@ -464,7 +464,8 @@ export function DeckbuilderPage() {
                 ref={fileInputRef}
                 type="file"
                 accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.json"
-                style={{ display: 'none' }}
+                aria-label="Archivo de mazo para importar (.docx)"
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, padding: 0, border: 0, outline: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   e.target.value = '' // allow picking the same file again
