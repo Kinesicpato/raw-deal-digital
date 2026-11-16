@@ -104,7 +104,7 @@ abilityText:
     id: 'booker-t',
     name: 'Booker T',
     value: 4,
-    handSize: 7,
+    handSize: 8,
     brand: null,
     alignment: 'Both',
     gender: 'male',
