@@ -4789,7 +4789,7 @@ export const CHYNA_CARDS: CardDef[] = [
     superstar: ['Edge'],
     fortitude: 15,
     damage: 0,
-    text: 'As an action, put 1 other card from your Ring area into your hand, put 1 card from your opponent's Ring area into his Ringside pile, and end your turn.'',
+    text: 'As an action, put 1 other card from your Ring area into your hand, put 1 card from your opponent's Ring area into his Ringside pile, and end your turn.',
     set: 'Kurt Angle',
   }),
     ]
