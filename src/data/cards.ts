@@ -4782,6 +4782,19 @@ export const CHYNA_CARDS: CardDef[] = [
     notes: 'Extras Jericho.pdf; valores verificados (Insurrextion_9.0 #21/150).',
     set: 'Insurrextion',
   }),
+   card({
+    id: 'love-fury-passion-energy',
+    name: 'Love-fury-passion-energy',
+    type: 'Action',
+    extraTypes: ['Reversal'],
+    traits: ['Special', 'Unique'],
+    superstar: ['jericho'],
+    fortitude: 13,
+    damage: 0,
+    text: 'As an action, put 1 other card from your Ring area into your hand, put 1 card from your opponent's Ring area into his Ringside pile, and end your turn.',
+    notes: 'Extras Jericho.pdf; valores verificados (Insurrextion_9.0 #21/150).',
+    set: 'Edge',
+  }),
     ]
 
 export const ALL_CARDS: CardDef[] = [...SUPERSTAR_CARDS, ...GENERIC_CARDS, ...KURT_CARDS, ...KURT_BACKLASH_CARDS, ...CACTUS_CARDS, ...JERICHO_CARDS, ...BOOKER_T_CARDS, ...HHH_CARDS, ...RVD_CARDS, ...CLASSIC_CARDS, ...REVERSAL_EXTRAS_CARDS, ...PEPE_V14_CARDS, ...SET24_08_CARDS, ...MIDMATCH_BACKLASH_CARDS, ...EXTRAS_CARDS, ...OCR_CARDS, ...MIDMATCH_VIRTUAL_CARDS, ...SET909_CARDS, ...MIDMATCH_VIRTUAL_NEW_CARDS, ...SET1109_CARDS, ...SHELTON_BENJAMIN_CARDS, ...SET1509_CARDS, ...VITOCO_CARDS, ...CHYNA_CARDS].map((c) => applyVerifiedStats(c))
