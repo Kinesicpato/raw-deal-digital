@@ -4792,7 +4792,6 @@ export const CHYNA_CARDS: CardDef[] = [
     fortitude: 13,
     damage: 0,
     text: 'As an action, put 1 other card from your Ring area into your hand, put 1 card from your opponent's Ring area into his Ringside pile, and end your turn.',
-    notes: 'Extras Jericho.pdf; valores verificados (Insurrextion_9.0 #21/150).',
     set: 'Edge',
   }),
     ]
